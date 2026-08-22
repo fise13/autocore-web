@@ -64,6 +64,7 @@ import {
   dispatchDemoReset,
   hasDemoSessionMarker,
 } from "@/lib/demo/demo-session.client";
+import { clearAppSessionCookie, setAppSessionCookie } from "@/lib/auth/session-cookie";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { marketingHomeUrl } from "@/lib/site-urls";
 import {
@@ -406,11 +407,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logAuthDebug("auth-provider", "onAuthStateChanged", describeFirebaseUser(nextUser));
       setFirebaseUser(nextUser);
       if (!nextUser) {
+        clearAppSessionCookie();
         setProfile(null);
         setIsLoading(false);
         resetSyncAuthCache();
         return;
       }
+
+      setAppSessionCookie();
 
       const cachedProfile = readCachedProfile(nextUser.uid);
       if (cachedProfile) {

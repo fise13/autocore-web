@@ -7440,8 +7440,8 @@
     "semantic_hash": ""
   },
   "src/components/auth/login-screen.tsx": {
-    "mtime": 1784909530.180518,
-    "ast_hash": "c005db337310490ffdc2aa4c49341a0d",
+    "mtime": 1787408353.292778,
+    "ast_hash": "f35785ab59fc93442a85799715ab9058",
     "semantic_hash": ""
   },
   "src/components/auth/password-field.tsx": {
@@ -13435,8 +13435,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.en.ts": {
-    "mtime": 1787396507.8006225,
-    "ast_hash": "ca38824e7b3076fe29e11eaad2b43920",
+    "mtime": 1787408359.3971243,
+    "ast_hash": "73a9f4af08b6db9c2598cf2f2ea3a47b",
     "semantic_hash": ""
   },
   "src/lib/user-copy.locale-labels.ts": {
@@ -13445,8 +13445,8 @@
     "semantic_hash": ""
   },
   "src/lib/user-copy.ru.ts": {
-    "mtime": 1787392588.7389169,
-    "ast_hash": "41c64b1e8c6f49249821b226ed22251b",
+    "mtime": 1787408362.5592024,
+    "ast_hash": "5209c7f5bdfbc87b8c6cb401d74452c2",
     "semantic_hash": ""
   },
   "src/lib/user-copy.ts": {
@@ -13735,8 +13735,8 @@
     "semantic_hash": ""
   },
   "src/middleware.ts": {
-    "mtime": 1785412161.3346798,
-    "ast_hash": "37c88a9da4cb55efc6680849efe848e7",
+    "mtime": 1787408348.9481568,
+    "ast_hash": "3fa11f1237fdfa964369d6f6c70c376e",
     "semantic_hash": ""
   },
   "src/types/barba-core.d.ts": {
@@ -15835,18 +15835,18 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/work/components/work-today-chart.tsx": {
-    "mtime": 1787246223.5774493,
-    "ast_hash": "50c7e0b1c7dace4dc1e61628240abaeb",
+    "mtime": 1787410963.5205057,
+    "ast_hash": "6e4a85a8ca038ad0ca4b91e69517376f",
     "semantic_hash": ""
   },
   "autocore-mobile/features/work/lib/work-today-trend.test.ts": {
-    "mtime": 1787246296.837998,
-    "ast_hash": "ea6e6978dc53db6611d73ae4a3e41898",
+    "mtime": 1787410775.9328153,
+    "ast_hash": "6f286d5a31474035e55d84274104ff2b",
     "semantic_hash": ""
   },
   "autocore-mobile/features/work/lib/work-today-trend.ts": {
-    "mtime": 1787374485.1981559,
-    "ast_hash": "9b97ea644a602a3213054419faab628c",
+    "mtime": 1787410720.7546513,
+    "ast_hash": "e1f6d0516dd9ab9d27b7335fbe03e19a",
     "semantic_hash": ""
   },
   "autocore-mobile/lib/subscriptions/pending-verification.ts": {
@@ -16237,6 +16237,16 @@
   ".agents/skills/paddle-webhooks/SKILL.md": {
     "mtime": 1787390594.971018,
     "ast_hash": "00f45ecd5069654f8d09a6b3f2851b12",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/work/lib/chart-scale.test.ts": {
+    "mtime": 1787410637.5609758,
+    "ast_hash": "5c81497d8afa6be283be4cf0ac88dc6f",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/features/work/lib/chart-scale.ts": {
+    "mtime": 1787410614.6204455,
+    "ast_hash": "dd7668ebe921a95644df93cbff63944b",
     "semantic_hash": ""
   }
 }

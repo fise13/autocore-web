@@ -14,6 +14,7 @@ import {
   cleanPathFromInternal,
   isMarketingContentPath,
 } from "@/lib/seo/marketing-paths";
+import { APP_SESSION_COOKIE, hasAppSessionCookie } from "@/lib/auth/session-cookie";
 import {
   getAppUrl,
   getHostKind,
@@ -24,6 +25,19 @@ import {
   isMarketingPublicPath,
   normalizeHost,
 } from "@/lib/site-urls";
+
+const APP_HOST_ROBOTS_TXT = [
+  "User-agent: *",
+  "Allow: /",
+  "Allow: /login",
+  "Allow: /legal/",
+  "Allow: /welcome",
+  "Disallow: /warehouse",
+  "Disallow: /work-orders",
+  "Disallow: /settings",
+  "Disallow: /api/",
+  "",
+].join("\n");
 
 const APP_HOST_LEGAL_PATHS = new Set([
   "/legal/privacy",
@@ -173,9 +187,16 @@ export function middleware(request: NextRequest) {
 
   if (kind === "app") {
     if (pathname === "/robots.txt") {
-      return new NextResponse("User-agent: *\nDisallow: /\n", {
+      return new NextResponse(APP_HOST_ROBOTS_TXT, {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
+    }
+
+    if (
+      pathname === "/" &&
+      !hasAppSessionCookie(request.cookies.get(APP_SESSION_COOKIE)?.value)
+    ) {
+      return NextResponse.rewrite(new URL("/app-public", request.url));
     }
 
     if (pathname === "/sitemap.xml") {

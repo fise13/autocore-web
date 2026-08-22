@@ -6,7 +6,6 @@ import type { WorkOrder } from '@/types/work-order';
 
 import {
   attentionLoadAt,
-  buildHealthChartPoints,
   buildWorkTodayTrend,
   openWorkCountAt,
   WORK_TODAY_LONG_WEEKS,
@@ -153,22 +152,8 @@ describe('attentionLoadAt', () => {
   });
 });
 
-describe('buildHealthChartPoints', () => {
-  it('puts a graph under the long average when the left raw weeks are empty', () => {
-    const weekly = [...Array(10).fill(0), ...Array(8).fill(650)];
-    const longAvg = Math.round(weekly.reduce((a, b) => a + b, 0) / weekly.length);
-    const shortAvg = 650;
-    const chart = buildHealthChartPoints(weekly, longAvg, shortAvg);
-    const left = chart.slice(0, 10);
-    const right = chart.slice(10);
-    assert.ok(mean(left) > longAvg * 0.9);
-    assert.ok(mean(left) < longAvg * 1.1);
-    assert.ok(mean(right) > shortAvg * 0.9);
-  });
-});
-
 describe('buildWorkTodayTrend', () => {
-  it('exposes chartPoints aligned to long and short averages', () => {
+  it('exposes the measured weekly series without reshaping it', () => {
     const now = new Date('2026-08-20T12:00:00');
     const trend = buildWorkTodayTrend(
       {
@@ -199,9 +184,13 @@ describe('buildWorkTodayTrend', () => {
       now,
     );
 
-    assert.equal(trend.chartPoints.length, WORK_TODAY_LONG_WEEKS);
+    assert.equal(trend.points.length, WORK_TODAY_LONG_WEEKS);
     assert.ok(trend.shortAverage > trend.longAverage);
-    const leftChart = trend.chartPoints.slice(0, 10);
-    assert.ok(mean(leftChart) > trend.longAverage * 0.85);
+    // Early weeks see only the 20 older SKUs — the chart plots that step as it
+    // happened rather than re-centring each half on its own average.
+    assert.deepEqual(trend.points, [...Array(13).fill(20), ...Array(5).fill(100)]);
+    assert.equal(trend.longAverage, 42);
+    assert.equal(trend.shortAverage, 70);
+    assert.equal(Math.round(mean(trend.points.slice(-8))), trend.shortAverage);
   });
 });

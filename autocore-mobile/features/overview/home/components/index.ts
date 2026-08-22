@@ -1,5 +1,6 @@
 export { HomeActivity } from './home-activity';
 export { HomeAttention } from './home-attention';
+export { HomeGreeting } from './home-greeting';
 export { HomeHeader } from './home-header';
 export { HomeQuickActions } from './home-quick-actions';
 export { HomeSkeleton } from './home-skeleton';

@@ -121,6 +121,22 @@ const sectionLabel = {
   letterSpacing: tracking.normal,
 } as const;
 
+/**
+ * Home greeting — the one line on the screen that is a voice, not a label.
+ *
+ * A step above `largeTitle` in size and two steps below it in weight: at 400 the
+ * counters open up and 36pt stops reading as a heading shouted at the reader and
+ * starts reading as someone speaking. Nothing else in the scale sits at regular
+ * weight above 17pt, so this is a genuinely new register rather than a collision
+ * with `title1`. Tracking is closed slightly, which display sizes want anyway.
+ */
+const greeting = {
+  fontSize: 36,
+  fontWeight: fontWeight.regular,
+  lineHeight: 42,
+  letterSpacing: tracking.tighter,
+} as const;
+
 /** Serials, VINs, location codes — monospace identifier. */
 const identifier = {
   fontSize: 15,
@@ -147,6 +163,7 @@ export const typography = {
   caption1,
   caption2,
   metric,
+  greeting,
   sectionLabel,
   identifier,
 

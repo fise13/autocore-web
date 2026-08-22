@@ -31,13 +31,12 @@ export const WORK_TODAY_SHORT_WEEKS = 8;
 export type WorkTodayTrendDirection = 'up' | 'down' | 'flat';
 
 export type WorkTodayTrend = {
-  /** Raw weekly attention-load counts, oldest → newest (length = LONG_WEEKS). */
-  points: number[];
   /**
-   * Series drawn on the Health chart — left cluster centered on `longAverage`,
-   * right cluster on `shortAverage` (so the 18-week bar always has a graph).
+   * Raw weekly attention-load counts, oldest → newest (length = LONG_WEEKS).
+   * Plotted exactly as measured — the chart derives its Y scale from these
+   * instead of the series being reshaped to fit a chart.
    */
-  chartPoints: number[];
+  points: number[];
   longAverage: number;
   shortAverage: number;
   longWeeks: number;
@@ -190,48 +189,6 @@ function buildInsight(direction: WorkTodayTrendDirection, shortWeeks: number): s
 }
 
 /**
- * Apple Health Highlights layout: thick avg bars sit *on* the dotted series.
- * Raw weekly load can be ~0 on the left while the 18-week mean is mid-scale
- * (pulled up by recent weeks) — then the long bar floats with no graph under it.
- * Re-center each region on its average so left dots track `longAvg` and right
- * dots track `shortAvg`, preserving within-region shape.
- */
-export function buildHealthChartPoints(
-  weekly: number[],
-  longAvg: number,
-  shortAvg: number,
-  shortWeeks = WORK_TODAY_SHORT_WEEKS,
-): number[] {
-  const n = weekly.length;
-  if (n === 0) return [];
-
-  const split = Math.max(1, n - shortWeeks);
-  const left = weekly.slice(0, split);
-  const right = weekly.slice(split);
-  const leftMean = mean(left);
-  const rightMean = mean(right.length > 0 ? right : left);
-  const leftFlat = left.every((value) => value === left[0]);
-  const rightFlat = right.length === 0 || right.every((value) => value === right[0]);
-
-  return weekly.map((value, index) => {
-    if (index < split) {
-      if (leftFlat) {
-        const wobble = ((index % 3) - 1) * Math.max(longAvg * 0.015, 1);
-        return Math.max(0, longAvg + wobble);
-      }
-      return Math.max(0, longAvg + (value - leftMean));
-    }
-
-    const recentIndex = index - split;
-    if (rightFlat) {
-      const wobble = ((recentIndex % 3) - 1) * Math.max(shortAvg * 0.015, 1);
-      return Math.max(0, shortAvg + wobble);
-    }
-    return Math.max(0, shortAvg + (value - rightMean));
-  });
-}
-
-/**
  * Health Highlights–style trend for Work → Today.
  * Uses the same live queues as attention rows — not orders-only.
  */
@@ -248,11 +205,9 @@ export function buildWorkTodayTrend(
   const longAverage = roundAvg(mean(points));
   const shortAverage = roundAvg(mean(shortPoints));
   const direction = resolveDirection(shortAverage, longAverage);
-  const chartPoints = buildHealthChartPoints(points, longAverage, shortAverage);
 
   return {
     points,
-    chartPoints,
     longAverage,
     shortAverage,
     longWeeks: WORK_TODAY_LONG_WEEKS,

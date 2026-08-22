@@ -85,17 +85,19 @@ Attention may visually sit **above** Summary when severity ≥ warning (Apple He
 
 | Aspect | Spec |
 | --- | --- |
-| **Purpose** | Orient the user: which company, which time window, optionally which operational locus. |
-| **Belongs** | Active organization name; user-facing period label (e.g. “Last 7 days”, “This month”); optional warehouse/location when multi-site UX exists. |
+| **Purpose** | Orient the user: when it is, roughly how the day is going, which time window, optionally which operational locus. |
+| **Belongs** | Date; a time-of-day greeting (the hero line); user-facing period label (e.g. “Last 7 days”, “This month”); optional warehouse/location when multi-site UX exists. |
 | **Does not belong** | KPIs, charts, CTAs, notification inbox content. |
 | **Priority** | Always present when Home is accessible. |
-| **Interaction** | Org name is display (company switch lives in Settings / switch-organization — not a Home control). Period control opens a small chooser or segment (target). Location filter — only if multi-location is productized. |
+| **Interaction** | The greeting is display only. Company switch lives in Settings / switch-organization — not a Home control. Period control opens a small chooser or segment (target). Location filter — only if multi-location is productized. |
 | **Drill-down** | Company switch → existing `/switch-organization` (page sheet). Period → updates HomeViewModel window (shared or Home-local; see §12). Location → **Requires future route / product decision** if not yet in Home. |
-| **Empty** | Company name loading skeleton; never blank title. |
-| **Loading** | Skeleton for name; period defaults to system default while prefs load. |
-| **Error** | Keep last known company name; show soft error only if session has no company. |
+| **Empty** | The greeting never has an empty state — it is derived from the clock, not from data. |
+| **Loading** | Greeting renders immediately in its `unknown` signal state (no claim about the business); period defaults to system default while prefs load. |
+| **Error** | Greeting is unaffected. A restored brief takes a fresh clock reading rather than the cached one. |
 
-**Current:** `McHeader` shows greeting + `useActiveCompanyName()` + notification bell. Period is **not** user-selectable on Home (hardcoded “this month” / 7d logic inside revenue resolver). Location/warehouse context on Home — **Not currently available**.
+**Current:** `HomeHeader` shows the date over a dynamic greeting (`home/lib/greeting.ts`), plus the offline notice chip. No notification bell, no period control.
+
+**Why the company name left the hero (2026-08-22):** the largest type on the screen was spending itself telling the owner which business they run. It was replaced by a greeting whose wording is a deterministic hash of the local calendar day and part of day — fixed for the whole morning, never re-rolled under a re-render — and which may react to exactly one thing about the brief below it: whether anything is waiting. `context.organizationName` stays in the view model. **Open consequence:** Home now names no tenant anywhere, so tenant orientation rests entirely on Settings / switch-organization. Restoring it as a secondary clause is a one-argument change — `resolveGreetingMeta(input.organizationName, input.now)` in `build-home-view-model.ts` — which renders “Saturday, 22 August · MotorLand” on the small line above the greeting.
 
 ---
 

@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 
@@ -21,6 +21,7 @@ import {
   HomeTrends,
 } from './components';
 import { attentionInterrupts } from './lib/attention';
+import type { HomeGreetingSignal } from './lib/greeting';
 import { resolveHomeNotice } from './lib/notice';
 import type { HomeDestination } from './types';
 import { useHomeViewModel } from './use-home-view-model';
@@ -75,6 +76,28 @@ const HomeBody = memo(function HomeBody() {
   const interrupts = attentionInterrupts(model.attention);
   const showSkeleton = !model.meta.ready && model.summary.length === 0;
 
+  /**
+   * The greeting reads the reader's clock, not the data's. While the brief is
+   * live those are the same instant, and `generatedAt` moving is exactly the
+   * cadence the line should follow. A restored brief carries an old timestamp,
+   * so a fresh one is taken instead — "Good morning" at 9pm is a bug.
+   */
+  const greetingNow = useMemo(
+    () => (model.meta.fromCache ? new Date() : model.meta.generatedAt),
+    [model.meta.fromCache, model.meta.generatedAt],
+  );
+
+  /**
+   * A greeting may only react to whether something is waiting — never to what.
+   * Until the listeners land it says neither, because claiming everything is
+   * under control over a skeleton is a claim the screen cannot back.
+   */
+  const greetingSignal: HomeGreetingSignal = !model.meta.ready
+    ? 'unknown'
+    : model.attention.length > 0
+      ? 'attention'
+      : 'calm';
+
   const attention = (
     <HomeAttention items={model.attention} onOpen={(item) => open(item.destination)} />
   );
@@ -82,8 +105,9 @@ const HomeBody = memo(function HomeBody() {
   return (
     <>
       <HomeHeader
-        organizationName={model.context.organizationName}
         dateLabel={model.context.dateLabel}
+        now={greetingNow}
+        signal={greetingSignal}
         notice={resolveHomeNotice(model)}
       />
 
