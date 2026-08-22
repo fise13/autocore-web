@@ -48,11 +48,28 @@ export type AppStoreApiCredentials = {
 /**
  * Newlines survive a `.p8` badly in most dashboards, so an escaped `\n` form is
  * accepted alongside the real thing.
+ *
+ * Surrounding quotes are stripped too. In `.env.local` they are part of the file
+ * format and dotenv removes them, so the key is normally written quoted — and
+ * copying that exact string into a dashboard, which stores values verbatim,
+ * carries the quotes into the value. The result is a key that looks perfectly
+ * right in the UI and fails at `createSign` with `DECODER routines::unsupported`,
+ * which reads like a corrupt key rather than two stray characters.
  */
-function readPrivateKey(): string | null {
-  const raw = process.env.APPLE_APP_STORE_PRIVATE_KEY?.trim();
+export function normalizeApplePrivateKey(value: string | undefined | null): string | null {
+  let raw = value?.trim();
   if (!raw) return null;
+
+  if (raw.length >= 2 && (raw[0] === '"' || raw[0] === "'") && raw.at(-1) === raw[0]) {
+    raw = raw.slice(1, -1).trim();
+  }
+  if (!raw) return null;
+
   return raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
+}
+
+function readPrivateKey(): string | null {
+  return normalizeApplePrivateKey(process.env.APPLE_APP_STORE_PRIVATE_KEY);
 }
 
 export function readAppStoreCredentials(): AppStoreApiCredentials | null {
