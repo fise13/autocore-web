@@ -172,6 +172,17 @@ Verify after deploy: buy in a TestFlight build and confirm a document appears at
 `appleTransactionLinks/{originalTransactionId}`. An empty collection means no
 purchase has ever been honoured.
 
+To repair purchases taken while the keys were missing, run — from the repository
+root, with the credentials in `.env.local` — a dry run first:
+
+```bash
+node --conditions=react-server --import tsx scripts/recover-apple-subscription.ts --transaction <transactionId>
+```
+
+Add `--apply` once the printed transaction looks right. It reuses the route's own
+validation and writer, so a recovered subscription is indistinguishable from one
+that verified normally.
+
 `ALLOW_INTERNAL_PRO_ACTIVATION` must be absent or `false` in normal production. Enable it only for a controlled internal licensing environment.
 
 ## Environment separation
