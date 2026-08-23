@@ -21,7 +21,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = (await request.json()) as Record<string, unknown>;
     const label = String(body.label ?? "").trim();
     if (!label) {
-      return NextResponse.json({ error: "Укажите название" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a name" }, { status: 400 });
     }
 
     const connection = await upsertDeskConnection(access.uid, {
@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     console.error("[desktop/connections/:id]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось обновить подключение" },
+      { error: error instanceof Error ? error.message : "Could not update the connection" },
       { status: 500 },
     );
   }
@@ -60,7 +60,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
     console.error("[desktop/connections/:id]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось удалить подключение" },
+      { error: error instanceof Error ? error.message : "Could not delete the connection" },
       { status: 500 },
     );
   }

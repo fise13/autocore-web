@@ -6,6 +6,23 @@ function stockValueForItem(item: InventoryItem, onHand: number): number {
   return onHand * unitCost;
 }
 
+/** Main / default warehouse: show full catalog even when stock levels were never written. */
+export function isPrimaryWarehouseView(
+  warehouse: Warehouse | undefined,
+  warehouses: Warehouse[],
+): boolean {
+  if (!warehouse) return false;
+  if (warehouses.length <= 1) return true;
+  if (warehouse.isDefault) return true;
+  if ((warehouse.code ?? "").trim().toUpperCase() === "MAIN") return true;
+  const name = warehouse.name.trim().toLocaleLowerCase("ru");
+  return (
+    name === "main warehouse" ||
+    name === "основной склад" ||
+    name === "основной"
+  );
+}
+
 export function projectInventoryItemForWarehouse(
   item: InventoryItem,
   stockLevel: InventoryStockLevel | null,
@@ -35,18 +52,21 @@ export function projectItemsForWarehouse(
   const levelsForWarehouse = stockLevels.filter((level) => level.warehouseId === warehouseId);
   const levelByItemId = new Map(levelsForWarehouse.map((level) => [level.itemId, level]));
   const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === warehouseId);
-  const allowLegacyFallback =
-    warehouses.length === 1 || selectedWarehouse?.isDefault === true;
+  const primaryView = isPrimaryWarehouseView(selectedWarehouse, warehouses);
 
   return items
     .filter((item) => item.status === "active")
     .filter((item) => {
       if (levelByItemId.has(item.id)) return true;
-      return allowLegacyFallback && item.totalOnHand > 0;
+      // Primary warehouse spreadsheet = company catalog. Partial syncs often leave
+      // inventoryItems without stock levels (qty 0) — those must still render.
+      if (primaryView) return true;
+      // Secondary warehouses: only rows that have stock at this location.
+      return false;
     })
     .map((item) =>
       projectInventoryItemForWarehouse(item, levelByItemId.get(item.id) ?? null, {
-        legacyFallbackOnHand: allowLegacyFallback ? item.totalOnHand : undefined,
+        legacyFallbackOnHand: primaryView ? item.totalOnHand : undefined,
       }),
     );
 }

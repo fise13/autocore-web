@@ -54,7 +54,7 @@ export async function getMotorSaleDocuments(
   ]);
 
   if (!motor && !warranty) {
-    throw new Error("Мотор не найден");
+    throw new Error("Engine not found");
   }
 
   return {

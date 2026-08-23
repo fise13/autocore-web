@@ -115,7 +115,7 @@ export function createCatalogRepository() {
       const normalizedCompanyId = normalizeCompanyId(companyId);
       const normalizedName = name.trim();
       if (!normalizedName) {
-        throw new Error("Пустое имя бренда");
+        throw new Error("Brand name is empty");
       }
 
       const existing = existingBrands.find(
@@ -156,7 +156,7 @@ export function createCatalogRepository() {
       const normalizedCompanyId = normalizeCompanyId(companyId);
       const normalizedCode = normalizeEngineCode(code);
       if (!normalizedCode) {
-        throw new Error("Пустой код двигателя");
+        throw new Error("Engine code is empty");
       }
 
       const existing = existingEngines.find(
@@ -193,7 +193,7 @@ export function createCatalogRepository() {
     async updateBrandName(brand: BrandEntity, name: string, existingBrands: BrandEntity[]): Promise<void> {
       const normalizedName = name.trim();
       if (!normalizedName) {
-        throw new Error("Пустое имя бренда");
+        throw new Error("Brand name is empty");
       }
 
       const duplicate = existingBrands.find(

@@ -854,6 +854,20 @@ service cloud.firestore {
           && request.resource.data.companyId == companyId
           && request.resource.data.uid == resource.data.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shiftOn']);
+        // Self-offboarding on account deletion. `canManageEmployees` deliberately
+        // excludes acting on yourself, so without this a departing member stays
+        // `isActive` in the roster forever — App Store guideline 5.1.1(v) requires
+        // deleting an account to remove its associated data. Deactivate only:
+        // role, permissions, and identity fields stay frozen, and isActive can
+        // only move to false, so this can never be used to grant access.
+        allow update: if isSignedIn()
+          && request.auth.uid == employeeId
+          && resource.data.companyId == companyId
+          && request.resource.data.companyId == companyId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['isActive', 'deletedAt', 'updatedAt'])
+          && request.resource.data.isActive == false;
         allow delete: if canManageEmployees(companyId)
           && request.auth.uid != employeeId;
       }

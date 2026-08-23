@@ -33,7 +33,7 @@ export async function resolveAccessProfile(
   ]);
 
   if (!userSnap.exists) {
-    throw new Error("Профиль пользователя не найден");
+    throw new Error("User profile not found");
   }
 
   const base = mapAdminUser(userSnap.id, userSnap.data() as Record<string, unknown>);

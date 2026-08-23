@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const job = await getDocumentImportJobAdmin(access.companyId, id);
     if (!job) {
-      return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     console.error("[mobile/imports/id]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить документ" },
+      { error: error instanceof Error ? error.message : "Could not load the document" },
       { status: 500 },
     );
   }

@@ -25,6 +25,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[notifications/backfill-team]", error);
-    return NextResponse.json({ error: "Не удалось восстановить уведомления" }, { status: 500 });
+    return NextResponse.json({ error: "Could not restore notifications" }, { status: 500 });
   }
 }

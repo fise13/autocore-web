@@ -4,7 +4,7 @@ import { getFirebaseAuth } from "@/infrastructure/firebase/client";
 async function readAuthToken(): Promise<string> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error("Войдите в аккаунт");
+    throw new Error("Sign in to your account");
   }
   return user.getIdToken();
 }

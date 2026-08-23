@@ -64,14 +64,14 @@ export async function getMobileLocationContents(params: {
 }): Promise<LocationContentsResult> {
   const companyId = normalizeCompanyId(params.companyId);
   const locationId = params.locationId.trim();
-  if (!locationId) throw new Error("Укажите место");
+  if (!locationId) throw new Error("Provide a location");
 
   const db = getAdminFirestore();
   const locationSnap = await db.collection("warehouseLocations").doc(locationId).get();
-  if (!locationSnap.exists) throw new Error("Место не найдено");
+  if (!locationSnap.exists) throw new Error("Location not found");
   const locationData = locationSnap.data() as Record<string, unknown>;
   if (normalizeCompanyId(String(locationData.companyId ?? "")) !== companyId) {
-    throw new Error("Место не найдено");
+    throw new Error("Location not found");
   }
 
   const location = mapLocationDoc(locationSnap.id, locationData);

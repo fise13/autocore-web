@@ -15,7 +15,7 @@ export async function renameBrandUseCase(
 ): Promise<void> {
   const normalizedName = params.newName.trim();
   if (!normalizedName) {
-    throw new Error("Пустое имя бренда");
+    throw new Error("Brand name is empty");
   }
   if (
     normalizedName.localeCompare(params.brand.name, "ru", { sensitivity: "accent" }) === 0

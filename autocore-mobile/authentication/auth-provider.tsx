@@ -29,7 +29,10 @@ import {
 } from '@/services/firebase/auth';
 import { configureNativeGoogleSignIn } from '@/services/auth/google-sign-in';
 import { signInWithAppleNative } from '@/services/auth/apple-sign-in';
-import { deleteAccountForCurrentUser } from '@/services/auth/delete-account';
+import {
+  deleteAccountForCurrentUser,
+  type DeleteAccountResult,
+} from '@/services/auth/delete-account';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/services/firebase';
 import { isProductionCompanyId, normalizeCompanyId } from '@/lib/company-id';
 import { clearPendingDeepLink } from '@/lib/deep-links/pending-deep-link';
@@ -76,7 +79,7 @@ export type AuthActions = {
   verifyEmailWithCode: (code: string) => Promise<boolean>;
   createCompany: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
-  deleteAccount: (password?: string) => Promise<void>;
+  deleteAccount: (password?: string) => Promise<DeleteAccountResult>;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
   isFirebaseReady: boolean;
@@ -832,10 +835,11 @@ function useAuthActionsController(): AuthActions {
       throw new Error('Authorization required.');
     }
 
-    await deleteAccountForCurrentUser(user, { password });
+    const result = await deleteAccountForCurrentUser(user, { password });
     hydratedUidRef.current = null;
     void clearLocalSessionCaches();
     useAuthStore.getState().reset();
+    return result;
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -970,7 +974,12 @@ const STORE_SHOTS_AUTH_ACTIONS: AuthActions = {
   verifyEmailWithCode: async () => false,
   createCompany: asyncNoop,
   signOut: asyncNoop,
-  deleteAccount: asyncNoop,
+  // Screenshot mode has no Firebase user to delete; report a clean no-op.
+  deleteAccount: async () => ({
+    dataFullyRemoved: true,
+    cleanup: { failedCompanyIds: [], failedSubcollections: [], profileSurvived: false },
+    appleRevocation: 'not-applicable' as const,
+  }),
   refreshProfile: asyncNoop,
   clearError: () => undefined,
   isFirebaseReady: true,

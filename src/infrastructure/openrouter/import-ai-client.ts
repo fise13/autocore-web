@@ -37,7 +37,7 @@ async function readAuthToken(): Promise<string | null> {
 
 function mapImportAiError(status: number, message: string): Error {
   if (status === 402) {
-    return new Error("Magic Import доступен на тарифе Pro.");
+    return new Error("Magic Import is available on the Pro plan.");
   }
   if (status === 503) {
     return new Error(
@@ -52,7 +52,7 @@ export async function callImportAi<T>(
   schema: { parse: (value: unknown) => T },
 ): Promise<T> {
   const token = await readAuthToken();
-  if (!token) throw new Error("Требуется авторизация");
+  if (!token) throw new Error("Authorization required");
 
   const response = await fetch(IMPORT_AI_ENDPOINT, {
     method: "POST",

@@ -45,7 +45,7 @@ async function uploadUserAvatarToStorage(
 async function uploadUserAvatarToFirestore(uid: string, buffer: Buffer, contentType: string): Promise<string> {
   if (buffer.length > MAX_FIRESTORE_AVATAR_BYTES) {
     throw new Error(
-      "Аватар слишком большой для сохранения без Storage. Включите Firebase Storage или загрузите файл меньшего размера.",
+      "This avatar is too large to store without Storage. Enable Firebase Storage, or upload a smaller file.",
     );
   }
 
@@ -77,7 +77,7 @@ export async function persistUserAvatar(
     return { photoURL, storage: "cloud" };
   } catch (error) {
     if (!isStorageBucketMissingError(error)) {
-      throw error instanceof Error ? error : new Error("Не удалось загрузить аватар");
+      throw error instanceof Error ? error : new Error("Could not upload the avatar");
     }
 
     resetResolvedStorageBucket();

@@ -13,7 +13,7 @@ export async function renameSpecificCategoryUseCase(
   },
 ): Promise<SpecificCategoryEntity> {
   const trimmed = params.newName.trim();
-  if (!trimmed) throw new Error("Название листа не может быть пустым");
+  if (!trimmed) throw new Error("The sheet name cannot be empty");
   if (trimmed === params.category.name.trim()) return params.category;
 
   const duplicate = params.existingCategories.find(

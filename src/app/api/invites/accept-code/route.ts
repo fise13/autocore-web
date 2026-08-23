@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as AcceptCodeBody;
     const code = typeof body.code === "string" ? body.code.trim() : "";
     if (!code) {
-      return NextResponse.json({ error: "Укажите код приглашения" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an invitation code" }, { status: 400 });
     }
 
     const userSnap = await import("@/infrastructure/firebase/admin").then(({ getAdminFirestore }) =>

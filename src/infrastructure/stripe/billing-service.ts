@@ -32,7 +32,7 @@ export async function startMarketingProCheckout(interval: StripeBillingInterval)
 
     const url = result.data?.url?.trim();
     if (!url) {
-      throw new Error("Stripe Checkout не вернул ссылку");
+      throw new Error("Stripe Checkout did not return a link");
     }
     return url;
   } catch (error) {
@@ -71,7 +71,7 @@ export async function startProCheckout(companyId: string, interval: StripeBillin
 
     const url = result.data?.url?.trim();
     if (!url) {
-      throw new Error("Stripe Checkout не вернул ссылку");
+      throw new Error("Stripe Checkout did not return a link");
     }
     return url;
   } catch (error) {
@@ -93,7 +93,7 @@ export async function openBillingPortal(companyId: string): Promise<string> {
     });
     const url = result.data?.url?.trim();
     if (!url) {
-      throw new Error("Stripe Portal не вернул ссылку");
+      throw new Error("Stripe Portal did not return a link");
     }
     return url;
   } catch (error) {

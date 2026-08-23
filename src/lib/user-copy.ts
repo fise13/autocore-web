@@ -215,12 +215,25 @@ export function mapGridSaveError(error: unknown): string {
   return mapValidationError(error) ?? mapAuthError(error, { surface: "sync" });
 }
 
+/**
+ * Is this one of our own hand-written domain messages?
+ *
+ * Those are already a readable sentence aimed at the person, so they are shown
+ * verbatim instead of being flattened into a generic permission error. The
+ * Russian prefix is kept alongside the English one: server messages were
+ * translated in place, and an error surfaced from an older deployment still
+ * deserves the same treatment.
+ */
+function isOwnDomainMessage(message: string): boolean {
+  return message.startsWith("Could not") || message.includes("Не удалось");
+}
+
 export function mapAuthError(error: unknown, context?: AuthErrorContext): string {
   const code = extractAuthErrorCode(error);
   const messages = activeLocale === "en" ? authErrorMessagesEn : authErrorMessagesRu;
 
   if (code === "permission-denied") {
-      if (error instanceof Error && error.message.includes("Не удалось")) {
+      if (error instanceof Error && isOwnDomainMessage(error.message)) {
         return error.message;
       }
       if (context?.surface === "onboarding") {
@@ -244,7 +257,7 @@ export function mapAuthError(error: unknown, context?: AuthErrorContext): string
           }
       return messages["permission-denied"];
         }
-        if (error.message.includes("Не удалось")) {
+        if (isOwnDomainMessage(error.message)) {
           return error.message.replace(/\s*\([a-z0-9/-]+\)\s*$/i, "").trim();
         }
         return error.message;

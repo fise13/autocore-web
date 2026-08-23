@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     if (!idToken || !rawNonce) {
       return NextResponse.json(
-        { error: "Требуются idToken и rawNonce от Sign in with Apple" },
+        { error: "idToken and rawNonce from Sign in with Apple are required" },
         { status: 400 },
       );
     }
@@ -37,10 +37,10 @@ export async function POST(request: Request) {
     const raw =
       error instanceof Error && error.message.trim()
         ? error.message.trim()
-        : "Не удалось выполнить вход через Apple";
+        : "Could not sign in with Apple";
     const message =
       /FIREBASE_SERVICE_ACCOUNT|Firebase Admin/i.test(raw)
-        ? "Сервер входа через Apple не настроен (Firebase Admin). Обратитесь в поддержку."
+        ? "Apple sign-in is not configured on the server (Firebase Admin). Please contact support."
         : raw;
     return NextResponse.json({ error: message }, { status: 401 });
   }

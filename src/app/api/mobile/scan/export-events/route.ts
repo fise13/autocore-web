@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[mobile/scan/export-events]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось экспортировать события" },
+      { error: error instanceof Error ? error.message : "Could not export events" },
       { status: 500 },
     );
   }

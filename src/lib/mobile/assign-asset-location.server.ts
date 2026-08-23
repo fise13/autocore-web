@@ -80,7 +80,7 @@ async function ensureCustomLeafAdmin(
   actorUserId: string,
 ) {
   const code = normalizeWarehouseLocation(rawCode) || rawCode.trim();
-  if (!code) throw new Error("Укажите код места");
+  if (!code) throw new Error("Provide a location code");
 
   const db = getAdminFirestore();
   const existing = await db
@@ -125,10 +125,10 @@ async function resolveTargetLocation(params: {
   if (params.toLocationId?.trim()) {
     const db = getAdminFirestore();
     const snap = await db.collection("warehouseLocations").doc(params.toLocationId.trim()).get();
-    if (!snap.exists) throw new Error("Целевое место не найдено");
+    if (!snap.exists) throw new Error("Destination location not found");
     const data = snap.data() as Record<string, unknown>;
     if (String(data.warehouseId ?? "") !== params.warehouseId) {
-      throw new Error("Место принадлежит другому складу");
+      throw new Error("That location belongs to a different warehouse");
     }
     return {
       id: snap.id,
@@ -143,7 +143,7 @@ async function resolveTargetLocation(params: {
       params.actorUserId,
     );
   }
-  throw new Error("Укажите целевое место");
+  throw new Error("Provide a destination location");
 }
 
 export async function assignMobileAssetLocation(
@@ -153,7 +153,7 @@ export async function assignMobileAssetLocation(
   const db = getAdminFirestore();
   const warehouseId =
     input.warehouseId?.trim() || (await resolveDefaultWarehouseId(companyId));
-  if (!warehouseId) throw new Error("Склад не найден");
+  if (!warehouseId) throw new Error("Warehouse not found");
 
   await ensureUnlocatedAdmin(companyId, warehouseId, input.actorUserId);
   const target = await resolveTargetLocation({
@@ -166,7 +166,7 @@ export async function assignMobileAssetLocation(
 
   if (input.entityType === "motor") {
     const found = await fetchMotorDocumentById(companyId, input.entityId.trim());
-    if (!found) throw new Error("Двигатель не найден");
+    if (!found) throw new Error("Engine not found");
 
     const groupSnap = await db.collectionGroup("motors").where("companyId", "==", companyId).get();
     const matched = groupSnap.docs.find((doc) => {
@@ -178,7 +178,7 @@ export async function assignMobileAssetLocation(
         String(raw.localId ?? "") === input.entityId.trim()
       );
     });
-    if (!matched) throw new Error("Двигатель не найден");
+    if (!matched) throw new Error("Engine not found");
 
     await matched.ref.set(
       {
@@ -192,10 +192,10 @@ export async function assignMobileAssetLocation(
   } else {
     const recordRef = db.collection("specificRecords").doc(input.entityId.trim());
     const recordSnap = await recordRef.get();
-    if (!recordSnap.exists) throw new Error("Запись не найдена");
+    if (!recordSnap.exists) throw new Error("Record not found");
     const data = recordSnap.data() as Record<string, unknown>;
     if (normalizeCompanyId(String(data.companyId ?? "")) !== companyId) {
-      throw new Error("Запись не найдена");
+      throw new Error("Record not found");
     }
     const recordData =
       data.data && typeof data.data === "object" && !Array.isArray(data.data)

@@ -26,7 +26,7 @@ export async function processWorkOrderEventsUseCase(params: {
 }): Promise<ProcessWorkOrderEventsResult> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
 
   const events = await fetchPendingEvents(params.companyId, params.workOrderId);

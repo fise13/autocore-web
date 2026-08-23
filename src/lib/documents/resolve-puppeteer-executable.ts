@@ -74,7 +74,7 @@ export async function resolvePuppeteerExecutablePath(): Promise<string> {
   }
 
   throw new Error(
-    "Chrome не найден. Установите Google Chrome или выполните: npm run install:browser",
+    "Chrome was not found. Install Google Chrome or run: npm run install:browser",
   );
 }
 

@@ -22,7 +22,7 @@ export async function PATCH(
     const body = (await request.json()) as PatchBody;
 
     if (!body.state) {
-      return NextResponse.json({ error: "state обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "state is required" }, { status: 400 });
     }
 
     await updateNotificationState({
@@ -37,6 +37,6 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/[id]]", error);
-    return NextResponse.json({ error: "Не удалось обновить уведомление" }, { status: 500 });
+    return NextResponse.json({ error: "Could not update the notification" }, { status: 500 });
   }
 }

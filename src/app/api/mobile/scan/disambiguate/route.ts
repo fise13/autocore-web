@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as ScanDisambiguatePayload;
     const barcode = typeof body.barcode === "string" ? body.barcode.trim() : "";
     if (!barcode) {
-      return NextResponse.json({ error: "Укажите штрихкод или артикул" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a barcode or a part number" }, { status: 400 });
     }
 
     const result = await disambiguateMobileScan(access.companyId, barcode);
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/scan/disambiguate]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось уточнить позицию" },
+      { error: error instanceof Error ? error.message : "Could not narrow down the item" },
       { status: 500 },
     );
   }

@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as RegisterDeviceBody;
 
     if (!body.deviceId?.trim() || !body.pushToken?.trim() || !body.platform) {
-      return NextResponse.json({ error: "Некорректные данные устройства" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid device details" }, { status: 400 });
     }
 
     await upsertNotificationDevice(access.uid, {
@@ -34,6 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/register-device]", error);
-    return NextResponse.json({ error: "Не удалось зарегистрировать устройство" }, { status: 500 });
+    return NextResponse.json({ error: "Could not register this device" }, { status: 500 });
   }
 }

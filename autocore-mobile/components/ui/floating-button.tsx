@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ type FloatingButtonProps = {
 export function FloatingButton({ onPress, children, bottomOffset = 16 }: FloatingButtonProps) {
   const { colors, shadows } = useTheme();
   const insets = useSafeAreaInsets();
+  const [pressed, setPressed] = useState(false);
 
   return (
     <Pressable
@@ -21,7 +23,12 @@ export function FloatingButton({ onPress, children, bottomOffset = 16 }: Floatin
         haptics.medium();
         onPress();
       }}
-      style={({ pressed }) => ({
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static object, not `({ pressed }) => …`. NativeWind's JSX runtime
+      // normalises `style` before Pressable sees it and discards a function,
+      // which cost this button its position, size, radius and background.
+      style={{
         position: 'absolute',
         right: 16,
         bottom: insets.bottom + bottomOffset,
@@ -33,7 +40,7 @@ export function FloatingButton({ onPress, children, bottomOffset = 16 }: Floatin
         justifyContent: 'center',
         opacity: pressed ? 0.85 : 1,
         ...shadows.elevated,
-      })}
+      }}
     >
       {children}
     </Pressable>

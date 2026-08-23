@@ -42,12 +42,12 @@ export async function POST(request: NextRequest) {
     const confidence = Number(body.confidence);
 
     if (!barcode) {
-      return NextResponse.json({ error: "Укажите штрихкод" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a barcode" }, { status: 400 });
     }
 
     if (outcome === "created_mapping") {
       if (!itemId) {
-        return NextResponse.json({ error: "Укажите позицию" }, { status: 400 });
+        return NextResponse.json({ error: "Provide an item" }, { status: 400 });
       }
       await createBarcodeMappingAdmin({
         companyId: access.companyId,
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/scan/feedback]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить отзыв" },
+      { error: error instanceof Error ? error.message : "Could not save your feedback" },
       { status: 500 },
     );
   }

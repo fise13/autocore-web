@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useRef } from 'react';
+import { forwardRef, useCallback, useRef, useState } from 'react';
 import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
 import Animated, { ZoomIn, ZoomOut } from 'react-native-reanimated';
 import * as Clipboard from 'expo-clipboard';
@@ -65,6 +65,7 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
     ref,
   ) {
     const { colors } = useTheme();
+    const [pressed, setPressed] = useState(false);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [isCopied, setIsCopied] = useControlledState({
@@ -152,7 +153,12 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
         accessibilityState={{ disabled: disabled ?? false }}
         disabled={disabled}
         onPress={(e) => void handleCopy(e)}
-        style={({ pressed }) => [
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        // Static array, not `({ pressed }) => …`. NativeWind's JSX runtime
+        // normalises `style` before Pressable sees it and drops a function,
+        // taking the whole style object — layout included — with it.
+        style={[
           {
             width: dimension,
             height: dimension,

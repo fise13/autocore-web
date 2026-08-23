@@ -49,7 +49,7 @@ export async function joinCompanyWithInviteCode(_uid: string, rawCode: string): 
 export async function joinCompanyWithInviteToken(_uid: string, rawToken: string): Promise<void> {
   const token = rawToken.trim();
   if (!token) {
-    throw new Error("Некорректная ссылка приглашения");
+    throw new Error("Invalid invitation link");
   }
 
   try {

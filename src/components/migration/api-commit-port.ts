@@ -47,7 +47,7 @@ function summarize(stages: MigrationStage[]): MigrationProgress {
 async function readAuthToken(): Promise<string> {
   const auth = getFirebaseAuth();
   const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("Требуется авторизация");
+  if (!token) throw new Error("Authorization required");
   return token;
 }
 
@@ -78,7 +78,7 @@ export function createApiCommitPort(): MigrationCommitPort {
     canUndo: false,
     async commit(input: MigrationCommitInput, onProgress, shouldCancel): Promise<MigrationResult> {
       if (!input.companyId) {
-        throw new Error("Компания не выбрана");
+        throw new Error("No company selected");
       }
 
       const pending = input.rows.filter((row) => row.status === "pending");
@@ -155,7 +155,7 @@ export function createApiCommitPort(): MigrationCommitPort {
       onProgress(summarize(stages));
 
       if (shouldCancel?.()) {
-        throw new Error("Импорт отменён. Уже перенесённые позиции остались в AutoCore.");
+        throw new Error("Import cancelled. Items already transferred stay in AutoCore.");
       }
 
       const imported = [...counts.entries()]

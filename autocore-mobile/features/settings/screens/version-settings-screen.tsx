@@ -3,6 +3,7 @@ import { Linking } from 'react-native';
 
 import { CollectionRow, ListSection } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
+import { LEGAL_URLS } from '@/lib/legal/legal-urls';
 import { getPlatformContacts } from '@/lib/platform/platform-contacts';
 import { openPhone } from '@/utils/open-phone';
 
@@ -37,6 +38,26 @@ export function VersionSettingsScreen() {
           onPress={() => void openPhone(contacts.phone)}
         />
         <CollectionRow title="Hours" value={contacts.supportLine} showChevron={false} />
+      </ListSection>
+
+      {/*
+        Reachable outside the paywall on purpose: once someone has subscribed
+        they never see the paywall footer again, and the privacy policy is not
+        something an app should only show while it is asking to be paid.
+      */}
+      <ListSection title="Legal" footer="Opens myautocore.com in your browser.">
+        <CollectionRow
+          title="Privacy Policy"
+          onPress={() => void Linking.openURL(LEGAL_URLS.privacy)}
+        />
+        <CollectionRow
+          title="Terms of Use"
+          onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
+        />
+        <CollectionRow
+          title="Refund Policy"
+          onPress={() => void Linking.openURL(LEGAL_URLS.refund)}
+        />
       </ListSection>
     </ProfileScreenShell>
   );

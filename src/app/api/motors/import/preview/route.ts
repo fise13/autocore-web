@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
     const jobId = request.nextUrl.searchParams.get("jobId")?.trim();
 
     if (!jobId) {
-      return NextResponse.json({ error: "jobId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
 
     const job = await getMotorImportJobAdmin(jobId);
     if (!job) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
 
     assertMotorImportCompanyAccess(job, access.companyId);
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[motors/import/preview]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить preview" },
+      { error: error instanceof Error ? error.message : "Could not load the preview" },
       { status: 500 },
     );
   }

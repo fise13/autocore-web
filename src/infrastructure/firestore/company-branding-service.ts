@@ -47,7 +47,7 @@ export async function uploadCompanyLogo(_companyId: string, file: File): Promise
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) {
-    throw new Error("Требуется авторизация");
+    throw new Error("Authorization required");
   }
 
   const prepared = await prepareLogoFile(file);
@@ -75,13 +75,13 @@ export async function uploadCompanyLogo(_companyId: string, file: File): Promise
       throw new Error(payload?.error ?? "Не удалось загрузить логотип");
     }
     if (!payload?.logoUrl) {
-      throw new Error("Сервер не вернул ссылку на логотип");
+      throw new Error("The server did not return a logo link");
     }
 
     return payload.logoUrl;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Загрузка заняла слишком много времени. Попробуйте файл меньше или повторите позже.");
+      throw new Error("The upload took too long. Try a smaller file, or try again later.");
     }
     throw error;
   } finally {

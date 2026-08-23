@@ -162,7 +162,7 @@ export function useUserPreferences(uid: string) {
   const savePreferences = useCallback(
     async (next: Partial<UserPreferences>) => {
       if (!uid) {
-        throw new Error("Пользователь не авторизован");
+        throw new Error("You are not signed in");
       }
       const userRef = doc(db, "users", uid);
       const payload: Record<string, unknown> = {};

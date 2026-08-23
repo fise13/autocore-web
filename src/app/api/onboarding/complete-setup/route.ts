@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CompleteSetupPayload;
     const companyId = typeof body.companyId === "string" ? body.companyId.trim() : "";
     if (!companyId) {
-      return NextResponse.json({ error: "Укажите компанию" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a company" }, { status: 400 });
     }
     if (!isCompanyAppConfig(body.config)) {
-      return NextResponse.json({ error: "Некорректные настройки" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid settings" }, { status: 400 });
     }
 
     const config = await completeCompanySetupAsAdmin(access.uid, companyId, body.config);
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[onboarding/complete-setup]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить настройки" },
+      { error: error instanceof Error ? error.message : "Could not save settings" },
       { status: 500 },
     );
   }

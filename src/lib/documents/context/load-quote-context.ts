@@ -67,7 +67,7 @@ export async function loadQuoteDocumentContext(companyId: string, quoteId: strin
     .get();
 
   if (!quoteSnap.exists) {
-    throw new Error("Коммерческое предложение не найдено");
+    throw new Error("Quote not found");
   }
 
   const data = quoteSnap.data() as Record<string, unknown>;

@@ -48,7 +48,7 @@ export function useMotorSync({
 
   const syncNow = useCallback(async () => {
     if (!uid || !companyId) {
-      throw new Error("Сохранение недоступно: войдите и выберите компанию.");
+      throw new Error("Saving is unavailable: sign in and choose a company.");
     }
     setState((current) => ({ ...current, status: "syncing", errorMessage: null }));
     try {

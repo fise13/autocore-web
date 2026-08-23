@@ -117,16 +117,16 @@ export function AccountScreen() {
         )}
       </ListSection>
 
-      <ListSection
-        title="Desktop"
-        footer="Syncing with AutoCore Desktop is coming later. Data stays in the cloud and web app."
-      >
-        <CollectionRow title="Connection" value="Not connected" showChevron={false} />
-      </ListSection>
+      {/*
+        No "Desktop sync — coming later" row here. App Store guideline 2.1 treats
+        an unimplemented feature advertised in the UI as incomplete software, and
+        a permanently "Not connected" row bought us nothing anyway. Add the
+        section back when the sync actually exists.
+      */}
 
       <ListSection
         title="Danger zone"
-        footer="Your profile and access will be deleted. Company data stays with other members."
+        footer="Deletes your profile, sign-in, and access to AutoCore, and removes you from every company you belong to. Work your company recorded stays with that company."
       >
         <View style={{ padding: tokens.space.stack + 2 }}>
           <Button

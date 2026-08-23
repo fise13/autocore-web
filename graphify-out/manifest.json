@@ -1715,8 +1715,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/features/orders/create-order-screen.tsx": {
-    "mtime": 1787475262.9490342,
-    "ast_hash": "3270117a0c360c95155d4e6049e9a904",
+    "mtime": 1787490592.1613212,
+    "ast_hash": "8a90cc1bce5b7b23316a617250f1ecb9",
     "semantic_hash": ""
   },
   "autocore-mobile/features/orders/data/mock-orders.ts": {
@@ -10565,8 +10565,8 @@
     "semantic_hash": ""
   },
   "src/hooks/use-sidebar-counts.ts": {
-    "mtime": 1783263608.6983829,
-    "ast_hash": "815fc878bcac1b888dd64cbc4462a521",
+    "mtime": 1787489761.9283214,
+    "ast_hash": "49bba53ef00b6bfcd59bfcdc3d8537e1",
     "semantic_hash": ""
   },
   "src/hooks/use-sidebar-edit-mode.ts": {
@@ -12705,8 +12705,8 @@
     "semantic_hash": ""
   },
   "src/lib/money/format-number.ts": {
-    "mtime": 1785401378.8510065,
-    "ast_hash": "724967f4dcc868d856094702c8772834",
+    "mtime": 1787490538.7061353,
+    "ast_hash": "521d9264998df54bc9e3dc56eaf2f07c",
     "semantic_hash": ""
   },
   "src/lib/motion.ts": {
@@ -13655,8 +13655,8 @@
     "semantic_hash": ""
   },
   "src/lib/warehouse/warehouse-stock-projection.ts": {
-    "mtime": 1780752133.4516873,
-    "ast_hash": "fa448bd60365e7a397e3841c9f33ee83",
+    "mtime": 1787489744.2486906,
+    "ast_hash": "57ab6e30f1423905f93bb5256a068d96",
     "semantic_hash": ""
   },
   "src/lib/warehouse/warehouse-sync-ids.ts": {
@@ -16292,6 +16292,16 @@
   "src/components/warehouse/warehouse-sync-bridge.tsx": {
     "mtime": 1787485067.5138779,
     "ast_hash": "a92d43d40855e41a0cee7a6ceefac519",
+    "semantic_hash": ""
+  },
+  "src/lib/warehouse/warehouse-stock-projection.test.ts": {
+    "mtime": 1787489744.7829776,
+    "ast_hash": "1fc495e68e399de04d8c79961d2aaf5e",
+    "semantic_hash": ""
+  },
+  "src/lib/money/format-number.test.ts": {
+    "mtime": 1787490539.0462165,
+    "ast_hash": "99aacb46245e757c85eb2629e7c7bbbf",
     "semantic_hash": ""
   }
 }

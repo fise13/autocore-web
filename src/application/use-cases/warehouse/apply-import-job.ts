@@ -98,7 +98,7 @@ export async function applyImportJobUseCase(
   const warehouse = params.defaultWarehouseId
     ? { id: params.defaultWarehouseId }
     : await warehouseRepository.getDefault(params.companyId);
-  if (!warehouse) throw new Error("Склад не найден");
+  if (!warehouse) throw new Error("Warehouse not found");
 
   const selectedRows = params.rows.filter((item) => item.selected && item.errors.length === 0);
   const total = selectedRows.length;

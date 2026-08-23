@@ -5,7 +5,7 @@ import { isPaddleCheckoutConfigured } from "@/lib/paddle/config";
 async function readAuthToken(): Promise<string> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error("Войдите в аккаунт");
+    throw new Error("Sign in to your account");
   }
   return user.getIdToken();
 }
@@ -32,7 +32,7 @@ export async function openPaddlePortalRemote(companyId: string): Promise<string>
   const result = await postBilling<{ url: string }>("/api/billing/paddle/portal", { companyId });
   const url = result.url?.trim();
   if (!url) {
-    throw new Error("Paddle Portal не вернул ссылку");
+    throw new Error("Paddle Portal did not return a link");
   }
   return url;
 }

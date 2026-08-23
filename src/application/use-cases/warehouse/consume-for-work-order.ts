@@ -26,7 +26,7 @@ export async function consumeForWorkOrderUseCase(
       ? { id: input.warehouseId }
       : await warehouseRepository.getDefault(input.companyId);
   if (!warehouse) {
-    throw new Error("Склад не найден");
+    throw new Error("Warehouse not found");
   }
 
   const movementIds: string[] = [];

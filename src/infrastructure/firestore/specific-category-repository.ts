@@ -258,7 +258,7 @@ export function createSpecificCategoryRepository() {
       subcategoryId?: InventorySubcategoryId,
     ): Promise<SpecificCategoryEntity> {
       const trimmed = name.trim();
-      if (!trimmed) throw new Error("Название листа не может быть пустым");
+      if (!trimmed) throw new Error("The sheet name cannot be empty");
       const taxonomy = resolveCategoryTaxonomy(trimmed, groupId, subcategoryId);
 
       const duplicate = existing.find(

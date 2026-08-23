@@ -23,15 +23,15 @@ export async function rollbackImportJobUseCase(
   },
 ) {
   const job = await importRepository.getById(params.jobId);
-  if (!job) throw new Error("Импорт не найден");
+  if (!job) throw new Error("Import not found");
   if (job.companyId !== normalizeCompanyId(params.companyId)) {
-    throw new Error("Импорт принадлежит другой компании");
+    throw new Error("This import belongs to a different company");
   }
   if (job.status !== "completed") {
-    throw new Error("Откат доступен только для завершённых импортов");
+    throw new Error("Only completed imports can be rolled back");
   }
   if (!job.rollbackMovementIds?.length) {
-    throw new Error("Нет движений для отката");
+    throw new Error("There are no movements to roll back");
   }
 
   let reversed = 0;

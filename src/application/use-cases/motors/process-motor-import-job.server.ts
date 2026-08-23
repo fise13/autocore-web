@@ -269,11 +269,11 @@ export async function applyMotorImportJobOnServer(params: {
     const expectedRows =
       freshJobAfterPersist.rowCount ?? freshJobAfterPersist.stats.totalEngineRows ?? 0;
     if (engineRows.length === 0 && expectedRows > 0) {
-      throw new Error("Строки импорта не найдены. Повторите анализ файла.");
+      throw new Error("No import rows were found. Analyse the file again.");
     }
 
     if (!freshJobAfterPersist.storagePath) {
-      throw new Error("Файл импорта не найден");
+      throw new Error("Import file not found");
     }
 
     const buffer = await downloadMotorImportFile(freshJobAfterPersist.storagePath);

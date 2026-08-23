@@ -101,6 +101,80 @@ describe("firestore.rules — motor mirror tenancy", () => {
   });
 });
 
+describe("firestore.rules — account deletion self-offboarding", () => {
+  const employees = normalize(matchBlock("match /employees/{employeeId}"));
+
+  /**
+   * Deleting an account has to retire the person's employee record, or they stay
+   * `isActive` in the company roster forever — the "associated data" App Store
+   * guideline 5.1.1(v) requires deletion to remove. `canManageEmployees`
+   * deliberately excludes acting on yourself, so a dedicated self-clause is the
+   * only way, and its scope is what keeps it from becoming a privilege hole.
+   */
+  const selfClauses = employees
+    .split("allow ")
+    .filter((clause) => clause.startsWith("update"))
+    .filter((clause) => clause.includes("request.auth.uid == employeeId"))
+    .filter((clause) => clause.includes("'isActive'"));
+
+  it("lets a member retire their own employee record", () => {
+    assert.equal(
+      selfClauses.length,
+      1,
+      "expected exactly one self-offboarding clause; more than one is a review hazard",
+    );
+  });
+
+  it("restricts self-offboarding to the deactivation fields", () => {
+    assert.ok(
+      selfClauses[0].includes(
+        "affectedKeys() .hasOnly(['isActive', 'deletedAt', 'updatedAt'])",
+      ),
+      "self-offboarding must not be able to touch role, permissions, or identity fields",
+    );
+  });
+
+  it("only ever lets isActive move to false", () => {
+    assert.ok(
+      selfClauses[0].includes("request.resource.data.isActive == false"),
+      "without this, a deactivated member could reactivate themselves",
+    );
+  });
+
+  it("keeps the record inside its own company", () => {
+    assert.ok(
+      selfClauses[0].includes("resource.data.companyId == companyId") &&
+        selfClauses[0].includes("request.resource.data.uid == resource.data.uid"),
+      "self-offboarding must not be able to retarget the record at another tenant",
+    );
+  });
+
+  it("lets a user delete their own profile document", () => {
+    const users = normalize(matchBlock("match /users/{userId}"));
+    assert.ok(
+      users.includes("allow delete: if isSignedIn() && request.auth.uid == userId;"),
+      "without this the profile survives account deletion",
+    );
+  });
+
+  it("lets a user clear the personal subcollections deletion removes", () => {
+    // `memberships`, `devices` (push tokens), and `notificationPreferences` are
+    // the person's own data and must go with the account. `motors` is company
+    // inventory and is deliberately not in this list.
+    for (const header of [
+      "match /memberships/{membershipCompanyId}",
+      "match /devices/{deviceId}",
+      "match /notificationPreferences/{docId}",
+    ]) {
+      const block = normalize(matchBlock(header));
+      assert.ok(
+        block.includes("allow read, write: if isSignedIn() && request.auth.uid == userId;"),
+        `${header} must be self-writable or account deletion cannot clear it`,
+      );
+    }
+  });
+});
+
 describe("firestore.rules — global invariants", () => {
   it("terminates with an explicit default deny", () => {
     const tail = normalize(RULES.slice(-400));

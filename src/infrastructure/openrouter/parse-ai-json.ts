@@ -5,7 +5,7 @@
 export function parseAiJsonContent(content: string): unknown {
   const trimmed = content.trim();
   if (!trimmed) {
-    throw new Error("AI вернул некорректный JSON");
+    throw new Error("The AI returned invalid JSON");
   }
 
   const candidates: string[] = [];
@@ -48,7 +48,7 @@ export function parseAiJsonContent(content: string): unknown {
     }
   }
 
-  throw new Error("AI вернул некорректный JSON");
+  throw new Error("The AI returned invalid JSON");
 }
 
 /** Close dangling quotes / braces / brackets after a truncated model reply. */

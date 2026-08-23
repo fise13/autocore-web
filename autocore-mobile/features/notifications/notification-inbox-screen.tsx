@@ -40,6 +40,7 @@ export function NotificationInboxScreen() {
   const storeItems = useNotificationStore((s) => s.items);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [markAllPressed, setMarkAllPressed] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
@@ -138,12 +139,17 @@ export function NotificationInboxScreen() {
               accessibilityLabel="Mark all notifications read"
               onPress={handleMarkAllRead}
               hitSlop={8}
-              style={({ pressed }) => ({
+              onPressIn={() => setMarkAllPressed(true)}
+              onPressOut={() => setMarkAllPressed(false)}
+              // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+              // runtime normalises `style` before Pressable sees it and drops a
+              // function, taking the whole style object — layout included — with it.
+              style={{
                 paddingHorizontal: spacing[2.5],
                 paddingVertical: spacing[1.5],
                 borderRadius: 999,
-                backgroundColor: pressed ? colors.muted : 'transparent',
-              })}
+                backgroundColor: markAllPressed ? colors.muted : 'transparent',
+              }}
             >
               <Text variant="caption" style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
                 Mark all read

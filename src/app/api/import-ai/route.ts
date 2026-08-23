@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "AI импорта не настроен. Локально добавьте OPENROUTER_API_KEY в .env.local; " +
-            "в production ключ живёт в Firebase Functions (openrouterProxy).",
+            "AI import is not configured. Locally, add OPENROUTER_API_KEY to .env.local; " +
+            "in production the key lives in Firebase Functions (openrouterProxy).",
         },
         { status: 503 },
       );
@@ -84,12 +84,12 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json().catch(() => null)) as ImportAiBody | null;
     if (!body || typeof body.kind !== "string") {
-      return NextResponse.json({ error: "Не указан kind запроса" }, { status: 400 });
+      return NextResponse.json({ error: "Request kind is missing" }, { status: 400 });
     }
 
     const result = await dispatch(body);
     if (result == null) {
-      return NextResponse.json({ error: `Неизвестный kind: ${body.kind}` }, { status: 400 });
+      return NextResponse.json({ error: `Unknown kind: ${body.kind}` }, { status: 400 });
     }
 
     return NextResponse.json({ result });
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[import-ai]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "AI запрос не удался" },
+      { error: error instanceof Error ? error.message : "The AI request failed" },
       { status: 502 },
     );
   }

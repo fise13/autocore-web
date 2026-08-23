@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/preferences GET]", error);
-    return NextResponse.json({ error: "Не удалось загрузить настройки" }, { status: 500 });
+    return NextResponse.json({ error: "Could not load settings" }, { status: 500 });
   }
 }
 
@@ -44,6 +44,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/preferences PATCH]", error);
-    return NextResponse.json({ error: "Не удалось сохранить настройки" }, { status: 500 });
+    return NextResponse.json({ error: "Could not save settings" }, { status: 500 });
   }
 }

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const isActive = body.isActive === true;
 
     if (!targetUserId) {
-      return NextResponse.json({ error: "Укажите сотрудника" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an employee" }, { status: 400 });
     }
 
     await setMemberActiveAsAdmin({

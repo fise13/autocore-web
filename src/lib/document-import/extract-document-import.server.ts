@@ -37,7 +37,7 @@ export async function extractDocumentImportJob(params: {
   force?: boolean;
 }): Promise<{ extractedData: DocumentImportExtractedData; aiStatus: "done" | "failed" }> {
   const job = await getDocumentImportJobAdmin(params.companyId, params.jobId);
-  if (!job) throw new Error("Документ не найден");
+  if (!job) throw new Error("Document not found");
 
   if (
     !params.force &&
@@ -57,7 +57,7 @@ export async function extractDocumentImportJob(params: {
       error: "AI не настроен (Firebase openrouterProxy / OPENROUTER_API_KEY в Functions)",
     });
     throw new Error(
-      "AI не настроен. OpenRouter ключ задаётся только в Firebase Functions (OPENROUTER_API_KEY).",
+      "AI is not configured. The OpenRouter key is set only in Firebase Functions (OPENROUTER_API_KEY).",
     );
   }
 
@@ -65,11 +65,11 @@ export async function extractDocumentImportJob(params: {
 
   try {
     if (!job.originalStoragePath) {
-      throw new Error("Файл ещё не загружен в Storage");
+      throw new Error("The file has not been uploaded to Storage yet");
     }
 
     if (!job.contentType.startsWith("image/")) {
-      throw new Error("Распознавание поддерживает только изображения");
+      throw new Error("Recognition supports images only");
     }
 
     const buffer = await downloadStorageFile(job.originalStoragePath);

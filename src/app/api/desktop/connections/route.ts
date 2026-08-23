@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[desktop/connections]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить подключения" },
+      { error: error instanceof Error ? error.message : "Could not load connections" },
       { status: 500 },
     );
   }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const label = String(body.label ?? "").trim();
 
     if (!id || !pluginId || !platform || !label) {
-      return NextResponse.json({ error: "Некорректные данные подключения" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid connection details" }, { status: 400 });
     }
 
     const connection = await upsertDeskConnection(access.uid, {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[desktop/connections]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить подключение" },
+      { error: error instanceof Error ? error.message : "Could not save the connection" },
       { status: 500 },
     );
   }
@@ -111,7 +111,7 @@ export async function PUT(request: NextRequest) {
     }
     console.error("[desktop/connections]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось синхронизировать подключения" },
+      { error: error instanceof Error ? error.message : "Could not sync connections" },
       { status: 500 },
     );
   }

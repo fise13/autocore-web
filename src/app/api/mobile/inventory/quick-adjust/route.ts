@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const itemId = typeof body.itemId === "string" ? body.itemId.trim() : "";
     if (!itemId) {
-      return NextResponse.json({ error: "Укажите позицию" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an item" }, { status: 400 });
     }
 
     const direction = body.direction === "decrease" ? "decrease" : "increase";
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/inventory/quick-adjust]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось изменить остаток" },
+      { error: error instanceof Error ? error.message : "Could not adjust the stock level" },
       { status: 500 },
     );
   }

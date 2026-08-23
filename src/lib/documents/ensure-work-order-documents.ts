@@ -69,7 +69,7 @@ export async function ensureWorkOrderDocumentsScheduled(params: {
 }): Promise<{ jobId?: string; slugs: DocumentSlug[] }> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
 
   const slugs = applicableSlugs(order);

@@ -88,14 +88,14 @@ export async function loadWarrantyDocumentContext(companyId: string, warrantyId:
     .get();
 
   if (!warrantySnap.exists) {
-    throw new Error("Гарантия не найдена");
+    throw new Error("Warranty not found");
   }
 
   const data = warrantySnap.data() as Record<string, unknown>;
   const motorId = String(data.motorId ?? "");
   const motor = motorId ? await fetchMotorById(normalizedCompanyId, motorId) : null;
   if (!motor) {
-    throw new Error("Двигатель для гарантии не найден");
+    throw new Error("The engine for this warranty was not found");
   }
 
   const soldAt = data.soldAt instanceof Timestamp ? data.soldAt.toDate() : new Date();

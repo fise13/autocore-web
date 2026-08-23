@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
 import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
 
 import { Loader2Icon } from '@/assets/icons';
@@ -64,6 +64,7 @@ export const ActionIconButton = forwardRef<
   ref,
 ) {
   const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
 
   const dimension = SIZES[size];
   const iconSize = ICON_SIZES[size];
@@ -120,7 +121,12 @@ export const ActionIconButton = forwardRef<
         haptics.light();
         onPress?.(event);
       }}
-      style={({ pressed }) => [
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static array, not `({ pressed }) => …`. NativeWind's JSX runtime
+      // normalises `style` before Pressable sees it and drops a function,
+      // taking the whole style object — layout included — with it.
+      style={[
         {
           width: dimension,
           height: dimension,

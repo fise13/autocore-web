@@ -14,12 +14,12 @@ export async function GET(request: Request) {
   try {
     const token = readBearerToken(request);
     if (!token) {
-      return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
+      return NextResponse.json({ error: "Authorization required" }, { status: 401 });
     }
 
     const decoded = await getAdminAuth().verifyIdToken(token);
     if (!decoded.uid) {
-      return NextResponse.json({ error: "Недействительный токен" }, { status: 401 });
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     const payload = await buildMobileSessionBootstrap(decoded.uid);
@@ -29,6 +29,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/session/bootstrap]", error);
-    return NextResponse.json({ error: "Не удалось загрузить сессию" }, { status: 500 });
+    return NextResponse.json({ error: "Could not load your session" }, { status: 500 });
   }
 }

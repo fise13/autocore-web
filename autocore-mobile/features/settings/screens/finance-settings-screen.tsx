@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import type { PressableProps, ViewStyle } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, Layout } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,38 @@ import { resolveFinanceSettingsReturnHref } from '@/lib/navigation/open-finance-
 import { withAlpha } from '@/theme/color-utils';
 import { autocoreEase, duration, haptics, rhythm } from '@/theme';
 import { tokens } from '@/theme/tokens';
+
+/**
+ * Pressable that dims on touch without a function `style`.
+ *
+ * The function form of `style` never reaches the view here — NativeWind's JSX
+ * runtime normalises the prop first and discards a function, taking layout with
+ * it. Owning the flag inside a component keeps it per-chip within the list,
+ * which one flag on the screen could not do.
+ */
+function PressFade({
+  style,
+  pressedOpacity,
+  children,
+  ...props
+}: Omit<PressableProps, 'style'> & {
+  style: ViewStyle;
+  pressedOpacity: number;
+  children: React.ReactNode;
+}) {
+  const [pressed, setPressed] = useState(false);
+
+  return (
+    <Pressable
+      {...props}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={{ ...style, opacity: pressed ? pressedOpacity : (style.opacity ?? 1) }}
+    >
+      {children}
+    </Pressable>
+  );
+}
 
 function normalizeList(items: string[]): string[] {
   const seen = new Set<string>();
@@ -210,7 +243,7 @@ function ListPanel({
                     {item}
                   </Text>
                   {onInvite ? (
-                    <Pressable
+                    <PressFade
                       accessibilityRole="button"
                       accessibilityLabel={`Invite ${item}`}
                       hitSlop={4}
@@ -218,13 +251,13 @@ function ListPanel({
                         haptics.selection();
                         onInvite(item);
                       }}
-                      style={({ pressed }) => ({
+                      pressedOpacity={0.8}
+                      style={{
                         paddingHorizontal: 8,
                         paddingVertical: 4,
                         borderRadius: tokens.radius.full,
                         backgroundColor: withAlpha(accent, isDark ? 0.28 : 0.16),
-                        opacity: pressed ? 0.8 : 1,
-                      })}
+                      }}
                     >
                       <Text
                         variant="caption"
@@ -232,10 +265,10 @@ function ListPanel({
                       >
                         Invite
                       </Text>
-                    </Pressable>
+                    </PressFade>
                   ) : null}
                   {canEdit ? (
-                    <Pressable
+                    <PressFade
                       accessibilityRole="button"
                       accessibilityLabel={`Remove ${item}`}
                       hitSlop={4}
@@ -243,18 +276,18 @@ function ListPanel({
                         haptics.selection();
                         onRemove(index);
                       }}
-                      style={({ pressed }) => ({
+                      pressedOpacity={0.75}
+                      style={{
                         width: 20,
                         height: 20,
                         borderRadius: 10,
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: withAlpha(colors.foreground, isDark ? 0.14 : 0.08),
-                        opacity: pressed ? 0.75 : 1,
-                      })}
+                      }}
                     >
                       <XIcon size={11} color={colors.mutedForeground} strokeWidth={2.6} />
-                    </Pressable>
+                    </PressFade>
                   ) : null}
                 </View>
               </Animated.View>
@@ -361,6 +394,7 @@ export function FinanceSettingsScreen() {
   const [specificInput, setSpecificInput] = useState('');
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savePressed, setSavePressed] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -691,14 +725,19 @@ export function FinanceSettingsScreen() {
             accessibilityLabel="Save finance lists"
             disabled={saving}
             onPress={() => void handleSave()}
-            style={({ pressed }) => ({
+            onPressIn={() => setSavePressed(true)}
+            onPressOut={() => setSavePressed(false)}
+            // Static object, not a `({ pressed }) => …` function. NativeWind's JSX runtime
+            // normalises `style` before Pressable sees it and drops a function, taking the
+            // whole style object — layout included — with it.
+            style={{
               minHeight: 52,
               borderRadius: tokens.radius.full,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: colors.primary,
-              opacity: saving ? 0.7 : pressed ? 0.9 : 1,
-            })}
+              opacity: saving ? 0.7 : savePressed ? 0.9 : 1,
+            }}
           >
             <Text
               variant="headline"

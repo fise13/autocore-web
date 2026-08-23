@@ -119,16 +119,6 @@ export async function reauthenticateWithGoogleIdToken(user: User, idToken: strin
   await reauthenticateWithCredential(user, credential);
 }
 
-export async function reauthenticateWithAppleIdentityToken(
-  user: User,
-  idToken: string,
-  rawNonce: string,
-): Promise<void> {
-  const provider = new OAuthProvider('apple.com');
-  const credential = provider.credential({ idToken, rawNonce });
-  await reauthenticateWithCredential(user, credential);
-}
-
 /** Permanently deletes the Firebase Auth user. Requires recent reauthentication. */
 export async function deleteCurrentAuthUser(user: User): Promise<void> {
   await deleteUser(user);

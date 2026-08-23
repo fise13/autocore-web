@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
     const platform = parsePlatform(request.nextUrl.searchParams.get("platform"));
 
     if (!motorId) {
-      return NextResponse.json({ error: "Укажите motorId" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a motorId" }, { status: 400 });
     }
     if (!platform) {
-      return NextResponse.json({ error: "Укажите platform=kolesa|olx" }, { status: 400 });
+      return NextResponse.json({ error: "Provide platform=kolesa|olx" }, { status: 400 });
     }
 
     const draft = await buildListingDraft({
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[desktop/listings/draft]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось собрать черновик" },
+      { error: error instanceof Error ? error.message : "Could not build the draft" },
       { status: 500 },
     );
   }

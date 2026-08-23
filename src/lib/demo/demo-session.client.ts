@@ -87,7 +87,7 @@ export async function dispatchDemoReset(options?: DemoResetOptions): Promise<boo
       return true;
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Сброс демо занял слишком много времени");
+        throw new Error("Resetting the demo took too long");
       }
       throw error;
     } finally {

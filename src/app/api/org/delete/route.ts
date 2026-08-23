@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       typeof body.confirmationName === "string" ? body.confirmationName : "";
     if (!companyId || !confirmationName) {
       return NextResponse.json(
-        { error: "Укажите companyId и название для подтверждения" },
+        { error: "Provide companyId and the name to confirm" },
         { status: 400 },
       );
     }

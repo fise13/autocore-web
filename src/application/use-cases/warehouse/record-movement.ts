@@ -57,7 +57,7 @@ export async function recordMovementUseCase(
 
   const item = await itemRepository.getById(input.itemId);
   if (!item) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
 
   const stockLevelRef = stockLevelRepository.buildDocRef(input.itemId, input.warehouseId);

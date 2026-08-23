@@ -12,6 +12,23 @@
  *
  * This table is the single place a premium check is declared. Nothing else in
  * the app compares a tier by hand.
+ *
+ * **Declared here is not the same as enforced.** A rule only bites where
+ * something calls `evaluateGate` (or the server refuses the request), and today
+ * most of these are declarations waiting for a call site:
+ *
+ *   enforced — `team_management` (client `FeatureGate` + a 402 from
+ *     `verify-company-manager.server.ts`), `document_export`
+ *     (`verify-document-access.ts`), `bulk_import`
+ *     (`verify-inventory-import-access.server.ts`)
+ *   declared only — `unlimited_inventory`, `unlimited_work_orders`,
+ *     `unlimited_ai`, `advanced_reports`, `api_access`, `invites`,
+ *     `audit_log`, `priority_support`
+ *
+ * The distinction is worth spelling out because it already cost something: the
+ * paywall was built off this table and sold four of the unenforced rules, which
+ * the free tier had all along. Before advertising a rule, give it a call site —
+ * `features/subscription/data/pro-features.test.ts` fails if that order slips.
  */
 import type { Permission } from '@autocore/rbac';
 

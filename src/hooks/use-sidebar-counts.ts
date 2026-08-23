@@ -129,7 +129,10 @@ export function useSidebarCounts({
       }),
     ) as Record<PinnedFilterId, number>;
 
-    const activeWarehouseItems = warehouseItems.filter((item) => item.status !== "archived");
+    const activeWarehouseItems = warehouseItems.filter((item) => {
+      if (item.status === "archived") return false;
+      return (item.inventoryGroup ?? "consumables") === "consumables";
+    });
     const consumablesIndex = buildConsumablesSubcategoryIndex(activeWarehouseItems);
     const consumablesCount = consumablesIndex.activeItems.length;
     const consumableSubcategoryCounts = consumablesIndex.counts;

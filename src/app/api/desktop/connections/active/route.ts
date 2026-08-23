@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
     }
     console.error("[desktop/connections/active]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить активное подключение" },
+      { error: error instanceof Error ? error.message : "Could not save the active connection" },
       { status: 500 },
     );
   }

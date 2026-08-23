@@ -34,13 +34,13 @@ export class MobileAccessError extends Error {
 export async function verifyMobileAuth(request: Request): Promise<{ uid: string }> {
   const token = readBearerToken(request);
   if (!token) {
-    throw new MobileAccessError("Требуется авторизация", 401);
+    throw new MobileAccessError("Authorization required", 401);
   }
 
   const decoded = await getAdminAuth().verifyIdToken(token);
   const uid = decoded.uid;
   if (!uid) {
-    throw new MobileAccessError("Недействительный токен", 401);
+    throw new MobileAccessError("Invalid token", 401);
   }
 
   return { uid };
@@ -52,13 +52,13 @@ export async function verifyMobileAccess(
 ): Promise<VerifiedMobileAccess> {
   const token = readBearerToken(request);
   if (!token) {
-    throw new MobileAccessError("Требуется авторизация", 401);
+    throw new MobileAccessError("Authorization required", 401);
   }
 
   const decoded = await getAdminAuth().verifyIdToken(token);
   const uid = decoded.uid;
   if (!uid) {
-    throw new MobileAccessError("Недействительный токен", 401);
+    throw new MobileAccessError("Invalid token", 401);
   }
 
   const headerCompanyId = request.headers.get("x-company-id")?.trim();
@@ -67,21 +67,21 @@ export async function verifyMobileAccess(
       ? normalizeCompanyId(headerCompanyId)
       : await resolveMobileWorkspaceCompanyId(uid);
   if (!companyId) {
-    throw new MobileAccessError("Сначала присоединитесь к компании", 403);
+    throw new MobileAccessError("Join a company first", 403);
   }
 
   const resolved = await resolveAccessProfile(uid, companyId);
 
   if (!resolved.hasEmployeeMembership && !resolved.profile.isCompanyOwner) {
-    throw new MobileAccessError("Нет доступа к этой компании", 403);
+    throw new MobileAccessError("No access to this company", 403);
   }
 
   if (resolved.profile.isActive === false) {
-    throw new MobileAccessError("Аккаунт деактивирован", 403);
+    throw new MobileAccessError("This account has been deactivated", 403);
   }
 
   if (requiredPermission && !hasPermission(resolved.profile, requiredPermission)) {
-    throw new MobileAccessError("Недостаточно прав для этого действия", 403);
+    throw new MobileAccessError("You do not have permission to do this", 403);
   }
 
   return {

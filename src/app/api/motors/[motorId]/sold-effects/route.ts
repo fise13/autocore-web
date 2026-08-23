@@ -81,7 +81,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[motors/sold-effects]", error);
     return NextResponse.json(
-      { error: mapServerError(error, "Не удалось оформить продажу мотора") },
+      { error: mapServerError(error, "Could not record the engine sale") },
       { status: 500 },
     );
   }

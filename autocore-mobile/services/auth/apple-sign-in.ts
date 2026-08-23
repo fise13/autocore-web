@@ -68,7 +68,25 @@ async function completeAppleFirebaseSignIn(
   return applyAppleProfileFromCredential(user, credential);
 }
 
-export async function signInWithAppleNative(): Promise<User> {
+export type AppleNativeSignInResult = {
+  user: User;
+  /**
+   * Single-use code Apple issues alongside the identity token. Account deletion
+   * spends it on `/auth/revoke`; it expires within minutes, so it is only good
+   * for the request that immediately follows this sign-in.
+   */
+  authorizationCode: string | null;
+};
+
+/**
+ * Full native Sign in with Apple, exposing the raw authorization code.
+ *
+ * Account deletion needs the code to revoke the Apple grant, and needs the
+ * whole sign-in — not `reauthenticateWithCredential` — because the on-device
+ * Firebase JS credential path fails the nonce check on native iOS, which is the
+ * same reason the sign-in flow above goes through the server.
+ */
+export async function signInWithAppleNativeDetailed(): Promise<AppleNativeSignInResult> {
   if (Platform.OS !== 'ios') {
     throw new Error('Sign in with Apple is only available on iPhone and iPad.');
   }
@@ -100,7 +118,13 @@ export async function signInWithAppleNative(): Promise<User> {
     throw error;
   }
 
-  return completeAppleFirebaseSignIn(credential, rawNonce);
+  const user = await completeAppleFirebaseSignIn(credential, rawNonce);
+  return { user, authorizationCode: credential.authorizationCode ?? null };
+}
+
+export async function signInWithAppleNative(): Promise<User> {
+  const { user } = await signInWithAppleNativeDetailed();
+  return user;
 }
 
 export function isAppleSignInCancellation(error: unknown): boolean {

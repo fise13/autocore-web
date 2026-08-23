@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Файл не передан" }, { status: 400 });
+      return NextResponse.json({ error: "No file was provided" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -66,12 +66,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Firebase Storage не настроен. Включите Storage в Firebase Console (Build → Storage) или укажите FIREBASE_STORAGE_BUCKET в .env.local. Правила Storage (if false) не мешают серверному импорту — нужен включённый bucket.",
+            "Firebase Storage is not configured. Enable Storage in the Firebase Console (Build → Storage), or set FIREBASE_STORAGE_BUCKET in .env.local. Storage rules (if false) do not block server-side import — the bucket itself has to be enabled.",
         },
         { status: 503 },
       );
     }
-    const message = error instanceof Error ? error.message : "Не удалось начать импорт";
+    const message = error instanceof Error ? error.message : "Could not start the import";
     const isStoragePermission =
       message.includes("storage") ||
       message.includes("Storage") ||
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: isStoragePermission
-          ? `${message}. Серверный импорт использует Admin SDK (не client Storage rules). Проверьте bucket и FIREBASE_STORAGE_BUCKET.`
+          ? `${message}. Server-side import uses the Admin SDK, not client Storage rules — check the bucket and FIREBASE_STORAGE_BUCKET.`
           : message,
       },
       { status: 500 },

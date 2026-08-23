@@ -15,6 +15,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/mark-all-read]", error);
-    return NextResponse.json({ error: "Не удалось отметить уведомления" }, { status: 500 });
+    return NextResponse.json({ error: "Could not mark notifications as read" }, { status: 500 });
   }
 }

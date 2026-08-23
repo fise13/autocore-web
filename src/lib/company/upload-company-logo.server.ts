@@ -58,7 +58,7 @@ async function uploadCompanyLogoToFirestore(
 ): Promise<string> {
   if (buffer.length > MAX_FIRESTORE_LOGO_BYTES) {
     throw new Error(
-      "Логотип слишком большой для сохранения без Storage. Включите Firebase Storage или загрузите файл меньшего размера.",
+      "This logo is too large to store without Storage. Enable Firebase Storage, or upload a smaller file.",
     );
   }
 
@@ -92,7 +92,7 @@ export async function persistCompanyLogo(
     return { logoUrl, storage: "cloud" };
   } catch (error) {
     if (!isStorageBucketMissingError(error)) {
-      throw error instanceof Error ? error : new Error("Не удалось загрузить логотип");
+      throw error instanceof Error ? error : new Error("Could not upload the logo");
     }
 
     resetResolvedStorageBucket();

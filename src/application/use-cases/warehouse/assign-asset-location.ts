@@ -32,7 +32,7 @@ export async function assignAssetLocation(params: {
     (await warehouseRepo.getDefault(companyId))?.id ||
     null;
   if (!warehouseId) {
-    throw new Error("Склад не найден — создайте склад перед назначением места");
+    throw new Error("Warehouse not found — create a warehouse before assigning a location");
   }
 
   const leaf = await locationRepo.ensureCustomLeaf(

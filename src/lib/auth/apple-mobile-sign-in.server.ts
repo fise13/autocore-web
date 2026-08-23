@@ -320,5 +320,5 @@ export async function completeMobileAppleSignIn(
 
   throw lastError instanceof Error
     ? lastError
-    : new Error("Не удалось подтвердить вход через Apple");
+    : new Error("Could not confirm sign-in with Apple");
 }

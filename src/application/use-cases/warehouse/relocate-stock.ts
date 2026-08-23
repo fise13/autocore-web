@@ -77,10 +77,10 @@ export async function relocateStockUseCase(params: {
   idempotencyKey?: string;
 }): Promise<{ movementId: string }> {
   if (params.fromLocationId === params.toLocationId) {
-    throw new Error("Места должны отличаться");
+    throw new Error("The locations must be different");
   }
   const qty = Math.abs(params.quantity);
-  if (qty <= 0) throw new Error("Укажите количество");
+  if (qty <= 0) throw new Error("Provide a quantity");
 
   const companyId = normalizeCompanyId(params.companyId);
   const db = getFirestoreDb();
@@ -99,10 +99,10 @@ export async function relocateStockUseCase(params: {
   const fromLoc = await locationRepo.getById(params.fromLocationId);
   const toLoc = await locationRepo.getById(params.toLocationId);
   if (!fromLoc || fromLoc.warehouseId !== params.warehouseId) {
-    throw new Error("Исходное место не найдено");
+    throw new Error("Source location not found");
   }
   if (!toLoc || toLoc.warehouseId !== params.warehouseId) {
-    throw new Error("Целевое место не найдено");
+    throw new Error("Destination location not found");
   }
 
   const idempotencyKey =
@@ -121,7 +121,7 @@ export async function relocateStockUseCase(params: {
   }
 
   const item = await itemRepo.getById(params.itemId);
-  if (!item) throw new Error("Позиция не найдена");
+  if (!item) throw new Error("Item not found");
 
   const fromRef = balanceRepo.buildDocRef(params.itemId, params.fromLocationId);
   const toRef = balanceRepo.buildDocRef(params.itemId, params.toLocationId);
@@ -138,7 +138,7 @@ export async function relocateStockUseCase(params: {
     const toReserved = Number(toSnap.data()?.reserved ?? 0);
 
     if (computeAvailable(fromOnHand, fromReserved) < qty) {
-      throw new Error("Недостаточно остатка на исходном месте");
+      throw new Error("Not enough stock at the source location");
     }
 
     const nextFromOnHand = fromOnHand - qty;

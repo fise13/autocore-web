@@ -7,12 +7,11 @@
  * `feature` key links a row back to its gate so the two cannot silently drift.
  */
 import {
-  BarChart3Icon,
-  CloudIcon,
-  ClipboardListIcon,
+  FileTextIcon,
   LifeBuoyIcon,
   PackageIcon,
   SparklesIcon,
+  UsersIcon,
 } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons';
 import type { GatedFeature } from '@/lib/subscriptions/feature-gate';
@@ -26,47 +25,61 @@ export type ProFeatureRow = {
   feature: GatedFeature | null;
 };
 
+/**
+ * What Pro actually unlocks.
+ *
+ * Every row here is enforced. That is not a style note — the previous list sold
+ * "inventory without limits", "complete work orders", "advanced reports" and
+ * "API access", none of which the free tier is limited on and one of which
+ * (API access) does not exist in the product. Anyone who tapped "Not now" got
+ * all four for free, so the paywall was charging for things it was already
+ * giving away, and App Store guideline 2.3.1 treats a purchase screen that
+ * describes non-existent features as misleading.
+ *
+ * The rule for adding a row: point at the code that refuses the action without
+ * Pro. Each entry below names its enforcement point.
+ */
 export const PRO_FEATURE_ROWS: ProFeatureRow[] = [
   {
-    id: 'inventory',
-    label: 'Inventory without limits',
-    detail: 'Parts, engines and locations with no record cap',
-    icon: PackageIcon,
-    feature: 'unlimited_inventory',
+    id: 'team',
+    label: 'Team and roles',
+    detail: 'Invite employees and control what each person can see',
+    icon: UsersIcon,
+    // src/lib/auth/verify-company-manager.server.ts → 402 without Pro,
+    // plus the client `FeatureGate` on the Team screen.
+    feature: 'team_management',
   },
   {
-    id: 'ai',
-    label: 'AI-powered workflows',
-    detail: 'Scan and import documents and photos',
+    id: 'documents',
+    label: 'Documents and PDFs',
+    detail: 'Generate invoices, acts and warranty documents',
+    icon: FileTextIcon,
+    // src/lib/documents/verify-document-access.ts → 402 without Pro.
+    feature: 'document_export',
+  },
+  {
+    id: 'ai_documents',
+    label: 'AI paperwork',
+    detail: 'Let the assistant prepare a job’s documents for you',
     icon: SparklesIcon,
-    feature: 'unlimited_ai',
+    // src/lib/ai/tools/documents.server.ts refuses without Pro.
+    feature: 'document_export',
   },
   {
-    id: 'work_orders',
-    label: 'Complete work orders',
-    detail: 'Track every job with full history',
-    icon: ClipboardListIcon,
-    feature: 'unlimited_work_orders',
-  },
-  {
-    id: 'reports',
-    label: 'Advanced reports',
-    detail: 'Margin, turnover and payroll analytics',
-    icon: BarChart3Icon,
-    feature: 'advanced_reports',
-  },
-  {
-    id: 'api',
-    label: 'API access',
-    detail: 'Connect AutoCore to your own tools',
-    icon: CloudIcon,
-    feature: 'api_access',
+    id: 'bulk_import',
+    label: 'Bulk import',
+    detail: 'Move spreadsheets and supplier files into your workspace',
+    icon: PackageIcon,
+    // src/lib/auth/verify-inventory-import-access.server.ts → 402 without Pro.
+    feature: 'bulk_import',
   },
   {
     id: 'support',
     label: 'Priority support',
     detail: 'Direct line to the team, faster responses',
     icon: LifeBuoyIcon,
+    // A commitment the team keeps, not a code gate — the one row here that
+    // software cannot enforce, and it stays only while that promise holds.
     feature: 'priority_support',
   },
 ];
@@ -80,7 +93,5 @@ export const WEB_WORKSPACE_HINT = {
   domain: 'app.myautocore.com',
 } as const;
 
-export const LEGAL_URLS = {
-  terms: 'https://myautocore.com/terms',
-  privacy: 'https://myautocore.com/privacy',
-} as const;
+/** Re-exported so the paywall and Settings cannot drift onto different URLs. */
+export { LEGAL_URLS } from '@/lib/legal/legal-urls';

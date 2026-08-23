@@ -20,8 +20,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     if (error instanceof MobileAccessError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    const message = error instanceof Error ? error.message : "Не удалось загрузить место";
-    const status = message === "Место не найдено" ? 404 : 500;
+    const message = error instanceof Error ? error.message : "Could not load the location";
+    const status = message === "Location not found" ? 404 : 500;
     if (status === 500) console.error("[mobile/inventory/locations/:id]", error);
     return NextResponse.json({ error: message }, { status });
   }

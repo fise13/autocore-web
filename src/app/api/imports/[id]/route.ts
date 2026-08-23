@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const job = await getDocumentImportJobAdmin(access.companyId, id);
     if (!job) {
-      return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
 
     const body = (await request.json().catch(() => null)) as {
@@ -67,7 +67,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     } | null;
 
     if (!body?.extractedData || typeof body.extractedData !== "object") {
-      return NextResponse.json({ error: "Нужны extractedData" }, { status: 400 });
+      return NextResponse.json({ error: "extractedData is required" }, { status: 400 });
     }
 
     const engines = sanitizeEngines(body.extractedData.engines);
@@ -95,7 +95,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/imports/id PATCH]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить" },
+      { error: error instanceof Error ? error.message : "Could not save" },
       { status: 500 },
     );
   }

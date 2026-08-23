@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
 
     if (!email || !email.includes("@")) {
-      return NextResponse.json({ error: "Укажите корректный email" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a valid email address" }, { status: 400 });
     }
 
     if (!isResendConfigured()) {

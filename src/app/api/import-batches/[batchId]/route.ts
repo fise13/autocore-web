@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { batchId } = await context.params;
     const batch = await getImportBatchAdmin(access.companyId, batchId);
     if (!batch) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
 
     const include = new URL(request.url).searchParams.get("include") ?? "";
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/import-batches/:id]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить импорт" },
+      { error: error instanceof Error ? error.message : "Could not load the import" },
       { status: 500 },
     );
   }

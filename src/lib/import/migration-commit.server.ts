@@ -180,7 +180,7 @@ async function receiveStockAdmin(params: {
   if (!existing.empty) return;
 
   const itemSnap = await db.collection("inventoryItems").doc(params.itemId).get();
-  if (!itemSnap.exists) throw new Error("Позиция не найдена");
+  if (!itemSnap.exists) throw new Error("Item not found");
 
   const itemData = itemSnap.data() as Record<string, unknown>;
   const unitCost = params.unitCost ?? Number(itemData.averageCost ?? itemData.purchasePrice ?? 0);

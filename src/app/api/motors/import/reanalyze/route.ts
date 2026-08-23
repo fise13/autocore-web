@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
     const jobId = body.jobId?.trim();
 
     if (!jobId || !body.manualSheetMappings) {
-      return NextResponse.json({ error: "jobId и manualSheetMappings обязательны" }, { status: 400 });
+      return NextResponse.json({ error: "jobId and manualSheetMappings are required" }, { status: 400 });
     }
 
     const existing = await getMotorImportJobAdmin(jobId);
     if (!existing) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
     assertMotorImportCompanyAccess(existing, access.companyId);
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!job) {
-      return NextResponse.json({ error: "Не удалось пересчитать импорт" }, { status: 500 });
+      return NextResponse.json({ error: "Could not recalculate the import" }, { status: 500 });
     }
 
     const engineRows = await loadMotorImportEngineRowsAdmin(job);
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[motors/import/reanalyze]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось пересчитать импорт" },
+      { error: error instanceof Error ? error.message : "Could not recalculate the import" },
       { status: 500 },
     );
   }

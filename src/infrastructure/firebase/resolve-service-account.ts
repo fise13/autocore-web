@@ -109,7 +109,7 @@ export function parseInlineServiceAccount(raw: string): Record<string, unknown> 
   const trimmed = raw.trim();
   if (isPlaceholderServiceAccountJson(trimmed)) {
     throw new Error(
-      "FIREBASE_SERVICE_ACCOUNT_JSON содержит placeholder (...). Укажите полный JSON сервисного аккаунта.",
+      "FIREBASE_SERVICE_ACCOUNT_JSON contains a placeholder (...). Provide the full service-account JSON.",
     );
   }
 
@@ -141,7 +141,7 @@ function parseServiceAccountOnServerless(): Record<string, unknown> {
       ? ` Сейчас задан FIREBASE_SERVICE_ACCOUNT_PATH=${configuredPath}, но файл на Vercel недоступен — удалите эту переменную.`
       : "";
     throw new Error(
-      "На Vercel задайте FIREBASE_SERVICE_ACCOUNT_JSON (полный JSON сервисного аккаунта одной строкой) и redeploy." +
+      "On Vercel, set FIREBASE_SERVICE_ACCOUNT_JSON (the full service-account JSON on one line) and redeploy." +
         pathHint,
     );
   }
@@ -174,7 +174,7 @@ export function parseServiceAccount(): Record<string, unknown> {
       return readServiceAccountFromDisk();
     }
     throw new Error(
-      "FIREBASE_SERVICE_ACCOUNT_JSON содержит placeholder (...). Вставьте полный JSON сервисного аккаунта в Vercel или удалите переменную.",
+      "FIREBASE_SERVICE_ACCOUNT_JSON contains a placeholder (...). Paste the full service-account JSON into Vercel, or remove the variable.",
     );
   }
 
@@ -183,7 +183,7 @@ export function parseServiceAccount(): Record<string, unknown> {
   }
 
   throw new Error(
-    "Firebase Admin не настроен локально. Задайте FIREBASE_SERVICE_ACCOUNT_PATH в .env.local " +
+    "Firebase Admin is not configured locally. Set FIREBASE_SERVICE_ACCOUNT_PATH in .env.local " +
       "(файл *-firebase-adminsdk-*.json в корне проекта) или FIREBASE_SERVICE_ACCOUNT_JSON.",
   );
 }

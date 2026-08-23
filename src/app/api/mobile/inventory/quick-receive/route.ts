@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const itemId = typeof body.itemId === "string" ? body.itemId.trim() : "";
     if (!itemId) {
-      return NextResponse.json({ error: "Укажите позицию" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an item" }, { status: 400 });
     }
 
     const quantity = Number(body.quantity);
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/inventory/quick-receive]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось принять на склад" },
+      { error: error instanceof Error ? error.message : "Could not receive into the warehouse" },
       { status: 500 },
     );
   }

@@ -308,7 +308,7 @@ async function postOrgMemberAction(path: string, body: Record<string, unknown>):
   const { getFirebaseAuth } = await import("@/infrastructure/firebase/client");
   const token = await getFirebaseAuth().currentUser?.getIdToken();
   if (!token) {
-    throw new Error("Требуется авторизация");
+    throw new Error("Authorization required");
   }
 
   const response = await fetch(path, {

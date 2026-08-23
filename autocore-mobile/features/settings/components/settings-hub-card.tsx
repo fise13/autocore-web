@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { ChevronRightIcon } from '@/assets/icons';
@@ -19,6 +20,7 @@ type SettingsHubCardProps = {
 
 export function SettingsHubCard({ title, subtitle, icon: Icon, onPress }: SettingsHubCardProps) {
   const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
 
   return (
     <View style={{ paddingHorizontal: settingsLayout.pad }}>
@@ -28,7 +30,12 @@ export function SettingsHubCard({ title, subtitle, icon: Icon, onPress }: Settin
           haptics.selection();
           onPress();
         }}
-        style={({ pressed }) => ({
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+        // runtime normalises `style` before Pressable sees it and drops a
+        // function, taking the whole style object — layout included — with it.
+        style={{
           minHeight: 56,
           borderRadius: settingsLayout.cardRadius,
           borderWidth: settingsLayout.hairline,
@@ -39,7 +46,7 @@ export function SettingsHubCard({ title, subtitle, icon: Icon, onPress }: Settin
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-        })}
+        }}
       >
         <Icon size="sm" color={colors.mutedForeground} strokeWidth={1.85} />
         <View style={{ flex: 1, gap: 2, minWidth: 0 }}>

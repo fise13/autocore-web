@@ -50,26 +50,26 @@ export async function createDesktopAuthCode(params: {
     return code;
   }
 
-  throw new Error("Не удалось сгенерировать код подключения");
+  throw new Error("Could not generate a connection code");
 }
 
 export async function exchangeDesktopAuthCode(code: string): Promise<{ idToken: string }> {
   const normalized = code.trim();
   if (!/^\d{6}$/.test(normalized)) {
-    throw new Error("Неверный формат кода");
+    throw new Error("Invalid code format");
   }
 
   const ref = codesCollection().doc(normalized);
   const snapshot = await ref.get();
   if (!snapshot.exists) {
-    throw new Error("Код не найден или уже использован");
+    throw new Error("That code was not found, or has already been used");
   }
 
   const data = snapshot.data() as DesktopAuthCodeRecord;
   const expiresAt = data.expiresAt.toMillis();
   if (Date.now() > expiresAt) {
     await ref.delete().catch(() => undefined);
-    throw new Error("Срок действия кода истёк");
+    throw new Error("That code has expired");
   }
 
   await ref.delete();

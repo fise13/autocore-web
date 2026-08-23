@@ -198,7 +198,7 @@ export function createWarehouseLocationRepository() {
     async create(input: CreateWarehouseLocationInput): Promise<string> {
       const companyId = normalizeCompanyId(input.companyId);
       const code = normalizeLocationCode(input.code);
-      if (!code) throw new Error("Укажите код места");
+      if (!code) throw new Error("Provide a location code");
 
       let path = input.path;
       let displayCode = input.displayCode;
@@ -206,7 +206,7 @@ export function createWarehouseLocationRepository() {
         if (input.parentId) {
           const parent = await this.getById(input.parentId);
           if (!parent || parent.warehouseId !== input.warehouseId) {
-            throw new Error("Родительское место не найдено");
+            throw new Error("Parent location not found");
           }
           path = [...parent.path, code];
         } else {
@@ -245,7 +245,7 @@ export function createWarehouseLocationRepository() {
     /** Ensure QR payload is persisted (idempotent backfill). */
     async ensureEntityLink(locationId: string, actorUserId?: string): Promise<string> {
       const existing = await this.getById(locationId);
-      if (!existing) throw new Error("Место не найдено");
+      if (!existing) throw new Error("Location not found");
       const link = buildLocationEntityLink(locationId);
       if (existing.barcode === link) return link;
       await updateDoc(
@@ -287,19 +287,19 @@ export function createWarehouseLocationRepository() {
         actorUserId,
       });
       const created = await this.getById(id);
-      if (!created) throw new Error("Не удалось создать место");
+      if (!created) throw new Error("Could not create the location");
       return created;
     },
 
     async update(locationId: string, input: UpdateWarehouseLocationInput): Promise<void> {
       const existing = await this.getById(locationId);
-      if (!existing) throw new Error("Место не найдено");
+      if (!existing) throw new Error("Location not found");
       if (existing.isSystem && input.code != null) {
-        throw new Error("Системное место нельзя переименовать");
+        throw new Error("A system location cannot be renamed");
       }
 
       const nextCode = input.code != null ? normalizeLocationCode(input.code) : existing.code;
-      if (!nextCode) throw new Error("Укажите код места");
+      if (!nextCode) throw new Error("Provide a location code");
 
       let path = existing.path;
       let displayCode = existing.displayCode;
@@ -328,7 +328,7 @@ export function createWarehouseLocationRepository() {
     async deactivate(locationId: string, actorUserId?: string): Promise<void> {
       const existing = await this.getById(locationId);
       if (!existing) return;
-      if (existing.isSystem) throw new Error("Системное место нельзя удалить");
+      if (existing.isSystem) throw new Error("A system location cannot be deleted");
       await this.update(locationId, { isActive: false, actorUserId });
     },
   };

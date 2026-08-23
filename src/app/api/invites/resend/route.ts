@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as { inviteId?: unknown; ttlHours?: unknown };
     const inviteId = typeof body.inviteId === "string" ? body.inviteId.trim() : "";
     if (!inviteId) {
-      return NextResponse.json({ error: "inviteId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "inviteId is required" }, { status: 400 });
     }
 
     const manager = await verifyCompanyManager(access.uid, "employee_manage");

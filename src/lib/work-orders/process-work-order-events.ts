@@ -13,7 +13,7 @@ export async function triggerWorkOrderEventProcessing(
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) {
-    throw new Error("Требуется авторизация");
+    throw new Error("Authorization required");
   }
 
   const token = await user.getIdToken();

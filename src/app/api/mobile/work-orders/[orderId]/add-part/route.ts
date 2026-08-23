@@ -56,7 +56,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           : null;
 
     if (!order) {
-      return NextResponse.json({ error: "Укажите itemId или barcode" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an itemId or a barcode" }, { status: 400 });
     }
 
     return NextResponse.json({ order });
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[mobile/work-orders/add-part]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось добавить запчасть" },
+      { error: error instanceof Error ? error.message : "Could not add the part" },
       { status: 500 },
     );
   }

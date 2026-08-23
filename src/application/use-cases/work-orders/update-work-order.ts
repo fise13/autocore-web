@@ -13,10 +13,10 @@ export async function updateWorkOrderUseCase(
 ): Promise<void> {
   const existing = await workOrderRepository.getById(params.companyId, params.workOrderId);
   if (!existing) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
   if (!EDITABLE_STATUSES.has(existing.status)) {
-    throw new Error("Редактировать можно только draft или confirmed заказ-наряд");
+    throw new Error("Only a draft or confirmed work order can be edited");
   }
 
   await workOrderRepository.update(params.companyId, params.workOrderId, params.input);

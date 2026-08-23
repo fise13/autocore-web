@@ -89,7 +89,7 @@ async function ensureCustomLeafAdmin(
   actorUserId: string,
 ) {
   const code = normalizeWarehouseLocation(rawCode) || rawCode.trim();
-  if (!code) throw new Error("Укажите код места");
+  if (!code) throw new Error("Provide a location code");
 
   const db = getAdminFirestore();
   const existing = await db
@@ -174,14 +174,14 @@ export async function relocateMobileStock(
 
   const warehouseId =
     input.warehouseId?.trim() || (await resolveDefaultWarehouseId(companyId));
-  if (!warehouseId) throw new Error("Склад не найден");
+  if (!warehouseId) throw new Error("Warehouse not found");
 
   const itemRef = db.collection("inventoryItems").doc(input.itemId);
   const itemSnap = await itemRef.get();
-  if (!itemSnap.exists) throw new Error("Позиция не найдена");
+  if (!itemSnap.exists) throw new Error("Item not found");
   const itemData = itemSnap.data() as Record<string, unknown>;
   if (normalizeCompanyId(String(itemData.companyId ?? "")) !== companyId) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
 
   const unlocated = await ensureUnlocatedAdmin(companyId, warehouseId, input.actorUserId);
@@ -196,10 +196,10 @@ export async function relocateMobileStock(
   let toLocationCode = "";
   if (toLocationId) {
     const toSnap = await db.collection("warehouseLocations").doc(toLocationId).get();
-    if (!toSnap.exists) throw new Error("Целевое место не найдено");
+    if (!toSnap.exists) throw new Error("Destination location not found");
     const toData = toSnap.data() as Record<string, unknown>;
     if (String(toData.warehouseId ?? "") !== warehouseId) {
-      throw new Error("Место принадлежит другому складу");
+      throw new Error("That location belongs to a different warehouse");
     }
     toLocationCode = String(toData.displayCode ?? toData.code ?? "");
   } else if (input.toLocationCode?.trim()) {
@@ -212,16 +212,16 @@ export async function relocateMobileStock(
     toLocationId = leaf.id;
     toLocationCode = leaf.displayCode;
   } else {
-    throw new Error("Укажите целевое место");
+    throw new Error("Provide a destination location");
   }
 
   const fromLocationId = input.fromLocationId?.trim() || unlocated.id;
   if (fromLocationId === toLocationId) {
-    throw new Error("Места должны отличаться");
+    throw new Error("The locations must be different");
   }
 
   const fromSnap = await db.collection("warehouseLocations").doc(fromLocationId).get();
-  if (!fromSnap.exists) throw new Error("Исходное место не найдено");
+  if (!fromSnap.exists) throw new Error("Source location not found");
 
   const fromBalanceRef = db
     .collection("inventoryLocationBalances")
@@ -240,7 +240,7 @@ export async function relocateMobileStock(
       ? Math.floor(Number(input.quantity))
       : available;
   if (!Number.isFinite(qty) || qty <= 0) {
-    throw new Error("Недостаточно остатка для перемещения");
+    throw new Error("Not enough stock to move");
   }
 
   const idempotencyKey =
@@ -278,7 +278,7 @@ export async function relocateMobileStock(
     const toReserved = Number(toBal.data()?.reserved ?? 0);
 
     if (computeAvailable(fromOnHand, fromReserved) < qty) {
-      throw new Error("Недостаточно остатка на исходном месте");
+      throw new Error("Not enough stock at the source location");
     }
 
     const nextFrom = fromOnHand - qty;

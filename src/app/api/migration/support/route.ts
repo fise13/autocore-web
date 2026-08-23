@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     if (!comment && !(file instanceof File)) {
       return NextResponse.json(
-        { error: "Опишите проблему или приложите файл." },
+        { error: "Describe the problem or attach a file." },
         { status: 400 },
       );
     }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (file instanceof File) {
       if (file.size > MAX_ATTACHMENT_BYTES) {
         return NextResponse.json(
-          { error: "Файл слишком большой (максимум 15 МБ)." },
+          { error: "File is too large (max 15 MB)." },
           { status: 413 },
         );
       }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[migration/support]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось отправить запрос" },
+      { error: error instanceof Error ? error.message : "Could not send the request" },
       { status: 500 },
     );
   }

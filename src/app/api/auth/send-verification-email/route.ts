@@ -27,11 +27,11 @@ export async function POST(request: NextRequest) {
     const userRecord = await adminAuth.getUser(access.uid);
 
     if (!userRecord.email) {
-      return NextResponse.json({ error: "У аккаунта нет email" }, { status: 400 });
+      return NextResponse.json({ error: "This account has no email address" }, { status: 400 });
     }
 
     if (!hasPasswordProvider(userRecord.providerData)) {
-      return NextResponse.json({ error: "Верификация не требуется для этого способа входа" }, { status: 400 });
+      return NextResponse.json({ error: "This sign-in method does not need verification" }, { status: 400 });
     }
 
     if (userRecord.emailVerified) {

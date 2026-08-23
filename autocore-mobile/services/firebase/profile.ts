@@ -11,6 +11,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 
@@ -580,35 +581,146 @@ export async function updateUserAccountProfile(
 }
 
 /**
- * Best-effort cleanup before Auth user deletion.
- * Marks company membership inactive and removes the user profile document.
- * Company business data is intentionally kept for other members.
+ * Firestore data that lives under `users/{uid}` and belongs to the person, not
+ * the company. `motors` is deliberately absent: those documents are company
+ * inventory that merely happens to be stored under the account that created it
+ * (see the `motorCompanyLinkIsLegacy` note in firestore.rules), so deleting an
+ * account must not take a company's stock with it.
  */
-export async function deleteUserAccountData(authUser: User): Promise<void> {
+const PERSONAL_USER_SUBCOLLECTIONS = ['memberships', 'devices', 'notificationPreferences'] as const;
+
+export type AccountDataCleanupReport = {
+  /** Companies whose employee record could not be deactivated. */
+  failedCompanyIds: string[];
+  /** Personal subcollections that could not be fully cleared. */
+  failedSubcollections: string[];
+  /** True when `users/{uid}` itself could not be deleted. */
+  profileSurvived: boolean;
+};
+
+export function accountDataCleanupIsComplete(report: AccountDataCleanupReport): boolean {
+  return (
+    !report.profileSurvived &&
+    report.failedCompanyIds.length === 0 &&
+    report.failedSubcollections.length === 0
+  );
+}
+
+/** Every company this account still has a member record in. */
+async function listCompanyIdsForOffboarding(authUser: User): Promise<string[]> {
   const db = getFirebaseDb();
-  const userRef = doc(db, 'users', authUser.uid);
+  const ids = new Set<string>();
 
   try {
-    const snapshot = await getDoc(userRef);
-    const companyId = String((snapshot.data() as UserDocShape | undefined)?.companyId ?? '').trim();
-    if (companyId) {
-      await setDoc(
-        doc(db, 'companies', normalizeCompanyId(companyId), 'employees', authUser.uid),
-        {
-          isActive: false,
-          deletedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+    const snapshot = await getDoc(doc(db, 'users', authUser.uid));
+    const companyId = normalizeCompanyId(
+      String((snapshot.data() as UserDocShape | undefined)?.companyId ?? '').trim(),
+    );
+    if (companyId) ids.add(companyId);
+  } catch (error) {
+    console.warn('[delete-account] active company lookup failed:', error);
+  }
+
+  try {
+    const memberships = await getDocs(collection(db, 'users', authUser.uid, 'memberships'));
+    memberships.docs.forEach((entry) => {
+      const companyId = normalizeCompanyId(entry.id);
+      if (companyId) ids.add(companyId);
+    });
+  } catch (error) {
+    console.warn('[delete-account] membership lookup failed:', error);
+  }
+
+  return [...ids];
+}
+
+function isMissingDocumentError(error: unknown): boolean {
+  if (typeof error !== 'object' || !error) return false;
+  const code = String((error as { code?: string }).code ?? '');
+  return code === 'not-found' || code === 'firestore/not-found';
+}
+
+/**
+ * Retires this account's member record so the person stops appearing in the
+ * company roster, seat counts, and assignment pickers. `updateDoc` — not
+ * `setDoc(..., { merge: true })` — because a merge on a missing document
+ * creates a half-formed employee record that the rules would then reject.
+ */
+async function deactivateOwnEmployeeRecord(companyId: string, uid: string): Promise<boolean> {
+  try {
+    await updateDoc(doc(getFirebaseDb(), 'companies', companyId, 'employees', uid), {
+      isActive: false,
+      deletedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    // Nothing to retire is success, not failure.
+    if (isMissingDocumentError(error)) return true;
+    console.warn(`[delete-account] employee deactivation failed for ${companyId}:`, error);
+    return false;
+  }
+}
+
+async function clearPersonalSubcollection(uid: string, name: string): Promise<boolean> {
+  try {
+    const snapshot = await getDocs(collection(getFirebaseDb(), 'users', uid, name));
+    const results = await Promise.allSettled(
+      snapshot.docs.map((entry) => deleteDoc(entry.ref)),
+    );
+    const failed = results.filter((result) => result.status === 'rejected');
+    if (failed.length > 0) {
+      console.warn(`[delete-account] ${failed.length} doc(s) left in users/${uid}/${name}`);
+      return false;
     }
+    return true;
   } catch (error) {
-    console.warn('Employee deactivation deferred:', error);
+    console.warn(`[delete-account] could not clear users/${uid}/${name}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Removes everything this account owns, ahead of deleting the Auth user.
+ *
+ * Runs while the user is still signed in — once the Auth user is gone the
+ * client has no credentials left to clean up with, so anything skipped here is
+ * orphaned permanently. Failures are reported rather than swallowed: App Store
+ * guideline 5.1.1(v) requires deletion to remove the account *and* its
+ * associated data, so a partial cleanup is something the caller must know about.
+ *
+ * Company business data (stock, orders, documents) is intentionally kept — it
+ * belongs to the company, not the departing member.
+ */
+export async function deleteUserAccountData(authUser: User): Promise<AccountDataCleanupReport> {
+  const uid = authUser.uid;
+  const companyIds = await listCompanyIdsForOffboarding(authUser);
+
+  const offboarding = await Promise.all(
+    companyIds.map(async (companyId) => ({
+      companyId,
+      ok: await deactivateOwnEmployeeRecord(companyId, uid),
+    })),
+  );
+
+  const subcollections = await Promise.all(
+    PERSONAL_USER_SUBCOLLECTIONS.map(async (name) => ({
+      name,
+      ok: await clearPersonalSubcollection(uid, name),
+    })),
+  );
+
+  let profileSurvived = false;
+  try {
+    await deleteDoc(doc(getFirebaseDb(), 'users', uid));
+  } catch (error) {
+    console.warn('[delete-account] user profile delete failed:', error);
+    profileSurvived = true;
   }
 
-  try {
-    await deleteDoc(userRef);
-  } catch (error) {
-    console.warn('User profile delete deferred:', error);
-  }
+  return {
+    failedCompanyIds: offboarding.filter((entry) => !entry.ok).map((entry) => entry.companyId),
+    failedSubcollections: subcollections.filter((entry) => !entry.ok).map((entry) => entry.name),
+    profileSurvived,
+  };
 }

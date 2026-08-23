@@ -14,7 +14,7 @@ export function mapDocumentError(error: unknown, fallback = 'Could not complete 
   if (!(error instanceof Error)) return fallback;
 
   const message = error.message;
-  if (message.includes('PUPPETEER') || message.includes('Chrome не найден')) {
+  if (message.includes('PUPPETEER') || message.includes('Chrome was not found')) {
     return 'Could not generate the PDF on the server. Please try again later.';
   }
 

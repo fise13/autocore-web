@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as { code?: string };
     const code = body.code?.trim();
     if (!code) {
-      return NextResponse.json({ error: "Укажите code" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a code" }, { status: 400 });
     }
 
     const payload = await exchangeDesktopAuthCode(code);
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[desktop/auth/exchange]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось обменять код" },
+      { error: error instanceof Error ? error.message : "Could not exchange the code" },
       { status: 400 },
     );
   }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { ChevronRightIcon, iconRegistry, type IconName } from '@/assets/icons';
@@ -18,6 +19,7 @@ type SettingsRowProps = {
 
 export function SettingsRow({ label, value, subtitle, icon, showChevron = true, onPress }: SettingsRowProps) {
   const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
   const Icon = icon ? iconRegistry[icon] : null;
 
   const content = (
@@ -62,7 +64,12 @@ export function SettingsRow({ label, value, subtitle, icon, showChevron = true, 
         haptics.selection();
         onPress();
       }}
-      style={({ pressed }) => ({ backgroundColor: pressed ? colors.muted : 'transparent' })}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+      // runtime normalises `style` before Pressable sees it and drops a
+      // function, taking the whole style object — layout included — with it.
+      style={{ backgroundColor: pressed ? colors.muted : 'transparent' }}
     >
       {content}
     </Pressable>

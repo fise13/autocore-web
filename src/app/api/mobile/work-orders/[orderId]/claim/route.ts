@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[mobile/work-orders/claim]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось взять наряд в работу" },
+      { error: error instanceof Error ? error.message : "Could not claim this work order" },
       { status: 500 },
     );
   }

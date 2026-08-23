@@ -9,7 +9,7 @@ export function mapDocumentError(error: unknown, fallback?: string): string {
 
   if (
     message.includes("FIREBASE_SERVICE_ACCOUNT") ||
-    message.includes("Firebase Admin не настроен") ||
+    message.includes("Firebase Admin is not configured") ||
     message.includes("service account") ||
     message.includes("ENOENT")
   ) {
@@ -17,7 +17,7 @@ export function mapDocumentError(error: unknown, fallback?: string): string {
   }
 
   if (
-    message.includes("Chrome не найден") ||
+    message.includes("Chrome was not found") ||
     message.includes("PUPPETEER") ||
     message.includes("@sparticuz/chromium") ||
     message.includes("input directory")

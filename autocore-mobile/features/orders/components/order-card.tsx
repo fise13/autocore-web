@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { ActionSheetIOS, Platform, Pressable, View } from 'react-native';
 import type { View as RNView } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -120,13 +120,20 @@ function QuickAction({
   icon: 'check' | 'phone';
   onPress: () => void;
 }) {
+  const [pressed, setPressed] = useState(false);
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
       onPress={onPress}
-      style={({ pressed }) => ({
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+      // runtime normalises `style` before Pressable sees it and drops a
+      // function, taking the whole style object — layout included — with it.
+      style={{
         width: wo.quickAction,
         height: wo.quickAction,
         borderRadius: wo.quickAction / 2,
@@ -136,7 +143,7 @@ function QuickAction({
         borderWidth: wo.rule,
         borderColor: border,
         opacity: pressed ? 0.55 : 1,
-      })}
+      }}
     >
       <ActionGlyph icon={icon} color={foreground} size={16} />
     </Pressable>
@@ -153,6 +160,7 @@ export const OrderCard = memo(function OrderCard({
   useMoneyFormatRevision();
   const { openOrder } = useOrderTransition();
   const cardRef = useRef<RNView>(null);
+  const [rowPressed, setRowPressed] = useState(false);
   const animate = index < ANIMATE_FIRST;
   const enterStyle = useOrdersEnter({
     delay: animate ? ordersTimeline.listBase + index * ordersTimeline.listStagger : 0,
@@ -222,10 +230,15 @@ export const OrderCard = memo(function OrderCard({
         onPress={handleOpen}
         onLongPress={showActions}
         delayLongPress={350}
-        style={({ pressed }) => ({
+        onPressIn={() => setRowPressed(true)}
+        onPressOut={() => setRowPressed(false)}
+        // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+        // runtime normalises `style` before Pressable sees it and drops a
+        // function, taking the whole style object — layout included — with it.
+        style={{
           ...woFlatCard(colors, { borderColor: ink.cardBorder, isDark }),
-          backgroundColor: pressed ? colors.secondary : colors.card,
-        })}
+          backgroundColor: rowPressed ? colors.secondary : colors.card,
+        }}
       >
         <View
           ref={cardRef}

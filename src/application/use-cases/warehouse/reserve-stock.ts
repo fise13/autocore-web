@@ -25,7 +25,7 @@ export async function reserveStockUseCase(
       ? { id: params.warehouseId }
       : await warehouseRepository.getDefault(params.companyId);
   if (!warehouse) {
-    throw new Error("Склад не найден");
+    throw new Error("Warehouse not found");
   }
 
   return recordMovementUseCase(itemRepository, stockLevelRepository, movementRepository, {

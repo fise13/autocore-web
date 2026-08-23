@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[desktop/motors]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить моторы" },
+      { error: error instanceof Error ? error.message : "Could not load engines" },
       { status: 500 },
     );
   }

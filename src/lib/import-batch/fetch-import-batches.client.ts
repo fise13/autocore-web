@@ -8,7 +8,7 @@ import { getFirebaseApp } from "@/infrastructure/firebase/client";
 async function authHeaders(): Promise<HeadersInit> {
   const auth = getAuth(getFirebaseApp());
   const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("Войдите в аккаунт");
+  if (!token) throw new Error("Sign in to your account");
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -101,7 +101,7 @@ export async function uploadImportBatchFileClient(params: {
 }): Promise<{ batch: ImportBatch; file: ImportBatchFile }> {
   const auth = getAuth(getFirebaseApp());
   const token = await auth.currentUser?.getIdToken();
-  if (!token) throw new Error("Войдите в аккаунт");
+  if (!token) throw new Error("Sign in to your account");
 
   const form = new FormData();
   form.append("file", params.file);

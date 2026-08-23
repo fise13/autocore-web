@@ -40,7 +40,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/import-batches/commit]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось импортировать" },
+      { error: error instanceof Error ? error.message : "Could not import" },
       { status: 500 },
     );
   }
@@ -62,7 +62,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/import-batches/rollback]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось откатить" },
+      { error: error instanceof Error ? error.message : "Could not roll back" },
       { status: 500 },
     );
   }

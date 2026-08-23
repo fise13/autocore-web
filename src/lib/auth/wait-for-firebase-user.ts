@@ -11,7 +11,7 @@ export function waitForFirebaseUser(timeoutMs = 10_000): Promise<User> {
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       unsubscribe();
-      reject(new Error("Требуется авторизация"));
+      reject(new Error("Authorization required"));
     }, timeoutMs);
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {

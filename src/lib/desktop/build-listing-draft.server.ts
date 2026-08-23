@@ -39,7 +39,7 @@ export async function buildListingDraft(params: {
 }): Promise<ListingDraft> {
   const document = await fetchMotorDocumentById(params.companyId, params.motorId);
   if (!document) {
-    throw new Error("Мотор не найден");
+    throw new Error("Engine not found");
   }
 
   const { motor, raw } = document;

@@ -56,7 +56,7 @@ async function assertBarcodeAvailable(companyId: string, barcode: string): Promi
     .get();
 
   if (!snap.empty) {
-    throw new Error("Этот штрихкод уже привязан к другой позиции");
+    throw new Error("That barcode is already linked to a different item");
   }
 }
 

@@ -129,7 +129,7 @@ export function createInviteRepository() {
         };
       }
 
-      throw new Error("Не удалось сгенерировать уникальный код приглашения, попробуйте ещё раз");
+      throw new Error("Could not generate a unique invitation code, please try again");
     },
 
     async deleteInvite(inviteId: string): Promise<void> {

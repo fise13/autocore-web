@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { PackageIcon } from '@/assets/icons';
@@ -30,6 +30,7 @@ const StepperButton = memo(function StepperButton({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
 
   return (
     <Pressable
@@ -40,7 +41,12 @@ const StepperButton = memo(function StepperButton({
         event.stopPropagation?.();
         onPress();
       }}
-      style={({ pressed }) => ({
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      // Static object, not a `({ pressed }) => …` function. NativeWind's JSX
+      // runtime normalises `style` before Pressable sees it and drops a
+      // function, taking the whole style object — layout included — with it.
+      style={{
         width: 32,
         height: 32,
         borderRadius: 10,
@@ -50,7 +56,7 @@ const StepperButton = memo(function StepperButton({
         borderWidth: wh.hairline,
         borderColor: colors.borderMuted,
         opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
-      })}
+      }}
     >
       <Text variant="bodyStrong" style={{ fontSize: 18, lineHeight: 20, color: colors.foreground }}>
         {label}

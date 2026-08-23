@@ -41,21 +41,21 @@ export async function POST(request: NextRequest) {
           : null;
 
     if (!file) {
-      return NextResponse.json({ error: "Загрузите файл" }, { status: 400 });
+      return NextResponse.json({ error: "Attach a file" }, { status: 400 });
     }
 
     if (file.size <= 0) {
-      return NextResponse.json({ error: "Файл пустой" }, { status: 400 });
+      return NextResponse.json({ error: "The file is empty" }, { status: 400 });
     }
 
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: "Файл слишком большой (макс. 25 МБ)" }, { status: 400 });
+      return NextResponse.json({ error: "File is too large (max 25 MB)" }, { status: 400 });
     }
 
     const mimeType = file.type || "image/jpeg";
     if (!isAllowedMime(mimeType, file.name)) {
       return NextResponse.json(
-        { error: "Поддерживаются фото, PDF, Excel и CSV" },
+        { error: "Supported formats: photo, PDF, Excel, CSV" },
         { status: 400 },
       );
     }
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/imports]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить документ" },
+      { error: error instanceof Error ? error.message : "Could not load the document" },
       { status: 500 },
     );
   }

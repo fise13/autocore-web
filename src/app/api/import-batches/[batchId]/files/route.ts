@@ -41,19 +41,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const batch = await getImportBatchAdmin(access.companyId, batchId);
     if (!batch) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
 
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Прикрепите файл" }, { status: 400 });
+      return NextResponse.json({ error: "Attach a file" }, { status: 400 });
     }
     if (file.size <= 0) {
-      return NextResponse.json({ error: "Файл пустой" }, { status: 400 });
+      return NextResponse.json({ error: "The file is empty" }, { status: 400 });
     }
     if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: "Файл слишком большой (макс. 25 МБ)" }, { status: 400 });
+      return NextResponse.json({ error: "File is too large (max 25 MB)" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/import-batches/:id/files]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить файл" },
+      { error: error instanceof Error ? error.message : "Could not upload the file" },
       { status: 500 },
     );
   }

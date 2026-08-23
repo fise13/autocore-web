@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/imports/extract]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось распознать" },
+      { error: error instanceof Error ? error.message : "Could not recognise it" },
       { status: 500 },
     );
   }

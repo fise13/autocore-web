@@ -17,7 +17,7 @@ function mapJob(dto: DocumentImportJobDto): DocumentImportJob {
 export async function fetchDocumentImports(): Promise<DocumentImportJob[]> {
   const user = getFirebaseAuth().currentUser;
   if (!user) {
-    throw new Error("Требуется авторизация");
+    throw new Error("Authorization required");
   }
 
   const token = await user.getIdToken();

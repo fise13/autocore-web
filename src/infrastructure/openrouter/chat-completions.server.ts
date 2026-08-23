@@ -167,7 +167,7 @@ function mapOpenRouterError(status: number, text: string, maxTokens: number): Er
         );
       }
       if (status === 429 || /rate.?limit/i.test(message)) {
-        return new Error("OpenRouter: слишком много запросов. Подождите и повторите.");
+        return new Error("OpenRouter: too many requests. Wait a moment and try again.");
       }
       return new Error(message);
     }
@@ -310,7 +310,7 @@ async function callOpenRouterOnce<T>(
   };
   const choice = payload.choices?.[0];
   const rawContent = choice?.message?.content;
-  if (!rawContent) throw new Error("Пустой ответ AI");
+  if (!rawContent) throw new Error("The AI returned an empty response");
 
   const tagged = extractTaggedReasoning(rawContent);
   const content = tagged.content || rawContent;
@@ -320,9 +320,9 @@ async function callOpenRouterOnce<T>(
     parsed = parseAiJsonContent(content);
   } catch {
     if (choice?.finish_reason === "length") {
-      throw new Error("AI вернул некорректный JSON (ответ обрезан по max_tokens)");
+      throw new Error("The AI returned invalid JSON (the response was cut off by max_tokens)");
     }
-    throw new Error("AI вернул некорректный JSON");
+    throw new Error("The AI returned invalid JSON");
   }
 
   try {

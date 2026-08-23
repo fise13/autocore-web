@@ -38,7 +38,7 @@ export async function signInWithAppleTauriNative(auth: Auth): Promise<UserCreden
   });
 
   if (!response.identityToken?.trim()) {
-    throw new Error("Apple не вернул identity token");
+    throw new Error("Apple did not return an identity token");
   }
 
   logAppleJs("native-siwa-success", {

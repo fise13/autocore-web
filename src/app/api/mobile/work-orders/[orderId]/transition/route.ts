@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const body = (await request.json()) as TransitionPayload;
     const nextStatus = String(body.status ?? "") as WorkOrderStatus;
     if (!WORK_ORDER_STATUSES.includes(nextStatus)) {
-      return NextResponse.json({ error: "Некорректный статус" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     const { order, documentJobId } = await transitionMobileWorkOrder({
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     console.error("[mobile/work-orders/transition]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось изменить статус" },
+      { error: error instanceof Error ? error.message : "Could not change the status" },
       { status: 500 },
     );
   }

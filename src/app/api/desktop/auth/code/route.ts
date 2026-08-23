@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as { idToken?: string };
     const idToken = body.idToken?.trim();
     if (!idToken) {
-      return NextResponse.json({ error: "Требуется idToken" }, { status: 400 });
+      return NextResponse.json({ error: "idToken is required" }, { status: 400 });
     }
 
     const code = await createDesktopAuthCode({
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[desktop/auth/code]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось создать код" },
+      { error: error instanceof Error ? error.message : "Could not create the code" },
       { status: 500 },
     );
   }

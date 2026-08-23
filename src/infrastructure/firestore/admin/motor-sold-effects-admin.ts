@@ -376,7 +376,7 @@ async function resolveMotorSaleClientId(params: {
     return created.id;
   }
 
-  throw new Error("Укажите покупателя и телефон");
+  throw new Error("Provide a buyer and a phone number");
 }
 
 export async function fetchWarrantyByMotorId(companyId: string, motorId: string) {

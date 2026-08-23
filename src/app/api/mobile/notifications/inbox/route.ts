@@ -34,6 +34,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("[mobile/notifications/inbox]", error);
-    return NextResponse.json({ error: "Не удалось загрузить уведомления" }, { status: 500 });
+    return NextResponse.json({ error: "Could not load notifications" }, { status: 500 });
   }
 }

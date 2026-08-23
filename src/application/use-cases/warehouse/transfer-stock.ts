@@ -22,7 +22,7 @@ export async function transferStockUseCase(
   },
 ) {
   if (params.fromWarehouseId === params.toWarehouseId) {
-    throw new Error("Склады должны отличаться");
+    throw new Error("The warehouses must be different");
   }
 
   const outResult = await recordMovementUseCase(

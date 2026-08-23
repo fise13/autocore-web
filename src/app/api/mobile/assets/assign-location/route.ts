@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const entityType = body.entityType === "motor" || body.entityType === "specific" ? body.entityType : null;
     const entityId = typeof body.entityId === "string" ? body.entityId.trim() : "";
     if (!entityType || !entityId) {
-      return NextResponse.json({ error: "Укажите сущность" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an entity" }, { status: 400 });
     }
 
     const result = await assignMobileAssetLocation({
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/assets/assign-location]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось назначить место" },
+      { error: error instanceof Error ? error.message : "Could not assign the location" },
       { status: 500 },
     );
   }

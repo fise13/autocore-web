@@ -16,16 +16,16 @@ export async function POST(request: NextRequest) {
     const file = form.get("image");
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Загрузите изображение" }, { status: 400 });
+      return NextResponse.json({ error: "Attach an image" }, { status: 400 });
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      return NextResponse.json({ error: "Изображение слишком большое (макс. 6 МБ)" }, { status: 400 });
+      return NextResponse.json({ error: "Image is too large (max 6 MB)" }, { status: 400 });
     }
 
     const mimeType = file.type || "image/jpeg";
     if (!mimeType.startsWith("image/")) {
-      return NextResponse.json({ error: "Поддерживаются только изображения" }, { status: 400 });
+      return NextResponse.json({ error: "Only images are supported" }, { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/scan/ocr]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось распознать фото" },
+      { error: error instanceof Error ? error.message : "Could not read the photo" },
       { status: 500 },
     );
   }

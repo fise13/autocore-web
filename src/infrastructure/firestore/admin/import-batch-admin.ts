@@ -325,13 +325,13 @@ export async function addFileToImportBatchAdmin(
 ): Promise<{ batch: ImportBatch; file: ImportBatchFile }> {
   const companyId = normalizeCompanyId(params.companyId);
   const batch = await getImportBatchAdmin(companyId, params.batchId);
-  if (!batch) throw new Error("Сессия импорта не найдена");
+  if (!batch) throw new Error("Import session not found");
   if (batch.status === "completed" || batch.status === "cancelled" || batch.status === "expired") {
-    throw new Error("Эта сессия импорта уже закрыта");
+    throw new Error("This import session is already closed");
   }
   if (batch.expiresAt.getTime() < Date.now()) {
     await updateImportBatchAdmin(batch.id, { status: "expired" });
-    throw new Error("Сессия импорта истекла");
+    throw new Error("The import session has expired");
   }
 
   const kind = detectImportFileKind(params.contentType, params.fileName);

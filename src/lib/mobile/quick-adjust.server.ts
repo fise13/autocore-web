@@ -48,13 +48,13 @@ export async function quickAdjustMobileStock(
 ): Promise<MobileQuickAdjustResult> {
   const quantity = Math.floor(Number(input.quantity));
   if (!Number.isFinite(quantity) || quantity <= 0) {
-    throw new Error("Укажите количество больше нуля");
+    throw new Error("Provide a quantity greater than zero");
   }
 
   const normalizedCompanyId = normalizeCompanyId(input.companyId);
   const warehouseId = input.warehouseId?.trim() || (await resolveDefaultWarehouseId(normalizedCompanyId));
   if (!warehouseId) {
-    throw new Error("Склад не найден");
+    throw new Error("Warehouse not found");
   }
 
   const idempotencyKey =
@@ -66,11 +66,11 @@ export async function quickAdjustMobileStock(
   const itemRef = db.collection("inventoryItems").doc(input.itemId);
   const itemSnap = await itemRef.get();
   if (!itemSnap.exists) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
   const itemData = itemSnap.data() as Record<string, unknown>;
   if (normalizeCompanyId(String(itemData.companyId ?? "")) !== normalizedCompanyId) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
 
   const stockRef = db.collection("inventoryStockLevels").doc(stockLevelDocumentId(input.itemId, warehouseId));

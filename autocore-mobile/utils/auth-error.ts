@@ -31,6 +31,8 @@ export function mapAuthError(error: unknown): string {
       return 'Please verify your identity again, then retry the deletion.';
     case 'auth/invalid-credential':
       return "Couldn't confirm sign-in. Please try again.";
+    case 'auth/user-mismatch':
+      return 'That is a different account. Sign in with the account you want to delete.';
     case 'auth/missing-or-invalid-nonce':
       return 'Apple Sign In security error. Update the app and try again.';
     case 'auth/account-exists-with-different-credential':

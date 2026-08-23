@@ -239,7 +239,7 @@ export async function transitionMobileWorkOrder(params: {
 }): Promise<{ order: MobileWorkOrderDetail; documentJobId?: string }> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
 
   if (params.scope) {
@@ -289,7 +289,7 @@ export async function transitionMobileWorkOrder(params: {
 
   const updated = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!updated) {
-    throw new Error("Не удалось загрузить обновлённый наряд");
+    throw new Error("Could not load the updated work order");
   }
 
   void maybeEmitWorkOrderAvailableNotification({
@@ -368,7 +368,7 @@ export async function addPartToMobileWorkOrder(params: {
 }): Promise<MobileWorkOrderDetail> {
   const order = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!order) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
 
   if (params.scope) {
@@ -376,18 +376,18 @@ export async function addPartToMobileWorkOrder(params: {
   }
 
   if (!MOBILE_OPEN_STATUSES.has(order.status)) {
-    throw new Error("Добавить запчасть можно только в открытом наряде");
+    throw new Error("Parts can only be added to an open work order");
   }
 
   const quantity = Math.max(1, Math.floor(Number(params.quantity ?? 1)));
   const db = getAdminFirestore();
   const itemSnap = await db.collection("inventoryItems").doc(params.itemId).get();
   if (!itemSnap.exists) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
   const itemData = itemSnap.data() as Record<string, unknown>;
   if (normalizeCompanyId(String(itemData.companyId ?? "")) !== normalizeCompanyId(params.companyId)) {
-    throw new Error("Позиция не найдена");
+    throw new Error("Item not found");
   }
 
   const sku = String(itemData.sku ?? "");
@@ -443,7 +443,7 @@ export async function addPartToMobileWorkOrder(params: {
 
   const updated = await fetchWorkOrder(params.companyId, params.workOrderId);
   if (!updated) {
-    throw new Error("Не удалось загрузить наряд");
+    throw new Error("Could not load the work order");
   }
   return toDetail(updated, params.actorUserId);
 }
@@ -490,7 +490,7 @@ export async function addPartByBarcodeToMobileWorkOrder(params: {
 }): Promise<MobileWorkOrderDetail> {
   const resolved = await resolveMobileScan(params.companyId, params.barcode);
   if (!resolved.found || !resolved.item) {
-    throw new Error("Позиция по штрихкоду не найдена");
+    throw new Error("No item found for that barcode");
   }
 
   return addPartToMobileWorkOrder({

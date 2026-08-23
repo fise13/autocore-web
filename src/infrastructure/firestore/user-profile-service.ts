@@ -7,7 +7,7 @@ async function authorizedFetch(path: string, init: RequestInit): Promise<Respons
   const auth = getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) {
-    throw new Error("Требуется авторизация");
+    throw new Error("Authorization required");
   }
 
   const token = await user.getIdToken();
@@ -25,7 +25,7 @@ async function authorizedFetch(path: string, init: RequestInit): Promise<Respons
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Запрос занял слишком много времени. Попробуйте ещё раз.");
+      throw new Error("The request took too long. Please try again.");
     }
     throw error;
   } finally {
@@ -67,7 +67,7 @@ export async function uploadUserAvatar(file: File): Promise<string> {
     throw new Error(body?.error ?? "Не удалось загрузить аватар");
   }
   if (!body?.photoURL) {
-    throw new Error("Сервер не вернул ссылку на аватар");
+    throw new Error("The server did not return an avatar link");
   }
 
   return body.photoURL;

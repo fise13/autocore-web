@@ -33,7 +33,7 @@ function buildAppleRedirectBridgeHtml(payload: AppleRedirectPayload, loginReturn
     </style>
   </head>
   <body>
-    <p>Завершаем вход через Apple…</p>
+    <p>Finishing sign-in with Apple…</p>
     <script>
       (function () {
         var payload = ${serialized};

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as { token?: unknown };
     const token = typeof body.token === "string" ? body.token.trim() : "";
     if (!token) {
-      return NextResponse.json({ error: "Укажите токен приглашения" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an invitation token" }, { status: 400 });
     }
 
     await declineInviteAsUser({ uid: access.uid, token });

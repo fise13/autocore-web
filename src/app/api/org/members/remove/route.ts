@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         : manager.companyId;
 
     if (!targetUserId) {
-      return NextResponse.json({ error: "Укажите сотрудника" }, { status: 400 });
+      return NextResponse.json({ error: "Provide an employee" }, { status: 400 });
     }
 
     const result = await removeMemberFromCompanyAsAdmin({

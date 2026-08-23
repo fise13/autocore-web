@@ -32,7 +32,7 @@ export async function resolveProxyAuthHeaders(
   const authorization =
     requestHeaders.get("Authorization") || requestHeaders.get("authorization");
   if (!authorization) {
-    throw new Error("Не удалось получить Google ID token для Firebase AI proxy");
+    throw new Error("Could not obtain a Google ID token for the Firebase AI proxy");
   }
   headers.Authorization = authorization;
   return headers;

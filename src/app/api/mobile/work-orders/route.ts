@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[mobile/work-orders]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить наряды" },
+      { error: error instanceof Error ? error.message : "Could not load work orders" },
       { status: 500 },
     );
   }

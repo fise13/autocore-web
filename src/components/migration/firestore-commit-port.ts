@@ -133,7 +133,7 @@ export function createFirestoreCommitPort(uid: string): MigrationCommitPort {
     canUndo: false,
     async commit(input, onProgress, shouldCancel): Promise<MigrationResult> {
       if (!input.companyId) {
-        throw new Error("Компания не выбрана");
+        throw new Error("No company selected");
       }
 
       const companyId = input.companyId;
@@ -149,7 +149,7 @@ export function createFirestoreCommitPort(uid: string): MigrationCommitPort {
       try {
         const warehouse = await ensureDefaultWarehouseUseCase(warehouseRepository, companyId, uid);
         if (!warehouse) {
-          throw new Error("Не удалось подготовить склад. Проверьте доступ к компании и попробуйте снова.");
+          throw new Error("Could not prepare the warehouse. Check your access to this company and try again.");
         }
 
         prepareStage.done = 1;
@@ -220,7 +220,7 @@ export function createFirestoreCommitPort(uid: string): MigrationCommitPort {
         const needsReview = pending.filter((row) => row.confidence.tier !== "high").length;
 
         if (shouldCancel?.()) {
-          throw new Error("Импорт отменён. Уже перенесённые позиции остались в AutoCore.");
+          throw new Error("Import cancelled. Items already transferred stay in AutoCore.");
         }
 
         return {
@@ -233,7 +233,7 @@ export function createFirestoreCommitPort(uid: string): MigrationCommitPort {
         };
       } catch (error) {
         if (error instanceof Error) throw error;
-        throw new Error("Не удалось сохранить данные в AutoCore. Попробуйте ещё раз.");
+        throw new Error("Could not save to AutoCore. Please try again.");
       }
     },
   };

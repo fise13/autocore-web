@@ -38,7 +38,7 @@ export async function convertQuoteToWorkOrderUseCase(
   },
 ) {
   const quote = await quoteRepository.getById(params.companyId, params.quoteId);
-  if (!quote) throw new Error("Коммерческое предложение не найдено");
+  if (!quote) throw new Error("Quote not found");
   if (quote.status === "converted" && quote.convertedWorkOrderId) {
     return quote.convertedWorkOrderId;
   }

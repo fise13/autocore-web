@@ -53,7 +53,7 @@ export async function createBarcodeMappingAdmin(input: {
   const db = getAdminFirestore();
   const companyId = normalizeCompanyId(input.companyId);
   const barcode = input.barcode.trim().toUpperCase().replace(/\s+/g, "");
-  if (!barcode) throw new Error("Укажите штрихкод");
+  if (!barcode) throw new Error("Provide a barcode");
 
   const existing = await db
     .collection("barcodeMappings")

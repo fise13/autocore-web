@@ -435,12 +435,12 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           model: vehicleModel.trim(),
           vin: vin.trim(),
           licensePlate: licensePlate.trim(),
-          currentMileage: Number.parseInt(mileage.replace(/\s/g, ''), 10) || 0,
+          currentMileage: Number.parseInt(mileage.replace(/[,\s]/g, ''), 10) || 0,
           createdByUserId: uid,
         });
       }
 
-      const parsedMileage = Number.parseInt(mileage.replace(/\s/g, ''), 10) || vehicle.currentMileage || 0;
+      const parsedMileage = Number.parseInt(mileage.replace(/[,\s]/g, ''), 10) || vehicle.currentMileage || 0;
 
       const { mappedLaborLines, mappedPartLines, mappedMotorLines } = mapCompositionToWorkOrderLines(
         composition.laborLines,

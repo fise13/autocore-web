@@ -28,13 +28,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { batchId, rowId } = await context.params;
     const batch = await getImportBatchAdmin(access.companyId, batchId);
     if (!batch) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
 
     const body = (await request.json()) as Partial<ImportSuggestedRow>;
     const row = await updateSuggestedRowAdmin(batchId, rowId, body);
     if (!row) {
-      return NextResponse.json({ error: "Строка не найдена" }, { status: 404 });
+      return NextResponse.json({ error: "Row not found" }, { status: 404 });
     }
 
     return NextResponse.json({ row: serializeRow(row) });
@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
     console.error("[api/import-batches/rows PATCH]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось обновить строку" },
+      { error: error instanceof Error ? error.message : "Could not update the row" },
       { status: 500 },
     );
   }

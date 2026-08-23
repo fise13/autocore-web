@@ -50,7 +50,7 @@ async function checkFirestore(): Promise<ComponentStatus> {
     return {
       id: "firestore",
       status: message.includes("timeout") ? "degraded" : "degraded",
-      message: "Проверка базы данных не завершилась",
+      message: "The database check did not complete",
     };
   }
 }
@@ -65,7 +65,7 @@ async function checkAuth(): Promise<ComponentStatus> {
     return {
       id: "auth",
       status: "degraded",
-      message: "Проверка авторизации недоступна в этой среде",
+      message: "Auth check is unavailable in this environment",
     };
   }
 }
@@ -80,7 +80,7 @@ async function checkStorage(): Promise<ComponentStatus> {
     return {
       id: "storage",
       status: "degraded",
-      message: "Проверка хранилища недоступна в этой среде",
+      message: "Storage check is unavailable in this environment",
     };
   }
 }

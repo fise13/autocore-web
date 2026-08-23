@@ -2,9 +2,42 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 
 import { useAuth } from '@/authentication/auth-provider';
-import { accountUsesPassword } from '@/services/auth/delete-account';
+import { accountUsesPassword, type DeleteAccountResult } from '@/services/auth/delete-account';
 import { haptics } from '@/theme';
 import { getAuthErrorCode, mapAuthError } from '@/utils/auth-error';
+
+const SUPPORT_EMAIL = 'support@myautocore.com';
+
+/**
+ * The account is gone in every branch below — these messages only differ in
+ * what they can promise about the data that went with it. Saying "everything is
+ * deleted" when a write was refused would be the one thing App Review is
+ * actually checking for, so a partial result says so and offers a way to finish.
+ */
+function describeOutcome(result: DeleteAccountResult): { title: string; message: string } {
+  if (!result.dataFullyRemoved) {
+    return {
+      title: 'Account deleted',
+      message:
+        'Your sign-in has been removed and you are signed out. Some profile records could not ' +
+        `be reached and may take a moment to clear. If anything remains, contact ${SUPPORT_EMAIL}.`,
+    };
+  }
+
+  if (result.appleRevocation === 'failed' || result.appleRevocation === 'not-configured') {
+    return {
+      title: 'Account deleted',
+      message:
+        'Your account and profile data have been deleted. AutoCore may still appear under ' +
+        'Settings → Apple Account → Sign in with Apple; you can remove it there.',
+    };
+  }
+
+  return {
+    title: 'Account deleted',
+    message: 'Your account and profile data have been permanently deleted.',
+  };
+}
 
 export function useDeleteAccount() {
   const { firebaseUser, deleteAccount } = useAuth();
@@ -21,9 +54,11 @@ export function useDeleteAccount() {
       setError(null);
       try {
         haptics.warning();
-        await deleteAccount(pwd);
+        const result = await deleteAccount(pwd);
         setPasswordOpen(false);
         setPassword('');
+        const { title, message } = describeOutcome(result);
+        Alert.alert(title, message);
       } catch (deleteError) {
         if (getAuthErrorCode(deleteError) === 'auth/cancelled') {
           setPasswordOpen(false);
@@ -45,7 +80,9 @@ export function useDeleteAccount() {
     setError(null);
     Alert.alert(
       'Delete account?',
-      'This action can\'t be undone. Your profile and access to AutoCore will be removed. Company data will remain with other members.',
+      "This can't be undone. Your profile, sign-in, saved preferences, and access to AutoCore " +
+        'are permanently deleted, and you are removed from every company you belong to. ' +
+        'Work your company already recorded — stock, orders, documents — stays with that company.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

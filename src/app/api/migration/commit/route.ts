@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const skuCache = body.skuCache ?? {};
 
     if (!warehouseId) {
-      return NextResponse.json({ error: "warehouseId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "warehouseId is required" }, { status: 400 });
     }
 
     const result = await applyMigrationBatchAdmin({
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[migration/commit]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось сохранить импорт" },
+      { error: error instanceof Error ? error.message : "Could not save the import" },
       { status: 500 },
     );
   }

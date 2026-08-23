@@ -1,5 +1,5 @@
-// Drives digit grouping app-wide: en-US gives `1,234,567` where the previous
-// ru-RU gave `1 234 567`.
+// Drives digit grouping app-wide: en-US gives `1,234,567` (comma thousands,
+// period decimals). Keep parse/format consistent with that locale.
 const GROUP_LOCALE = "en-US";
 
 export type GroupedNumberFormatOptions = {
@@ -21,9 +21,44 @@ export function formatGroupedNumber(
   }).format(value);
 }
 
+/**
+ * Parse a grouped number string. Commas are thousand separators (en-US), not
+ * decimals — otherwise mileage like `330,909` becomes `330.909` → `331`.
+ */
 export function parseGroupedNumber(input: string): number {
-  const normalized = input.trim().replace(/\s/g, "").replace(",", ".");
-  if (!normalized) return Number.NaN;
+  const trimmed = input.trim().replace(/[\s\u00a0]/g, "");
+  if (!trimmed) return Number.NaN;
+
+  const hasComma = trimmed.includes(",");
+  const hasDot = trimmed.includes(".");
+
+  let normalized: string;
+  if (hasComma && hasDot) {
+    // en-US money: 1,234.56 — last separator is the decimal.
+    const lastComma = trimmed.lastIndexOf(",");
+    const lastDot = trimmed.lastIndexOf(".");
+    if (lastDot > lastComma) {
+      normalized = trimmed.replace(/,/g, "");
+    } else {
+      // EU-style paste: 1.234,56
+      normalized = trimmed.replace(/\./g, "").replace(",", ".");
+    }
+  } else if (hasComma) {
+    // Thousand groups: 330,909 or 1,234,567
+    if (/^\d{1,3}(,\d{3})+$/.test(trimmed)) {
+      normalized = trimmed.replace(/,/g, "");
+    } else if (/^\d+,\d{1,2}$/.test(trimmed)) {
+      // Short trailing fraction typed with a comma (legacy / EU habit).
+      normalized = trimmed.replace(",", ".");
+    } else {
+      // Ambiguous multi-comma input — treat commas as thousands.
+      normalized = trimmed.replace(/,/g, "");
+    }
+  } else {
+    normalized = trimmed;
+  }
+
+  if (!/^-?\d+(\.\d+)?$/.test(normalized)) return Number.NaN;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
@@ -40,17 +75,18 @@ export function formatGroupedInput(
   if (!trimmed) return "";
 
   if (allowDecimals) {
-    const normalized = trimmed.replace(/\s/g, "").replace(",", ".");
+    const normalized = trimmed.replace(/[\s\u00a0]/g, "").replace(",", ".");
     const [integerPart = "", ...fractionParts] = normalized.split(".");
     const digits = integerPart.replace(/\D/g, "");
     const fraction = fractionParts.join("").replace(/\D/g, "").slice(0, maxFractionDigits);
+    const hasDecimalMark = normalized.includes(".");
 
-    if (!digits && !fraction) return normalized.includes(".") || normalized.includes(",") ? "0," : "";
+    if (!digits && !fraction) return hasDecimalMark ? "0." : "";
 
     const formattedInteger = digits ? formatGroupedNumber(Number(digits)) : "0";
 
-    if (normalized.includes(".") || normalized.includes(",")) {
-      return fraction.length > 0 ? `${formattedInteger},${fraction}` : `${formattedInteger},`;
+    if (hasDecimalMark) {
+      return fraction.length > 0 ? `${formattedInteger}.${fraction}` : `${formattedInteger}.`;
     }
 
     return formattedInteger;

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -32,6 +32,7 @@ export const InlineAutocompleteRow = memo(function InlineAutocompleteRow({
   onPress,
 }: InlineAutocompleteRowProps) {
   const { colors, isDark } = useTheme();
+  const [pressed, setPressed] = useState(false);
   const scale = useSharedValue(1);
   const { primary, secondary } = formatAutocompleteOption(option);
 
@@ -54,21 +55,26 @@ export const InlineAutocompleteRow = memo(function InlineAutocompleteRow({
           accessibilityRole="button"
           accessibilityState={{ selected: highlighted }}
           onPressIn={() => {
+            setPressed(true);
             scale.value = withSpring(0.98, { damping: 18, stiffness: 420 });
           }}
           onPressOut={() => {
+            setPressed(false);
             scale.value = withSpring(1, { damping: 16, stiffness: 320 });
           }}
           onPress={() => {
             haptics.selection();
             onPress();
           }}
-          style={({ pressed }) => ({
+          // Static array, not `({ pressed }) => …`. NativeWind's JSX runtime
+          // normalises `style` before Pressable sees it and drops a function,
+          // taking the whole style object — layout included — with it.
+          style={{
             height: AUTOCOMPLETE_ROW_HEIGHT,
             justifyContent: 'center',
             paddingHorizontal: 14,
             backgroundColor: highlighted || pressed ? highlightBg : 'transparent',
-          })}
+          }}
         >
           <View style={styles.copy}>
             <HighlightedText

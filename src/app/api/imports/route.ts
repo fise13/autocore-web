@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[api/imports]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить импорты" },
+      { error: error instanceof Error ? error.message : "Could not load imports" },
       { status: 500 },
     );
   }

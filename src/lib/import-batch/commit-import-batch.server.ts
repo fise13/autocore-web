@@ -69,7 +69,7 @@ async function commitImportBatchWarehouse(params: {
   rowIds?: string[];
 }): Promise<{ imported: number; motorIds: string[]; itemIds: string[] }> {
   const batch = await getImportBatchAdmin(params.companyId, params.batchId);
-  if (!batch) throw new Error("Импорт не найден");
+  if (!batch) throw new Error("Import not found");
   if (batch.status === "completed") {
     return {
       imported: batch.appliedMotorIds?.length ?? 0,
@@ -88,7 +88,7 @@ async function commitImportBatchWarehouse(params: {
     });
     if (selected.length === 0) {
       await updateImportBatchAdmin(params.batchId, { status: "review", error: "Нет выбранных строк" });
-      throw new Error("Выберите хотя бы одну строку");
+      throw new Error("Select at least one row");
     }
 
     const companyId = normalizeCompanyId(params.companyId);
@@ -232,14 +232,14 @@ export async function commitImportBatchMotors(params: {
   rowIds?: string[];
 }): Promise<{ imported: number; motorIds: string[]; itemIds?: string[] }> {
   const batch = await getImportBatchAdmin(params.companyId, params.batchId);
-  if (!batch) throw new Error("Импорт не найден");
+  if (!batch) throw new Error("Import not found");
   if (batch.target === "warehouse") {
     return commitImportBatchWarehouse(params);
   }
   if (batch.status === "completed") {
     return { imported: batch.appliedMotorIds?.length ?? 0, motorIds: batch.appliedMotorIds ?? [] };
   }
-  if (batch.status === "applying") throw new Error("Импорт уже применяется");
+  if (batch.status === "applying") throw new Error("This import is already being committed");
 
   await updateImportBatchAdmin(params.batchId, { status: "applying", error: null });
 
@@ -255,7 +255,7 @@ export async function commitImportBatchMotors(params: {
         status: "review",
         error: "Нет выбранных строк",
       });
-      throw new Error("Выберите хотя бы одну строку");
+      throw new Error("Select at least one row");
     }
 
     const companyId = normalizeCompanyId(params.companyId);
@@ -373,7 +373,7 @@ export async function rollbackImportBatchMotors(params: {
 }): Promise<{ deleted: number }> {
   const batch = await getImportBatchAdmin(params.companyId, params.batchId);
   if (!batch?.appliedMotorIds?.length) {
-    throw new Error("Нечего откатывать");
+    throw new Error("There is nothing to roll back");
   }
 
   const db = getAdminFirestore();

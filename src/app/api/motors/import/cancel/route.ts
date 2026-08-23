@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
     const jobId = body.jobId?.trim();
 
     if (!jobId) {
-      return NextResponse.json({ error: "jobId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
 
     const existing = await getMotorImportJobAdmin(jobId);
     if (!existing) {
-      return NextResponse.json({ error: "Импорт не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     }
 
     assertMotorImportCompanyAccess(existing, access.companyId);
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[motors/import/cancel]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось отменить импорт" },
+      { error: error instanceof Error ? error.message : "Could not cancel the import" },
       { status: 500 },
     );
   }

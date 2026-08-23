@@ -10,7 +10,7 @@ import type {
 
 async function authHeaders(): Promise<HeadersInit> {
   const token = await getFirebaseAuth().currentUser?.getIdToken();
-  if (!token) throw new Error("Требуется авторизация");
+  if (!token) throw new Error("Authorization required");
   return {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",

@@ -18,10 +18,10 @@ export async function reverseMovementUseCase(
 ): Promise<string> {
   const original = await movementRepository.getById(params.movementId);
   if (!original) {
-    throw new Error("Исходное движение не найдено");
+    throw new Error("The original movement was not found");
   }
   if (original.reversalOfMovementId) {
-    throw new Error("Нельзя откатить движение-откат");
+    throw new Error("A rollback movement cannot itself be rolled back");
   }
 
   const reverseType = reversalTypeFor(original.type);

@@ -15,7 +15,7 @@ export async function transitionWorkOrderStatusUseCase(
 ): Promise<void> {
   const order = await workOrderRepository.getById(params.companyId, params.workOrderId);
   if (!order) {
-    throw new Error("Заказ-наряд не найден");
+    throw new Error("Work order not found");
   }
 
   const events = buildWorkOrderTransitionEvents(order, params.nextStatus);

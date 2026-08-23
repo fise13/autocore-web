@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const jobId = body.jobId?.trim();
 
     if (!jobId) {
-      return NextResponse.json({ error: "jobId обязателен" }, { status: 400 });
+      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
     }
 
     const job = await processMotorImportJobOnServer({
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[motors/import/process]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось обработать импорт" },
+      { error: error instanceof Error ? error.message : "Could not process the import" },
       { status: 500 },
     );
   }

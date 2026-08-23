@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
     const barcode = typeof body.barcode === "string" ? body.barcode.trim() : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!barcode) {
-      return NextResponse.json({ error: "Укажите штрихкод" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a barcode" }, { status: 400 });
     }
     if (!name) {
-      return NextResponse.json({ error: "Укажите название" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a name" }, { status: 400 });
     }
 
     const result = await createMobileInventoryItem({
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/inventory/create-item]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось создать товар" },
+      { error: error instanceof Error ? error.message : "Could not create the item" },
       { status: 500 },
     );
   }

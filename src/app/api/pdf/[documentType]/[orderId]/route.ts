@@ -104,7 +104,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
               status: "generating",
               jobId: activeJob.id,
               jobStatus: activeJob.status,
-              message: "PDF формируется в фоне. Повторите через несколько секунд.",
+              message: "The PDF is still being generated. Try again in a few seconds.",
             },
             { status: 202 },
           );

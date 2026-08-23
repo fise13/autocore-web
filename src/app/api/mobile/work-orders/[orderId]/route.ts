@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
 
     if (!order) {
-      return NextResponse.json({ error: "Заказ-наряд не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Work order not found" }, { status: 404 });
     }
 
     return NextResponse.json({ order });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
     console.error("[mobile/work-orders/[orderId]]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить наряд" },
+      { error: error instanceof Error ? error.message : "Could not load the work order" },
       { status: 500 },
     );
   }

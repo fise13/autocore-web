@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[invites/create]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось создать приглашение" },
+      { error: error instanceof Error ? error.message : "Could not create the invitation" },
       { status: 500 },
     );
   }

@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const access = await verifyMobileAccess(request, "inventory_view");
     const warehouseId = request.nextUrl.searchParams.get("warehouseId")?.trim() ?? "";
     if (!warehouseId) {
-      return NextResponse.json({ error: "Укажите склад" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a warehouse" }, { status: 400 });
     }
 
     const locations = await listMobileWarehouseLocations({
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[mobile/inventory/locations]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить места" },
+      { error: error instanceof Error ? error.message : "Could not load locations" },
       { status: 500 },
     );
   }

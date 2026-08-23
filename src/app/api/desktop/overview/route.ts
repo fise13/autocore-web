@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const access = await verifyDesktopAccess(request, "inventory_view");
     const user = await loadDesktopOverviewUser(access.uid);
     if (!user) {
-      return NextResponse.json({ error: "Профиль пользователя не найден" }, { status: 403 });
+      return NextResponse.json({ error: "User profile not found" }, { status: 403 });
     }
 
     const overview = await buildDesktopOverview(access.companyId, user);
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
     console.error("[desktop/overview]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось загрузить обзор" },
+      { error: error instanceof Error ? error.message : "Could not load the overview" },
       { status: 500 },
     );
   }

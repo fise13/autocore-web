@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as ScanResolvePayload;
     const barcode = typeof body.barcode === "string" ? body.barcode.trim() : "";
     if (!barcode) {
-      return NextResponse.json({ error: "Укажите штрихкод или артикул" }, { status: 400 });
+      return NextResponse.json({ error: "Provide a barcode or a part number" }, { status: 400 });
     }
 
     const source = parseSource(body.source);
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
     console.error("[mobile/scan/resolve]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Не удалось найти позицию" },
+      { error: error instanceof Error ? error.message : "Could not find that item" },
       { status: 500 },
     );
   }

@@ -31,16 +31,16 @@ export function assertLogoUpload(file: { size: number; type: string; name?: stri
   contentType: string;
 } {
   if (file.size <= 0) {
-    throw new Error("Файл пустой");
+    throw new Error("The file is empty");
   }
   if (file.size > MAX_LOGO_BYTES) {
-    throw new Error("Файл слишком большой");
+    throw new Error("The file is too large");
   }
 
   const contentType = inferLogoContentType(file.type, file.name);
   const extension = EXTENSION_BY_TYPE[contentType];
   if (!extension) {
-    throw new Error("Неправильный формат");
+    throw new Error("Invalid format");
   }
 
   return { extension, contentType };
