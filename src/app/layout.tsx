@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import { GoogleAnalyticsTag } from "@/components/analytics/google-analytics-tag";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 import { getAppUrl } from "@/lib/site-urls";
-import { GA_MEASUREMENT_ID, isAnalyticsEnabled } from "@/lib/analytics/ga-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,14 +45,13 @@ export default function RootLayout({
         <AppProviders>{children}</AppProviders>
         <Analytics />
         {/*
-          Rendered only when NEXT_PUBLIC_GA_MEASUREMENT_ID is set, so local and
-          preview builds never write into the production property. One tag here
-          covers both myautocore.com and app.myautocore.com — they are the same
-          Next app — but GA4 still needs both listed under the stream's domain
-          settings, or a visitor crossing between them looks like a new session
-          from a referral and the ad that paid for them loses the credit.
+          Renders nothing unless a measurement id is configured, so local and
+          preview builds never write into the production property. Which id is
+          used depends on the host — see `lib/analytics/ga-config.ts` for why a
+          single stream across both domains is the shape that lets Google Ads
+          attribute a signup to the ad that paid for it.
         */}
-        {isAnalyticsEnabled() ? <GoogleAnalytics gaId={GA_MEASUREMENT_ID} /> : null}
+        <GoogleAnalyticsTag />
       </body>
     </html>
   );

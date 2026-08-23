@@ -1,6 +1,6 @@
 "use client";
 
-import { GA_MEASUREMENT_ID, isAnalyticsEnabled } from "./ga-config";
+import { isAnalyticsEnabled } from "./ga-config";
 
 /**
  * The funnel, as events.
@@ -70,10 +70,10 @@ export function track(event: AnalyticsEvent, params: AnalyticsParams = {}): void
   if (typeof gtag !== "function") return;
 
   try {
-    gtag("event", event, {
-      send_to: GA_MEASUREMENT_ID,
-      ...params,
-    });
+    // No `send_to`: exactly one tag is configured per host, and naming an id
+    // here would send app-host events to the marketing stream whenever the two
+    // domains are on separate streams.
+    gtag("event", event, params);
   } catch {
     // An analytics call is never worth an interrupted user action.
   }
