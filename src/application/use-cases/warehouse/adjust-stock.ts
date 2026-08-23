@@ -25,7 +25,7 @@ export async function adjustStockUseCase(
       ? { id: params.warehouseId }
       : await warehouseRepository.getDefault(params.companyId);
   if (!warehouse) {
-    throw new Error("Склад не найден");
+    throw new Error("Warehouse not found");
   }
 
   const { movementId } = await recordMovementUseCase(

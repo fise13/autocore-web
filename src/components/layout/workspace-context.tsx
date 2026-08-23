@@ -367,7 +367,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const triggerSync = useCallback(async (): Promise<boolean> => {
-    if (savingRef.current) return true;
+    if (savingRef.current) {
+      // Coalesce onto the in-flight push (warehouse/motors guard with pushInFlight).
+      if (cloudPushHandlerRef.current) {
+        try {
+          await cloudPushHandlerRef.current();
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    }
     savingRef.current = true;
     try {
       saveHandlerRef.current?.();

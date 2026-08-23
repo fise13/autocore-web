@@ -508,6 +508,9 @@ export function WarehouseExcelGrid({
 
   useEffect(() => {
     if (!isActive) return;
+    // Don't clobber an in-flight cloud push — otherwise status flickers off "saving"
+    // and ⌘S / persistence can look stuck while work is still running.
+    if (pushInFlightRef.current) return;
     const dirtyIds = dirtyRowsRef.current;
     if (
       dirtyIds.size === 0 &&
@@ -702,6 +705,12 @@ export function WarehouseExcelGrid({
     const run = (async () => {
       flushEditor();
       if (!actorUserId || !companyId || !canEdit) return;
+      if (!activeWarehouseId) {
+        const message = userCopy.warehouse.selectOrCreate;
+        setSaveStatus("error");
+        setSaveError(message);
+        throw new Error(message);
+      }
       if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) {
         if (pendingDictionaryEntriesRef.current.length > 0) {
           await flushPendingDictionaryEntries();
@@ -714,8 +723,8 @@ export function WarehouseExcelGrid({
       setSaveError(null);
 
       try {
-        // rowsRef is updated synchronously by setCell/flushEditor — never use stale React state here.
-        await flushPendingDictionaryEntries();
+        // Dictionary flush is best-effort and must not block stock sync.
+        void flushPendingDictionaryEntries();
         for (const itemId of [...pendingArchiveIdsRef.current]) {
           await repository.archive(itemId, companyId, actorUserId);
         }
@@ -778,8 +787,8 @@ export function WarehouseExcelGrid({
                       },
                     });
                   }
+                  resolvedDirtyIds.add(rowId);
                 }
-                resolvedDirtyIds.add(rowId);
               } catch (rowError) {
                 const label =
                   emptyRow.draft.sku || emptyRow.draft.name || userCopy.warehouse.excelGrid.newRowFallback;
@@ -832,8 +841,11 @@ export function WarehouseExcelGrid({
           );
         }
 
-        for (const createTask of createTasks) {
-          await createTask();
+        // Parallel creates (bounded) — sequential 20× Firestore round-trips felt stuck on "Syncing…".
+        const CREATE_CONCURRENCY = 5;
+        for (let offset = 0; offset < createTasks.length; offset += CREATE_CONCURRENCY) {
+          const chunk = createTasks.slice(offset, offset + CREATE_CONCURRENCY);
+          await Promise.all(chunk.map((task) => task()));
         }
         await Promise.all(updateTasks);
 

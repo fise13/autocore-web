@@ -13,7 +13,7 @@ export async function upsertInventoryItemUseCase(
   if (!itemId) {
     const existing = await repository.findBySku(parsed.companyId, parsed.sku);
     if (existing) {
-      throw new Error(`Артикул «${parsed.sku}» уже существует`);
+      throw new Error(`SKU “${parsed.sku}” already exists`);
     }
   }
   return repository.upsert(

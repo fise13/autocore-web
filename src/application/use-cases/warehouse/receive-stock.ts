@@ -36,11 +36,11 @@ export async function receiveStockUseCase(
       ? { id: params.warehouseId }
       : await warehouseRepository.getDefault(params.companyId);
   if (!warehouse) {
-    throw new Error("Склад не найден");
+    throw new Error("Warehouse not found");
   }
 
   const item = await itemRepository.getById(params.itemId);
-  if (!item) throw new Error("Позиция не найдена");
+  if (!item) throw new Error("Item not found");
 
   const unitCost = params.unitCost ?? item.purchasePrice ?? item.averageCost ?? 0;
   const { movementId } = await recordMovementUseCase(

@@ -5470,8 +5470,8 @@
     "semantic_hash": ""
   },
   "packages/domain-search/src/dictionaries/brands.json": {
-    "mtime": 1783341661.7416594,
-    "ast_hash": "d65501cc424189f909dcb179d73278d2",
+    "mtime": 1787485804.5854461,
+    "ast_hash": "ba6d107916865fb43200c43a3b0b8f1e",
     "semantic_hash": ""
   },
   "packages/domain-search/src/dictionaries/engines.json": {
@@ -7070,8 +7070,8 @@
     "semantic_hash": ""
   },
   "src/application/use-cases/warehouse/ensure-default-warehouse.ts": {
-    "mtime": 1782388482.1774337,
-    "ast_hash": "34e9f832245c73705dc8486625e69815",
+    "mtime": 1787485910.8375177,
+    "ast_hash": "d47cac4723c9f039b29c61275106b315",
     "semantic_hash": ""
   },
   "src/application/use-cases/warehouse/issue-stock-sale.ts": {
@@ -7175,8 +7175,8 @@
     "semantic_hash": ""
   },
   "src/components/account/account-settings-panel.tsx": {
-    "mtime": 1787485165.4258509,
-    "ast_hash": "97a71c9f4b280fa5effe7bac9b8dacfc",
+    "mtime": 1787485807.031145,
+    "ast_hash": "233660721e87675523f931f5bb60c50c",
     "semantic_hash": ""
   },
   "src/components/account/gradient-avatar-fallback.tsx": {
@@ -8740,8 +8740,8 @@
     "semantic_hash": ""
   },
   "src/components/marketing/site/site-nav.tsx": {
-    "mtime": 1787485167.188099,
-    "ast_hash": "68a067970281df9108062c7960758766",
+    "mtime": 1787485808.5988328,
+    "ast_hash": "87a498736908d2fa5148529ce40b4f6c",
     "semantic_hash": ""
   },
   "src/components/marketing/site/site-navigation.ts": {
@@ -10955,8 +10955,8 @@
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/warehouse-repository.ts": {
-    "mtime": 1783937481.589513,
-    "ast_hash": "249755157aa79b74505bfede060d8ba3",
+    "mtime": 1787485929.0279129,
+    "ast_hash": "190827e751c9db753ea834fe269116b6",
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/work-order-document-repository.ts": {
@@ -11515,8 +11515,8 @@
     "semantic_hash": ""
   },
   "src/lib/demo/demo-seed.server.ts": {
-    "mtime": 1785775338.2582915,
-    "ast_hash": "19cd325b3f4c2e658f26b4b9c107650e",
+    "mtime": 1787485929.1792967,
+    "ast_hash": "a80fc48560991255bff19d41d641d38b",
     "semantic_hash": ""
   },
   "src/lib/demo/demo-session.client.ts": {
@@ -11935,33 +11935,33 @@
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/body-parts.json": {
-    "mtime": 1782918486.2014017,
-    "ast_hash": "ac779efd583f7fd0861a685c6f985806",
+    "mtime": 1787485868.0089417,
+    "ast_hash": "fba4cd5492c9fa592dfd16b245287fa5",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/brands.json": {
-    "mtime": 1782388484.9201946,
-    "ast_hash": "d65501cc424189f909dcb179d73278d2",
+    "mtime": 1787485799.0376153,
+    "ast_hash": "ba6d107916865fb43200c43a3b0b8f1e",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/colors.json": {
-    "mtime": 1782388484.9987786,
-    "ast_hash": "ceca77928a98d7f26c862bfe54e1aaf2",
+    "mtime": 1787485870.8528678,
+    "ast_hash": "d7ef8051a7879210ad9a36151255717c",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/consumables.json": {
-    "mtime": 1782388484.9005811,
-    "ast_hash": "1c478d5e1e0e4d47adc1b0da58961fa0",
+    "mtime": 1787485782.5223725,
+    "ast_hash": "c68933d4274f82701ffa99b076e12f54",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/countries.json": {
-    "mtime": 1782388485.0211296,
-    "ast_hash": "63ef5f5386bdf0a6cf8705955022868a",
+    "mtime": 1787485886.7150998,
+    "ast_hash": "fd56bc15df77bc5db6d035cf9839eda5",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/drive-types.json": {
-    "mtime": 1782388484.9793699,
-    "ast_hash": "a79825c26c15a60cd7697c03d90cbc4b",
+    "mtime": 1787485877.5016615,
+    "ast_hash": "73b88db41098c8bf7a48610835ee8aea",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/engines.json": {
@@ -11970,8 +11970,8 @@
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/fuel-types.json": {
-    "mtime": 1782388484.9594784,
-    "ast_hash": "e1b74197c0517df6ec962fdf7aea7539",
+    "mtime": 1787485873.6260588,
+    "ast_hash": "4ee3a4c677368a8d3d4238d883789205",
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/index.ts": {
@@ -11985,18 +11985,18 @@
     "semantic_hash": ""
   },
   "src/lib/domain/dictionaries/transmissions.json": {
-    "mtime": 1782918486.2013884,
-    "ast_hash": "db14390bc7e40360a1b1db7878f7d1da",
+    "mtime": 1787485887.1158428,
+    "ast_hash": "88a43089dfbc858fd80149e741329d6a",
     "semantic_hash": ""
   },
   "src/lib/domain/domain-dictionary.test.ts": {
-    "mtime": 1782388485.1157272,
-    "ast_hash": "3f6a1d1629eaf9bc86b81a8e627b6713",
+    "mtime": 1787486020.1793559,
+    "ast_hash": "c8293d4f1c1eb84115fedce78a160cdc",
     "semantic_hash": ""
   },
   "src/lib/domain/domain-dictionary.ts": {
-    "mtime": 1782388485.0598881,
-    "ast_hash": "e7e5844fcc5d50a8bdff734bcec8a64f",
+    "mtime": 1787486020.2819355,
+    "ast_hash": "54de547d51c80b3f6b1efaa1a8bcadb1",
     "semantic_hash": ""
   },
   "src/lib/domain/index.ts": {
@@ -12540,8 +12540,8 @@
     "semantic_hash": ""
   },
   "src/lib/locale/preferred-locale.ts": {
-    "mtime": 1787485036.4547827,
-    "ast_hash": "7582d5fd39cbe3fdfeb527cc67fab61c",
+    "mtime": 1787485803.9865117,
+    "ast_hash": "f465c0a12c17e23a04c1d02309b0fd1b",
     "semantic_hash": ""
   },
   "src/lib/marketing-routes.ts": {

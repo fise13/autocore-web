@@ -95,6 +95,14 @@ export function createInventoryStockLevelRepository() {
       return mapStockLevel(snapshot.id, snapshot.data() as Record<string, unknown>);
     },
 
+    /** Create a zero stock level so the item is visible in warehouse projection. */
+    async ensureLevel(companyId: string, itemId: string, warehouseId: string): Promise<void> {
+      const ref = this.buildDocRef(itemId, warehouseId);
+      const snapshot = await getDoc(ref);
+      if (snapshot.exists()) return;
+      await setDoc(ref, this.buildStockLevelPayload(companyId, itemId, warehouseId, 0, 0));
+    },
+
     async listByCompany(companyId: string): Promise<InventoryStockLevel[]> {
       const snapshot = await getDocs(
         query(ref, where("companyId", "==", normalizeCompanyId(companyId)), limit(1000)),

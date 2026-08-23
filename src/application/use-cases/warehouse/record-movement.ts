@@ -169,9 +169,19 @@ export async function recordMovementUseCase(
   }).catch(() => undefined);
 
   const movement = await movementRepository.getById(movementId);
-  if (!movement) {
-    throw new Error("Движение создано, но не найдено");
+  if (movement) {
+    return { movementId, movement };
   }
 
-  return { movementId, movement };
+  // Transaction already committed; a brief read lag must not fail the spreadsheet sync.
+  return {
+    movementId,
+    movement: movementRepository.mapMovement(movementId, {
+      companyId: normalizedCompanyId,
+      itemId: input.itemId,
+      warehouseId: input.warehouseId,
+      type: input.type,
+      quantity: input.quantity,
+    }),
+  };
 }

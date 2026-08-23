@@ -629,6 +629,7 @@
   "627": "zod",
   "628": "usePerformanceTier",
   "629": "Mint Paddle Customer Portal session URLs from Next.js",
+  "630": "@assets/*",
   "633": "Cancel a Paddle subscription from Next.js",
   "637": "migrate-paddle-live.ts",
   "639": "app_url",
