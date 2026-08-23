@@ -12,29 +12,36 @@
 # or `packages/` imports from them at runtime. The only cross-tree references
 # are in test files, which do not run on Vercel.
 #
+# **Every pattern is anchored with a leading slash, and must stay that way.**
+# This file uses .gitignore syntax, where an unanchored `firebase/` matches a
+# directory of that name at *any* depth. The first version of this file was
+# unanchored and took `src/components/firebase` and
+# `src/infrastructure/firebase` out of the upload with it, failing the build on
+# `resolve-storage-bucket` across six server modules.
+#
 # Keep `src/`, `packages/`, `public/`, `assets/`, `scripts/` and the root config
 # files — `prebuild` reads `assets/meta/favicon.png`, `src/styles/documents.css`
 # and `packages/design-tokens/`.
 
 # Sibling products, deployed by their own pipelines (EAS, Tauri, Firebase).
-autocore-mobile/
-src-tauri/
-autocore-desktop/
-firebase/
+/autocore-mobile/
+/src-tauri/
+/autocore-desktop/
+/firebase/
 
 # Generated knowledge graph — large, and read by tooling rather than the app.
-graphify-out/
-.graphify/
+/graphify-out/
+/.graphify/
 
 # Native and tooling caches that can appear at the root.
-.expo/
-ios/
-android/
+/.expo/
+/ios/
+/android/
 
 # Documentation and collateral that never ship in the bundle.
-docs/
-*.pdf
+/docs/
+/*.pdf
 
 # Local build artefacts.
-tsconfig.tsbuildinfo
-.next/
+/tsconfig.tsbuildinfo
+/.next/
