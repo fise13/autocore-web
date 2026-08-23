@@ -3502,6 +3502,14 @@ export const userCopyEn = {
     closeAria: "Close",
   },
 
+  cookieConsent: {
+    title: "Cookies on AutoCore",
+    body:
+      "We use cookies to keep you signed in and to understand how the site is used, so we can make it better. You can decline analytics — signing in still works.",
+    privacyLink: "Read our Privacy Policy",
+    accept: "Accept",
+    decline: "Decline",
+  },
   searchCombobox: {
     placeholder: "Start typing…",
     empty: "Nothing found",

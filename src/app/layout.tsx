@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { CookieConsentBanner } from "@/components/analytics/cookie-consent-banner";
 import { GoogleAnalyticsTag } from "@/components/analytics/google-analytics-tag";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -52,6 +53,7 @@ export default function RootLayout({
           attribute a signup to the ad that paid for it.
         */}
         <GoogleAnalyticsTag />
+        <CookieConsentBanner />
       </body>
     </html>
   );

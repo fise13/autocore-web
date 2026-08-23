@@ -3511,6 +3511,14 @@ export const userCopyRu = {
     closeAria: "Закрыть",
   },
 
+  cookieConsent: {
+    title: "Cookies в AutoCore",
+    body:
+      "Мы используем cookies, чтобы вы оставались в аккаунте и чтобы понимать, как используется сайт и делать его лучше. От аналитики можно отказаться — вход будет работать по-прежнему.",
+    privacyLink: "Политика конфиденциальности",
+    accept: "Принять",
+    decline: "Отклонить",
+  },
   searchCombobox: {
     placeholder: "Начните вводить…",
     empty: "Ничего не найдено",

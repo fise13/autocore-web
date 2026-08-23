@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
+import { getConsent, getServerConsent, subscribeConsent } from "@/lib/analytics/consent";
 import { isAnalyticsEnabled, resolveMeasurementId } from "@/lib/analytics/ga-config";
 
 /**
@@ -17,8 +18,13 @@ import { isAnalyticsEnabled, resolveMeasurementId } from "@/lib/analytics/ga-con
  *
  * Rendering nothing on the server and the tag on the client is also what keeps
  * this free of hydration mismatches.
+ *
+ * Nothing loads before consent is granted. That is what makes the banner a
+ * gate rather than a notice: no script, no cookie, no request to Google until
+ * someone has said yes.
  */
 export function GoogleAnalyticsTag() {
+  const consent = useSyncExternalStore(subscribeConsent, getConsent, getServerConsent);
   const [measurementId, setMeasurementId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,6 +33,7 @@ export function GoogleAnalyticsTag() {
     if (resolved) setMeasurementId(resolved);
   }, []);
 
+  if (consent !== "granted") return null;
   if (!measurementId) return null;
 
   return <GoogleAnalytics gaId={measurementId} />;
