@@ -37,7 +37,7 @@ export default function DemoPage() {
   useEffect(() => {
     if (!isFirebaseReady || isLoading || started) return;
     if (firebaseUser) {
-      router.replace("/");
+      router.replace("/home");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function DemoPage() {
         await refreshProfile();
 
         markDemoSessionActive();
-        router.replace("/");
+        router.replace("/home");
       } catch (cause) {
         const detail = cause instanceof Error && cause.message !== "Demo unavailable" ? ` ${cause.message}` : "";
         setError(

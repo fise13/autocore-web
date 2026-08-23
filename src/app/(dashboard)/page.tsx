@@ -1,5 +1,6 @@
-import { OverviewShell } from "@/components/overview/overview-shell";
+import { redirect } from "next/navigation";
 
-export default function OverviewPage() {
-  return <OverviewShell />;
+/** Legacy overview URL — workspace lives at /home; / stays public for domain review. */
+export default function LegacyOverviewPage() {
+  redirect("/home");
 }

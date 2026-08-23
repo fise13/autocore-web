@@ -81,7 +81,7 @@ function AuthActionContent() {
         }
         setStatus("success");
         setMessage(userCopy.auth.verifyEmailSuccess);
-        window.setTimeout(() => router.replace("/"), 2200);
+        window.setTimeout(() => router.replace("/home"), 2200);
       } catch (error) {
         if (cancelled) return;
         setStatus("error");

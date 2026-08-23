@@ -163,7 +163,7 @@ export function appDemoUrl(): string {
 }
 
 export function appDashboardUrl(): string {
-  return `${getAppUrl()}/`;
+  return `${getAppUrl()}/home`;
 }
 
 /** Absolute marketing URL for a path; relative on unified localhost dev. */
@@ -202,6 +202,7 @@ export const APP_ROUTE_PREFIXES = [
   "/demo",
   "/invite",
   "/join",
+  "/home",
   "/warehouse",
   "/work-orders",
   "/documents",
@@ -224,7 +225,7 @@ export const APP_ROUTE_PREFIXES = [
 ] as const;
 
 export function isAppRoute(pathname: string): boolean {
-  if (pathname === "/") return true;
+  if (pathname === "/" || pathname === "/home") return true;
   return APP_ROUTE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

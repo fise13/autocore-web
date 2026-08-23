@@ -56,6 +56,7 @@ describe("buildLoginUrl", () => {
 
   it("stays bare when there is nothing worth returning to", () => {
     assert.equal(buildLoginUrl("/"), "/login");
+    assert.equal(buildLoginUrl("/home"), "/login");
     assert.equal(buildLoginUrl(null), "/login");
     assert.equal(buildLoginUrl("https://evil.example"), "/login");
   });

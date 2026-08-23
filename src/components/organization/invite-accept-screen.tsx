@@ -105,7 +105,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
       }
       clearInviteToken();
       await refreshProfile?.();
-      router.replace("/");
+      router.replace("/home");
     } catch {
       setError({
         title: userCopy.organization.invite.errorTitle,
@@ -150,7 +150,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
         });
       }
       clearInviteToken();
-      router.replace("/");
+      router.replace("/home");
     } finally {
       setBusy(false);
     }
@@ -271,7 +271,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => router.replace("/")}>{userCopy.organization.invite.home}</Button>
+                <Button onClick={() => router.replace("/home")}>{userCopy.organization.invite.home}</Button>
               )}
             </div>
           </>

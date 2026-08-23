@@ -53,7 +53,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
                   )}
                 >
                   <Link
-                    href="/"
+                    href="/home"
                     onClick={onNavigate}
                     aria-label={userCopy.ai.goHomeAria}
                     className={cn(

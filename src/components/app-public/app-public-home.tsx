@@ -1,5 +1,10 @@
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+import { useAuth } from "@/components/providers/auth-provider";
 import { buttonVariants } from "@/components/ui/button";
 import { marketingRoute } from "@/lib/marketing-routes";
 import { marketingHomeUrl } from "@/lib/site-urls";
@@ -8,6 +13,14 @@ import { cn } from "@/lib/utils";
 const SUPPORT_EMAIL = "support@myautocore.com";
 
 export function AppPublicHome() {
+  const router = useRouter();
+  const { firebaseUser, isLoading, isFirebaseReady } = useAuth();
+
+  useEffect(() => {
+    if (!isFirebaseReady || isLoading || !firebaseUser) return;
+    router.replace("/home");
+  }, [firebaseUser, isFirebaseReady, isLoading, router]);
+
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 py-16">
       <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">

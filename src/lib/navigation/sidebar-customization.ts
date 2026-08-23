@@ -123,7 +123,7 @@ export const SIDEBAR_NAV_META: Record<
       warehouse: Package,
     };
     const hrefs: Record<SidebarNavItemId, string> = {
-      home: "/",
+      home: "/home",
       motors: "/motors?collection=engines",
       engine_intake: "/engine-intake",
       sold: "/sold",

@@ -83,7 +83,7 @@ export default function DeckCallbackPage() {
         )}
 
         <div className="mt-6 flex justify-center gap-2">
-          <Button variant="outline" onClick={() => router.push("/")}>
+          <Button variant="outline" onClick={() => router.push("/home")}>
             В Autocore Web
           </Button>
           <Button onClick={() => window.location.reload()}>Обновить код</Button>

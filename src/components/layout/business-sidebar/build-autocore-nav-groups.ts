@@ -66,7 +66,7 @@ export function buildAutocoreNavGroups({
           title: workspace.label,
           path: workspace.href,
           icon: createElement(workspace.icon),
-          isActive: pathname === "/",
+          isActive: pathname === "/" || pathname === "/home",
           navId: "home",
         },
       ],

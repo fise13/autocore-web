@@ -32,6 +32,8 @@ const APP_HOST_ROBOTS_TXT = [
   "Allow: /login",
   "Allow: /legal/",
   "Allow: /welcome",
+  "Allow: /business.html",
+  "Disallow: /home",
   "Disallow: /warehouse",
   "Disallow: /work-orders",
   "Disallow: /settings",
@@ -192,10 +194,12 @@ export function middleware(request: NextRequest) {
       });
     }
 
-    if (
-      pathname === "/" &&
-      !hasAppSessionCookie(request.cookies.get(APP_SESSION_COOKIE)?.value)
-    ) {
+    // App root is always the public company page (Paddle / crawlers / guests).
+    // Signed-in users are sent to /home for the workspace overview.
+    if (pathname === "/") {
+      if (hasAppSessionCookie(request.cookies.get(APP_SESSION_COOKIE)?.value)) {
+        return NextResponse.redirect(new URL("/home" + request.nextUrl.search, request.url));
+      }
       return NextResponse.rewrite(new URL("/app-public", request.url));
     }
 
@@ -225,7 +229,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|business\\.html|\\.well-known|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|html)$).*)",
   ],
 };
 

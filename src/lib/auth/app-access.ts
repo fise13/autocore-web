@@ -84,7 +84,7 @@ export function canAccessPath(
 ): boolean {
   if (!user) return false;
 
-  if (pathname === "/" || pathname === "") {
+  if (pathname === "/" || pathname === "" || pathname === "/home") {
     return canAccessOverview(user);
   }
   if (pathname.startsWith("/work-orders")) {
@@ -140,7 +140,7 @@ export function defaultAppPath(user: UserEntity | null | undefined): string {
     return SIDEBAR_NAV_META[navId].href;
   }
 
-  if (canAccessOverview(user)) return "/";
+  if (canAccessOverview(user)) return "/home";
   if (can(user, "work_orders_view")) return "/work-orders";
   if (canAccessMyEarnings(user)) return "/my-earnings";
   if (can(user, "accounting_view")) return "/accounting";

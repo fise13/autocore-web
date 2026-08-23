@@ -23,7 +23,7 @@ import { z } from "zod";
  * never drift from what is actually allowed.
  */
 export const ROUTE_CATALOG = [
-  { path: "/", purpose: "Dashboard overview" },
+  { path: "/home", purpose: "Dashboard overview" },
   { path: "/motors", purpose: "Serialized engines, transmissions and parts inventory" },
   { path: "/sold", purpose: "Sold units and sales history" },
   { path: "/engine-intake", purpose: "Intake pipeline for newly received engines" },
@@ -44,9 +44,7 @@ export const ROUTE_CATALOG = [
   { path: "/ai", purpose: "Core itself" },
 ] as const;
 
-export const ALLOWED_PATH_PREFIXES = ROUTE_CATALOG.filter(
-  (route) => route.path !== "/",
-).map((route) => route.path);
+export const ALLOWED_PATH_PREFIXES = ROUTE_CATALOG.map((route) => route.path);
 
 /** Human-readable catalog for the system prompt and for rejection messages. */
 export function describeRouteCatalog(): string {
@@ -78,7 +76,7 @@ export function isInternalHref(value: string): boolean {
 export function isAllowedHref(value: string): boolean {
   if (!isInternalHref(value)) return false;
   const href = value.trim();
-  if (href === "/") return true;
+  if (href === "/" || href === "/home") return true;
   return ALLOWED_PATH_PREFIXES.some(
     (prefix) => href === prefix || href.startsWith(`${prefix}?`) || href.startsWith(`${prefix}/`),
   );

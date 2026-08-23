@@ -33,7 +33,7 @@ export const productHelpSectionsEn: ProductHelpSection[] = [
         q: "What is Overview?",
         a: "It is AutoCore’s main dashboard: a snapshot of warehouse, work orders, and team activity. Start the day here and jump into the module you need.",
         keywords: ["dashboard", "home", "overview", "overview"],
-        href: "/",
+        href: "/home",
         hrefLabel: "Open dashboard",
       },
     ],

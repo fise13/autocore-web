@@ -12,7 +12,7 @@ export type SidebarMode =
   | "other";
 
 export function resolveSidebarMode(pathname: string): SidebarMode {
-  if (pathname === "/") return "home";
+  if (pathname === "/" || pathname === "/home") return "home";
   if (pathname === "/motors") return "motors";
   if (pathname === "/sold") return "sold";
   if (pathname === "/warehouse") return "warehouse";

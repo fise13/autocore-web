@@ -81,7 +81,7 @@ const DocumentsWorkspace = lazyPanel(() =>
 
 /** Routes that stay mounted in the background when you navigate away (Safari-style, no tab UI). */
 export function resolveRouteCacheKey(pathname: string): string | null {
-  if (pathname === "/") return "/";
+  if (pathname === "/" || pathname === "/home") return "/home";
   if (pathname === "/work-orders" || pathname.startsWith("/work-orders/")) return "/work-orders";
   if (pathname === "/accounting") return "/accounting";
   if (pathname === "/motors") return "/motors";

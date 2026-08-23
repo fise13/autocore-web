@@ -57,7 +57,7 @@ const collectionLabels: Record<InventoryCollectionId, string> = {
 function areaDefinition(pathname: string): { areaId: AssistantAreaId; areaLabel: string } {
   const nav = userCopy.nav.sidebarNav;
 
-  if (pathname === "/") return { areaId: "dashboard", areaLabel: nav.home };
+  if (pathname === "/" || pathname === "/home") return { areaId: "dashboard", areaLabel: nav.home };
   if (pathname === "/motors") return { areaId: "engines", areaLabel: nav.motors };
   if (pathname === "/sold") return { areaId: "sales", areaLabel: nav.sold };
   if (pathname.startsWith("/engine-intake")) {

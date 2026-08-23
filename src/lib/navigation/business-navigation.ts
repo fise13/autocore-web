@@ -85,7 +85,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
     ? {
         id: "dashboard" as const,
         label: businessNavCopy.workspace.dashboard,
-        href: "/",
+        href: "/home",
         icon: LayoutGrid,
       }
     : null;

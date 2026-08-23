@@ -188,6 +188,18 @@ export default function LoginPage() {
 
   const showAuthDebug = isAuthDebugEnabled();
 
+  // Keep the real sign-in UI in the HTML for crawlers / first paint.
+  // "Preparing your workspace…" looks like a login wall or under-construction
+  // page to Paddle domain review and other bots that do not run JS.
+  const loginUi = (
+    <div>
+      <Suspense fallback={null}>
+        <LoginScreen bootstrapError={bootstrapError} onAuthenticated={goToApp} />
+      </Suspense>
+      {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
+    </div>
+  );
+
   if (appleReturnPending) {
     return (
       <>
@@ -205,15 +217,6 @@ export default function LoginPage() {
     );
   }
 
-  if (isLoading) {
-    return (
-      <>
-        <AppLoadingScreen message={userCopy.auth.completing} />
-        {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
-      </>
-    );
-  }
-
   if (isAuthed) {
     return (
       <>
@@ -223,12 +226,7 @@ export default function LoginPage() {
     );
   }
 
-  return (
-    <div>
-      <Suspense fallback={<AppLoadingScreen message={userCopy.auth.loading} />}>
-        <LoginScreen bootstrapError={bootstrapError} onAuthenticated={goToApp} />
-      </Suspense>
-      {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
-    </div>
-  );
+  // Still resolving Firebase session, or signed out: keep the public login form in HTML.
+  // Spinners here look like a login wall / under-construction page to domain reviewers.
+  return loginUi;
 }

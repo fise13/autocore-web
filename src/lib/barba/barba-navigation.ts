@@ -33,7 +33,7 @@ export function isMarketingNavPath(pathname: string): boolean {
 }
 
 export function isDashboardAnimatedPath(pathname: string): boolean {
-  if (pathname === "/") return true;
+  if (pathname === "/" || pathname === "/home") return true;
   return DASHBOARD_ANIMATED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
@@ -56,7 +56,7 @@ export function pathToBarbaNamespace(
   if (context === "marketing" && isMarketingNavPath(pathname)) {
     return `marketing-${marketingSegment(pathname)}`;
   }
-  if (pathname === "/") return "app-overview";
+  if (pathname === "/" || pathname === "/home") return "app-overview";
   return `app-${pathname.slice(1).replace(/\//g, "-")}`;
 }
 

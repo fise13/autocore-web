@@ -56,6 +56,8 @@ export const HOME_GREETINGS: Record<HomeGreetingPeriod, readonly GreetingVariant
     { text: 'Good morning' },
     { text: 'Morning' },
     { text: 'A new day, ready to go.' },
+    { text: 'Ready when you are.' },
+    { text: "Morning. Let's begin." },
     { text: "Good morning. Let's get things moving." },
     { text: "Morning. Here's what's happening today." },
     { text: "Good morning. Here's your day at a glance." },

@@ -15,7 +15,7 @@ export function SidebarSettingsCard() {
 
   function openSidebarEditor() {
     enterEditMode();
-    router.push("/");
+    router.push("/home");
   }
 
   return (

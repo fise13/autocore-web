@@ -146,7 +146,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       setLeaveOpen(false);
       await refreshProfile();
       router.refresh();
-      router.replace("/");
+      router.replace("/home");
     } catch (e) {
       const code = e instanceof Error && "code" in e ? String((e as Error & { code?: string }).code ?? "") : "";
       if (code === "sole_owner_cannot_leave" || code === "owner_cannot_leave") {
@@ -168,7 +168,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       await authFetch("/api/org/delete", { companyId, confirmationName: confirmName });
       setDeleteOpen(false);
       await refreshProfile();
-      router.replace("/");
+      router.replace("/home");
     } catch (e) {
       setError(e instanceof Error ? e.message : userCopy.organization.danger.errorGeneric);
     } finally {

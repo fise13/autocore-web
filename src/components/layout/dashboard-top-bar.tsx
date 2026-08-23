@@ -163,7 +163,7 @@ export function DashboardTopBar() {
   const isMotorRoute = pathname === "/motors" || pathname === "/sold";
   const isWarehouseRoute = pathname === "/warehouse";
   const isSoldRoute = pathname === "/sold";
-  const isOverviewRoute = pathname === "/";
+  const isOverviewRoute = pathname === "/" || pathname === "/home";
   const collectionContext = parseCollectionFromSearchParams(searchParams, pathname);
 
   const topBarTitle = useMemo(() => {

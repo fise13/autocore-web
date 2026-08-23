@@ -79,7 +79,7 @@ export function SupportActivity({
 				</ul>
 			</CardContent>
 			<div className="flex items-center justify-center">
-				<Button size="sm" variant="ghost" render={<Link href="/" />} nativeButton={false}>View All
+				<Button size="sm" variant="ghost" render={<Link href="/home" />} nativeButton={false}>View All
                 						<ArrowRightIcon aria-hidden="true" data-icon="inline-end" /></Button>
 			</div>
 		</Card>

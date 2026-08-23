@@ -14,7 +14,7 @@
 export const RETURN_TO_PARAM = "next";
 
 /** Where a signed-in user goes when there is no saved destination. */
-export const DEFAULT_POST_LOGIN_PATH = "/";
+export const DEFAULT_POST_LOGIN_PATH = "/home";
 
 /** Paths that must never be a post-login destination — they would loop. */
 const NON_DESTINATION_PREFIXES = ["/login", "/auth", "/demo", "/deck", "/api"];
@@ -56,7 +56,7 @@ export function sanitizeReturnTo(value: string | null | undefined): string | nul
 /** Current location → the `?next=` value to carry into `/login`. */
 export function buildLoginUrl(destination: string | null | undefined): string {
   const safe = sanitizeReturnTo(destination);
-  if (!safe || safe === DEFAULT_POST_LOGIN_PATH) return "/login";
+  if (!safe || safe === DEFAULT_POST_LOGIN_PATH || safe === "/") return "/login";
   return `/login?${RETURN_TO_PARAM}=${encodeURIComponent(safe)}`;
 }
 

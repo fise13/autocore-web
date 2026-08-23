@@ -35,7 +35,7 @@ export type SidebarDocumentsPanelProps = SidebarPanelBaseProps;
 export type SidebarTeamPanelProps = SidebarPanelBaseProps;
 
 export function isSidebarNavActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+  if (href === "/" || href === "/home") return pathname === "/" || pathname === "/home";
   if (href.startsWith("/motors")) {
     return pathname === "/motors" || pathname.startsWith("/specific/");
   }

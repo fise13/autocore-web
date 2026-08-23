@@ -33,7 +33,7 @@ export const productHelpSectionsRu: ProductHelpSection[] = [
         q: "Что такое Overview?",
         a: "Это главный дашборд AutoCore: сводка по складу, нарядам и команде. Отсюда удобно начинать рабочий день и переходить в нужный модуль.",
         keywords: ["дашборд", "главная", "сводка", "overview"],
-        href: "/",
+        href: "/home",
         hrefLabel: "Открыть дашборд",
       },
     ],
