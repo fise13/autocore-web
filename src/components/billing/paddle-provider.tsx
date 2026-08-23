@@ -12,6 +12,7 @@ import { getAppOrigin } from "@/lib/app-url";
 import { tryReadPaddleClientEnv } from "@/lib/paddle/read-client-env";
 import { isPaddleCheckoutConfigured } from "@/lib/paddle/config";
 import { paddlePriceIdForInterval, type PaddleBillingInterval } from "@/lib/paddle/prices";
+import { track } from "@/lib/analytics/events";
 
 const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
 
@@ -41,6 +42,8 @@ const PaddleCheckoutContext = createContext<PaddleCheckoutContextValue | null>(n
 export function PaddleProvider({ children }: { children: React.ReactNode }) {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const configured = isPaddleCheckoutConfigured();
+  /** Plan the open sheet is for, so `purchase` can report which one converted. */
+  const checkoutIntervalRef = useRef<string | null>(null);
   const onCompletedRef = useRef<((payload: CheckoutCompletedPayload) => void) | null>(null);
   const onErrorRef = useRef<((message: string) => void) | null>(null);
   const retainCustomerIdRef = useRef<string | null>(null);
@@ -61,6 +64,12 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
         : {},
       eventCallback: (event) => {
         if (event.name === "checkout.completed") {
+          // Paddle's own completion event, not our optimism — this cannot fire
+          // for an abandoned or failed checkout. `interval` comes from the ref
+          // set when the sheet was opened; no amount or customer data is sent.
+          track("purchase", {
+            ...(checkoutIntervalRef.current ? { interval: checkoutIntervalRef.current } : {}),
+          });
           const transactionId =
             typeof event.data === "object" &&
             event.data &&
@@ -130,6 +139,8 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
 
       onCompletedRef.current = onCompleted ?? null;
       onErrorRef.current = onError ?? null;
+      checkoutIntervalRef.current = interval;
+      track("begin_checkout", { interval });
 
       const origin = getAppOrigin().replace(/\/$/, "");
       const resolvedSuccessUrl =

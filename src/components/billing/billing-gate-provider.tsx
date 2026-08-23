@@ -28,6 +28,7 @@ import { readPendingBillingIntent } from "@/lib/marketing/pending-billing-intent
 import { readPendingMarketingCheckout } from "@/lib/marketing/pending-checkout";
 import { syncCompanyBillingState } from "@/lib/billing/sync-company-billing.client";
 import { userCopy } from "@/lib/user-copy";
+import { track } from "@/lib/analytics/events";
 
 const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
 const ACTIVATION_TIMEOUT_MS = 45_000;
@@ -216,6 +217,10 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
         onAllowed?.();
         return true;
       }
+      // Fires only on the refusal branch: a Pro user passing through is not a
+      // paywall view, and counting it as one would make the gate look far more
+      // punishing than it is.
+      track("paywall_viewed", { feature });
       setPaywallFeature(feature);
       return false;
     },

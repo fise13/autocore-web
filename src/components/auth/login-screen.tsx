@@ -23,6 +23,7 @@ import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
 import { getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
 import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/apple-js-sign-in";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
+import { track } from "@/lib/analytics/events";
 import { validateSignupPassword } from "@/lib/auth/password-validation";
 import {
   EmailSignInMode,
@@ -293,6 +294,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
             firstName: firstName.trim(),
             lastName: lastName.trim(),
           });
+          track("sign_up", { surface: "email" });
         } else {
           await signInWithEmail(email.trim(), password);
         }

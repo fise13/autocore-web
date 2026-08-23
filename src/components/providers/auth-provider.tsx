@@ -51,6 +51,7 @@ import { mergeProfileWithEmployee, EmployeeProfileSlice } from "@/lib/auth/resol
 import { resolveWorkspaceCompanyId } from "@/lib/session/resolve-workspace-company.client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { createCompanyViaApi } from "@/lib/auth/create-company-via-api";
+import { track } from "@/lib/analytics/events";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
 import {
@@ -763,7 +764,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         try {
-          await ensureCompanyTrial(companyId);
+          track("company_created", { surface: "onboarding" });
+          // `ensureCompanyTrial` reports whether the trial actually began, so
+          // this never claims a trial for a workspace that already had one.
+          if (await ensureCompanyTrial(companyId)) {
+            track("trial_started", { surface: "onboarding" });
+          }
           await claimPendingBillingIntent(companyId);
           await tryClaimPendingMarketingCheckout(companyId);
           try {

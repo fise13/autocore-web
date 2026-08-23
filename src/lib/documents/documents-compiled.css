@@ -1339,6 +1339,9 @@
   .min-h-\[min\(78vh\,780px\)\] {
     min-height: min(78vh, 780px);
   }
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
   .min-h-full {
     min-height: 100%;
   }
