@@ -58,14 +58,34 @@ test("transmission alias u66 resolves U660E", () => {
   assert.equal(searchDomain("transmissions", "u66")[0]?.entry.name, "U660E");
 });
 
-test("body part prefix фа returns headlights", () => {
+test("body part RU alias фа returns English headlights", () => {
   const result = names("bodyParts", "фа");
-  assert.ok(result.some((name) => name.startsWith("Фара")));
+  assert.ok(result.some((name) => name.startsWith("Headlight")));
 });
 
-test("consumable prefix мас returns oils", () => {
+test("body part EN prefix head returns headlights", () => {
+  const result = names("bodyParts", "head");
+  assert.ok(result.some((name) => name.startsWith("Headlight")));
+});
+
+test("consumable RU alias мас returns English oils", () => {
   const result = names("consumables", "мас");
-  assert.ok(result.some((name) => name.startsWith("Масло")));
+  assert.ok(result.some((name) => name.startsWith("Engine Oil")));
+});
+
+test("consumable EN prefix oil returns oils", () => {
+  const result = names("consumables", "oil");
+  assert.ok(result.some((name) => name.startsWith("Engine Oil")));
+});
+
+test("parts brands resolve from typed prefixes", () => {
+  assert.equal(searchDomain("brands", "bos")[0]?.entry.name, "Bosch");
+  assert.equal(searchDomain("brands", "mann")[0]?.entry.name, "Mann");
+  assert.equal(searchDomain("brands", "mot")[0]?.entry.name, "Motul");
+  assert.equal(searchDomain("brands", "liqui")[0]?.entry.name, "Liqui Moly");
+  assert.equal(searchDomain("brands", "brem")[0]?.entry.name, "Brembo");
+  assert.equal(searchDomain("brands", "mahle")[0]?.entry.name, "Mahle");
+  assert.equal(searchDomain("brands", "sakura")[0]?.entry.name, "Sakura");
 });
 
 test("typo correction recovers from a single edit", () => {

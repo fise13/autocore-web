@@ -219,10 +219,10 @@ type OrderDetailActionDockProps = {
 };
 
 /**
- * WO footer dock — same plane as LiquidGlassTabBar: absolute bottom, centred
- * 356pt stadium, safe-area + 8pt gap, one UIGlassEffect surface (dark chrome
- * fallback pre-iOS 26). Positioning intentionally mirrors the tab bar so the
- * strip reads as the shell's tab row, not as a card action bar.
+ * WO footer dock — same plane and same surface as LiquidGlassTabBar: absolute
+ * bottom, centred 356pt stadium, safe-area + 8pt gap, one UIGlassEffect surface
+ * (dark chrome fallback pre-iOS 26), so the strip reads as the shell's tab row
+ * rather than as a card action bar.
  */
 export function OrderDetailActionDock({ children }: OrderDetailActionDockProps) {
   const insets = useSafeAreaInsets();
@@ -241,8 +241,11 @@ export function OrderDetailActionDock({ children }: OrderDetailActionDockProps) 
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 1000,
-        elevation: 1000,
+        // Enough to clear the scroll content beneath it and nothing more. The
+        // tab bar's 1000 was copied in by mistake: on Android that elevation
+        // outranks views outside this parent, which would park the dock on top
+        // of the status sheet it exists to open.
+        zIndex: 1,
         alignItems: 'center',
         paddingHorizontal: DOCK_HORIZONTAL_INSET,
         paddingBottom: insets.bottom + DOCK_BOTTOM_GAP,

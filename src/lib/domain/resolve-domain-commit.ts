@@ -8,6 +8,9 @@ import type { DomainSearchResult } from "@/lib/domain/types";
  * - User moved highlight with arrows → highlighted entry
  * - Partial prefix still being typed → top suggestion (VS Code ghost style)
  * - Otherwise → keep what the user typed (new company term)
+ *
+ * Enter/Tab while the list is open bypasses this and takes `results[activeIndex]`
+ * directly in the editor overlay (highlighted row = selection).
  */
 export function resolveDomainCommitValue(
   value: string,

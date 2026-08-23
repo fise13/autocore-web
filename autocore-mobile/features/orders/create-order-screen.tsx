@@ -1,6 +1,6 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import {
@@ -8,8 +8,17 @@ import {
   PackageIcon,
   TagIcon,
   WrenchIcon,
+  XIcon,
 } from '@/assets/icons';
-import { Button, AutocompleteInput, Input, KeyboardFormShell, Text, toast } from '@/components/ui';
+import {
+  AutocompleteInput,
+  Button,
+  CatalogAddButton,
+  Input,
+  KeyboardFormShell,
+  Text,
+  toast,
+} from '@/components/ui';
 import {
   useClientsRealtime,
   useEmployeesRealtime,
@@ -55,62 +64,54 @@ import {
   useWorkOrderComposerOptions,
 } from './hooks/use-work-order-composer-options';
 
+/** Stable Reanimated layouts — fresh instances each render restart entering. */
+const STEP_ENTERING = FadeIn.duration(220);
+const STEP_EXITING = FadeOut.duration(160);
+
 /** Nav-bar text control — primary tint, 44pt hit, no custom chrome. */
-function SheetNavButton({
-  label,
-  onPress,
-  disabled,
-  loading,
-  emphasis = false,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  emphasis?: boolean;
-}) {
+/**
+ * Composer dismiss — a neutral round glyph, not a word.
+ *
+ * It shares the accent Add pill's height so the header reads as one pair:
+ * a quiet circle on the left, the only coloured thing on the screen on the
+ * right. A text "Cancel" at 17pt competed with that pill for attention and
+ * won, which is the wrong way round for a button whose whole job is to be
+ * available without being suggested.
+ */
+function ComposerCancelButton({ onPress }: { onPress: () => void }) {
   const { colors } = useTheme();
-  const muted = Boolean(disabled) || Boolean(loading);
+  const [pressed, setPressed] = useState(false);
+  const size = tokens.control.hitTarget;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: muted, busy: Boolean(loading) }}
-      disabled={muted}
-      hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+      accessibilityLabel="Cancel"
+      accessibilityHint="Closes the composer without saving"
+      hitSlop={6}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       onPress={onPress}
+      // Static object, not the `({ pressed }) => …` form — this RN version
+      // silently drops the function style.
       style={{
-        minHeight: tokens.control.hitTarget,
-        minWidth: tokens.control.hitTarget,
-        paddingHorizontal: tokens.space.inline,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: muted ? tokens.opacity.disabled : 1,
+        backgroundColor: colors.secondary,
+        opacity: pressed ? 0.7 : 1,
       }}
     >
-      {loading ? (
-        <ActivityIndicator size="small" color={colors.primary} />
-      ) : (
-        <Text
-          variant="body"
-          style={{
-            fontSize: 17,
-            lineHeight: 22,
-            fontWeight: emphasis ? '600' : '400',
-            color: colors.primary,
-          }}
-        >
-          {label}
-        </Text>
-      )}
+      <XIcon size={18} color={colors.foreground} strokeWidth={2.4} />
     </Pressable>
   );
 }
 
 export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   const isEdit = Boolean(orderId?.trim());
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { companyId, uid, can } = useSession();
   const params = useLocalSearchParams<{ vin?: string; itemId?: string; motorId?: string; outcome?: string }>();
@@ -152,6 +153,15 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     currentUserId: uid ?? undefined,
   });
 
+  const {
+    setLaborLines,
+    setPartLines,
+    setMotorLines,
+    setMotorOutcome,
+    setPartSku,
+    setPartName,
+  } = composition;
+
   const composerOptions = useWorkOrderComposerOptions({
     clients,
     vehicles,
@@ -172,7 +182,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           });
           return;
         }
-        composition.setPartLines((lines) => {
+        setPartLines((lines) => {
           if (lines.some((line) => line.itemId === item.id)) return lines;
           return [
             ...lines,
@@ -198,8 +208,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         return;
       }
       if (result.type === 'adhoc') {
-        composition.setPartSku(result.barcode);
-        if (result.name) composition.setPartName(result.name);
+        setPartSku(result.barcode);
+        if (result.name) setPartName(result.name);
         setTab('parts');
         setStep(2);
         toast({
@@ -210,7 +220,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         return;
       }
     },
-    [composition, inventoryItems, setTab],
+    [inventoryItems, setPartLines, setPartName, setPartSku, setTab],
   );
 
   const orderScanLabel = isEdit
@@ -228,9 +238,9 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     setLicensePlate(existingOrder.licensePlate ?? '');
     setMileage(existingOrder.mileage ? String(existingOrder.mileage) : '');
     setComment(existingOrder.comment ?? '');
-    composition.setLaborLines(drafts.laborLines);
-    composition.setPartLines(drafts.partLines);
-    composition.setMotorLines(drafts.motorLines);
+    setLaborLines(drafts.laborLines);
+    setPartLines(drafts.partLines);
+    setMotorLines(drafts.motorLines);
     const vehicle = vehicles.find((entry) => entry.id === existingOrder.vehicleId);
     if (vehicle) {
       setVehicleMake(vehicle.make);
@@ -241,7 +251,15 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
       setVehicleModel(rest.join(' '));
     }
     setHydrated(true);
-  }, [composition, existingOrder, hydrated, isEdit, vehicles]);
+  }, [
+    existingOrder,
+    hydrated,
+    isEdit,
+    setLaborLines,
+    setMotorLines,
+    setPartLines,
+    vehicles,
+  ]);
 
   const selectClient = (nextClientId: string) => {
     const client = clients.find((entry) => entry.id === nextClientId);
@@ -297,12 +315,16 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     if (vin.toUpperCase() !== incoming) setVin(incoming);
   }, [clientId, clients, params.vin, vehicleId, vehicles, vin]);
 
+  // Prefill params once per id — setters are stable; do not depend on the whole
+  // composition object (new reference every render → effect thrash).
+  const prefilledItemIdRef = useRef<string | null>(null);
   useEffect(() => {
     const itemId = typeof params.itemId === 'string' ? params.itemId.trim() : '';
-    if (!itemId) return;
+    if (!itemId || prefilledItemIdRef.current === itemId) return;
     const item = inventoryItems.find((entry) => entry.id === itemId);
     if (!item) return;
-    composition.setPartLines((lines) => {
+    prefilledItemIdRef.current = itemId;
+    setPartLines((lines) => {
       if (lines.some((line) => line.itemId === item.id)) return lines;
       return [
         ...lines,
@@ -320,16 +342,18 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     });
     setTab('parts');
     setStep(2);
-  }, [composition, inventoryItems, params.itemId, setTab]);
+  }, [inventoryItems, params.itemId, setPartLines, setTab]);
 
+  const prefilledMotorIdRef = useRef<string | null>(null);
   useEffect(() => {
     const motorId = typeof params.motorId === 'string' ? params.motorId.trim() : '';
-    if (!motorId) return;
+    if (!motorId || prefilledMotorIdRef.current === motorId) return;
     const motor = availableMotors.find((entry) => entry.id === motorId);
     if (!motor) return;
+    prefilledMotorIdRef.current = motorId;
     const outcome =
       params.outcome === 'sell' ? ('sell' as const) : ('install' as const);
-    composition.setMotorLines((lines) => {
+    setMotorLines((lines) => {
       if (lines.some((line) => line.motorId === motor.id)) return lines;
       return [
         ...lines,
@@ -346,12 +370,18 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
         },
       ];
     });
-    composition.setMotorOutcome(outcome);
+    setMotorOutcome(outcome);
     setTab('motors');
     setStep(2);
-  }, [availableMotors, composition, params.motorId, params.outcome, setTab]);
+  }, [availableMotors, params.motorId, params.outcome, setMotorLines, setMotorOutcome, setTab]);
 
   const detachVehicleLink = () => setVehicleId('');
+
+  /** One vehicle identifier is required; the form has to say which. */
+  const vehicleIdentifierMissing =
+    !isSellOnlyComposition(composition.partLines, composition.motorLines) &&
+    vin.trim().length <= 5 &&
+    licensePlate.trim().length <= 2;
 
   const stepOneValid =
     clientName.trim().length > 1 &&
@@ -369,6 +399,19 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
   const handleSave = async () => {
     if (!companyId || !uid || !can('work_orders_edit') || !orderEditable) return;
+    // The step trail is freely navigable, so reaching Review no longer proves
+    // the Client step was ever filled in. Without this the composer would
+    // happily create a client record with an empty name.
+    if (!stepOneValid) {
+      haptics.warning();
+      setStep(1);
+      toast({
+        title: 'Add the customer first',
+        description: 'Name, phone, and either a VIN or a plate.',
+        variant: 'warning',
+      });
+      return;
+    }
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -479,8 +522,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     if (step === 1) {
       return (
         <Animated.View
-          entering={FadeIn.duration(220)}
-          exiting={FadeOut.duration(160)}
+          entering={STEP_ENTERING}
+          exiting={STEP_EXITING}
           style={{ gap: tokens.space.section }}
         >
           <GroupedSection title="Customer">
@@ -566,7 +609,16 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   />
                 }
               />
-              <FormListRow label="License plate">
+              {/*
+                `stepOneValid` accepts a plate OR a VIN, so neither field is
+                marked with a required star — but one of them genuinely is, and
+                without saying so the Add button sat dimmed with the form
+                claiming only Name and Phone were outstanding.
+              */}
+              <FormListRow
+                label="License plate"
+                hint={vehicleIdentifierMissing ? 'Plate or VIN — one of the two is required' : undefined}
+              >
                 <AutocompleteInput
                   placeholder="ABC 1234"
                   value={licensePlate}
@@ -662,7 +714,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
       ];
 
       return (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(160)}>
+        <Animated.View entering={STEP_ENTERING} exiting={STEP_EXITING}>
           <OrderCompositionStep
             tab={tab}
             direction={direction}
@@ -683,8 +735,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
 
     return (
       <Animated.View
-        entering={FadeIn.duration(220)}
-        exiting={FadeOut.duration(160)}
+        entering={STEP_ENTERING}
+        exiting={STEP_EXITING}
         style={{ gap: tokens.space.section }}
       >
         <GroupedSection title="Summary">
@@ -738,55 +790,61 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
     router.back();
   }, [router]);
 
-  const goNext = useCallback(() => {
-    haptics.selection();
-    setStep((value) => Math.min(3, value + 1));
-  }, []);
+  /**
+   * There is no Next any more — the step trail moves between Client, Lines and
+   * Review, so the header keeps exactly one action: commit.
+   *
+   * It stays dimmed until the order has the customer data it cannot be saved
+   * without, and from then on it works from whichever step the reader is on.
+   * "Add" is the design-language label for bringing a new record into being;
+   * editing an order that already exists is a Save, so the word follows.
+   */
+  const primaryLabel = isEdit ? 'Save' : 'Add';
+  const primaryDisabled = !stepOneValid || saving;
 
-  const primaryDisabled = (step === 1 && !stepOneValid) || saving;
-  const primaryLabel = step < 3 ? 'Next' : isEdit ? 'Save' : 'Create';
-  const onPrimary = step < 3 ? goNext : () => void handleSave();
-
-  const headerLeft = useCallback(
-    () => <SheetNavButton label="Cancel" onPress={dismiss} />,
-    [dismiss],
-  );
+  const headerLeft = useCallback(() => <ComposerCancelButton onPress={dismiss} />, [dismiss]);
 
   const headerRight = useCallback(
     () => (
-      <SheetNavButton
+      <CatalogAddButton
         label={primaryLabel}
-        emphasis
+        accessibilityLabel={isEdit ? 'Save work order' : 'Add work order'}
         disabled={primaryDisabled}
-        loading={saving && step === 3}
-        onPress={onPrimary}
+        loading={saving}
+        onPress={() => void handleSave()}
       />
     ),
-    [onPrimary, primaryDisabled, primaryLabel, saving, step],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isEdit, primaryDisabled, primaryLabel, saving],
   );
 
   const screenTitle = isEdit ? 'Edit Work Order' : 'New Work Order';
 
-  const stackHeader = (
-    <Stack.Screen
-      options={{
-        title: '',
-        headerShown: true,
-        headerTintColor: colors.primary,
-        headerTitleStyle: { color: colors.foreground },
-        headerStyle: { backgroundColor: colors.background },
-        headerShadowVisible: false,
-        headerBlurEffect: isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight',
-        headerLeft,
-        headerRight,
+  /**
+   * Composer owns the chrome row. Native stack header stays off via the route
+   * layout (`headerShown: false`) — never re-declare Stack.Screen options here;
+   * a fresh `options` object each render made React Navigation remount the
+   * form sheet and restart FadeIn on every frame.
+   */
+  const composerHeader = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: tokens.space.screenX,
+        paddingTop: tokens.space.stack,
+        paddingBottom: tokens.space.inline,
       }}
-    />
+    >
+      {headerLeft()}
+      {headerRight()}
+    </View>
   );
 
   if (isEdit && !existingOrder) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        {stackHeader}
         <Text variant="body" color="muted">
           Work order not found
         </Text>
@@ -808,7 +866,6 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
           padding: tokens.space.section,
         }}
       >
-        {stackHeader}
         <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
           Editing is only available for draft and confirmed work orders
         </Text>
@@ -822,22 +879,25 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
   return (
     <KeyboardFormShell
       backgroundColor={colors.background}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{
-        paddingHorizontal: tokens.space.screenX,
-        paddingTop: tokens.space.stack,
-        paddingBottom: tokens.space.section + 24,
-        gap: tokens.space.section,
-      }}
+      header={composerHeader}
+      contentInsetAdjustmentBehavior="never"
+      contentContainerStyle={styles.formContent}
     >
-      {stackHeader}
-
       <WizardStepHeader title={screenTitle} step={step} />
       <WizardStepTrail step={step} onSelect={setStep} />
       {renderStep()}
     </KeyboardFormShell>
   );
 }
+
+const styles = StyleSheet.create({
+  formContent: {
+    paddingHorizontal: tokens.space.screenX,
+    paddingTop: tokens.space.micro,
+    paddingBottom: tokens.space.section + 24,
+    gap: tokens.space.section,
+  },
+});
 
 function SummaryRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   const { colors } = useTheme();

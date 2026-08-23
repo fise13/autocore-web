@@ -138,7 +138,8 @@ export const DomainAutocomplete = forwardRef<DomainAutocompleteHandle, DomainAut
       if (event.key === "Enter" || event.key === "Tab") {
         if (!open && !value.trim()) return;
         event.preventDefault();
-        if (userNavigatedRef.current && results[activeIndex]) {
+        // Accept the highlighted row even if arrows were never used.
+        if (open && results[activeIndex]) {
           commitEntry(results[activeIndex].entry);
           return;
         }

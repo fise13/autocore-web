@@ -116,7 +116,7 @@ export class DomainDictionary {
       if (b.score !== a.score) return b.score - a.score;
       const lenDiff = a.entry.name.length - b.entry.name.length;
       if (lenDiff !== 0) return lenDiff;
-      return a.entry.name.localeCompare(b.entry.name, "ru");
+      return a.entry.name.localeCompare(b.entry.name, "en");
     });
 
     const sliced = results.slice(0, limit);

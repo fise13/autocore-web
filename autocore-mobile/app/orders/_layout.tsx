@@ -31,6 +31,9 @@ export default function OrdersLayout() {
               detents: [0.5, 1],
               initialDetentIndex: 'last',
             }),
+            // Composer owns chrome — dynamic Stack.Screen options inside the
+            // screen remounted the form sheet on every render (FadeIn loop).
+            headerShown: false,
             title: 'Edit Work Order',
           }}
         />
@@ -41,6 +44,7 @@ export default function OrdersLayout() {
               detents: [0.5, 1],
               initialDetentIndex: 'last',
             }),
+            headerShown: false,
             title: 'New Work Order',
           }}
         />

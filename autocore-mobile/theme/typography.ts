@@ -124,16 +124,23 @@ const sectionLabel = {
 /**
  * Home greeting — the one line on the screen that is a voice, not a label.
  *
- * A step above `largeTitle` in size and two steps below it in weight: at 400 the
- * counters open up and 36pt stops reading as a heading shouted at the reader and
- * starts reading as someone speaking. Nothing else in the scale sits at regular
- * weight above 17pt, so this is a genuinely new register rather than a collision
- * with `title1`. Tracking is closed slightly, which display sizes want anyway.
+ * SF Pro Display, reached the way iOS intends: no `fontFamily` is set here, so
+ * `Text` supplies the platform sans and iOS's optical sizing serves Display
+ * automatically above ~20pt. Nothing proprietary is bundled and nothing here
+ * needs a font file.
+ *
+ * The character is carried by weight, not size. `medium` is the pivot — at 700
+ * the same 36pt is a masthead shouting the app's name, at 400 it thins out into
+ * body copy, and at 500 it settles into someone speaking. Nothing else in the
+ * scale sits at medium above 17pt, so this is a genuinely new register rather
+ * than a collision with `title1`. Leading is opened past the display default so
+ * a two-line greeting breathes, and tracking is closed slightly, which display
+ * sizes want anyway. No shadow, no gradient, no rounded face, no uppercase.
  */
 const greeting = {
   fontSize: 36,
-  fontWeight: fontWeight.regular,
-  lineHeight: 42,
+  fontWeight: fontWeight.medium,
+  lineHeight: 44,
   letterSpacing: tracking.tighter,
 } as const;
 

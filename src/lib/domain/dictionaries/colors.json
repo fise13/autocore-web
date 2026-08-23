@@ -1,11 +1,11 @@
 [
-  { "id": "black", "name": "Чёрный", "aliases": ["черный", "black"], "type": "color" },
-  { "id": "white", "name": "Белый", "aliases": ["white"], "type": "color" },
-  { "id": "silver", "name": "Серебристый", "aliases": ["серебро", "silver"], "type": "color" },
-  { "id": "gray", "name": "Серый", "aliases": ["серый", "gray", "grey"], "type": "color" },
-  { "id": "red", "name": "Красный", "aliases": ["red"], "type": "color" },
-  { "id": "blue", "name": "Синий", "aliases": ["blue", "голубой"], "type": "color" },
-  { "id": "green", "name": "Зелёный", "aliases": ["зеленый", "green"], "type": "color" },
-  { "id": "brown", "name": "Коричневый", "aliases": ["brown", "бежевый"], "type": "color" },
-  { "id": "gold", "name": "Золотистый", "aliases": ["золото", "gold"], "type": "color" }
+  { "id": "black", "name": "Black", "aliases": ["чёрный", "черный", "black"], "type": "color" },
+  { "id": "white", "name": "White", "aliases": ["белый", "white"], "type": "color" },
+  { "id": "silver", "name": "Silver", "aliases": ["серебристый", "серебро", "silver"], "type": "color" },
+  { "id": "gray", "name": "Gray", "aliases": ["серый", "gray", "grey"], "type": "color" },
+  { "id": "red", "name": "Red", "aliases": ["красный", "red"], "type": "color" },
+  { "id": "blue", "name": "Blue", "aliases": ["синий", "голубой", "blue"], "type": "color" },
+  { "id": "green", "name": "Green", "aliases": ["зелёный", "зеленый", "green"], "type": "color" },
+  { "id": "brown", "name": "Brown", "aliases": ["коричневый", "бежевый", "brown"], "type": "color" },
+  { "id": "gold", "name": "Gold", "aliases": ["золотистый", "золото", "gold"], "type": "color" }
 ]

@@ -51,10 +51,11 @@ export const HomeHeader = memo(function HomeHeader({
     <View
       style={{
         paddingTop: insets.top + tokens.space[3],
-        // The hero is a chapter of its own, so it takes the screen's section
-        // rhythm below it — HomeSection adds no top padding, which makes this
-        // single value the whole greeting-to-Summary gap.
-        paddingBottom: tokens.space.section,
+        // One step past the screen's 32pt section rhythm, on purpose: the hero
+        // opens the page rather than being its first chapter. HomeSection adds
+        // no top padding, so this single value is the whole greeting-to-Summary
+        // gap, and it is where the whitespace budget is spent.
+        paddingBottom: tokens.space[10],
         paddingHorizontal: home.pad,
         gap: home.stack,
       }}

@@ -214,7 +214,10 @@ export function createWarehouseRepository() {
       const normalizedCompanyId = normalizeCompanyId(companyId);
       const warehouses = await this.list(normalizedCompanyId);
       const mains = warehouses.filter(
-        (warehouse) => warehouse.code === "MAIN" || warehouse.name.trim() === "Основной склад",
+        (warehouse) =>
+          warehouse.code === "MAIN" ||
+          warehouse.name.trim() === "Main warehouse" ||
+          warehouse.name.trim() === "Основной склад",
       );
       if (mains.length <= 1) return;
 

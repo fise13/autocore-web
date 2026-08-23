@@ -11,6 +11,7 @@ import { lookupBarcodeUseCase } from "@/application/use-cases/warehouse/lookup-b
 import { receiveStockUseCase } from "@/application/use-cases/warehouse/receive-stock";
 import { transferStockUseCase } from "@/application/use-cases/warehouse/transfer-stock";
 import { useWorkspace } from "@/components/layout/workspace-context";
+import { usePanelActive } from "@/components/layout/panel-active-context";
 import { buildWarehouseSearchSuggestions } from "@/components/layout/workspace-search-field";
 import { useToast } from "@/components/ui/toast-provider";
 import { saveFile } from "@/platform";
@@ -27,6 +28,7 @@ import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-moveme
 import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
 import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
 import { WarehouseTransferDialog } from "@/components/warehouse/warehouse-transfer-dialog";
+import { useWarehouseSyncBridge } from "@/components/warehouse/warehouse-sync-bridge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { InventoryItem } from "@/domain/inventory";
 import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
@@ -77,6 +79,7 @@ type DialogKind = "receipt" | "adjust" | "sale" | "transfer" | "history" | "barc
 export function WarehouseWorkspace() {
   const { profile } = useAuth();
   const workspace = useWorkspace();
+  const panelActive = usePanelActive();
   const { toast } = useToast();
   const {
     registerWarehouseExcelHandlers,
@@ -207,6 +210,13 @@ export function WarehouseWorkspace() {
     () => buildWarehouseSearchSuggestions(scopedWarehouseItems),
     [scopedWarehouseItems],
   );
+
+  useWarehouseSyncBridge({
+    companyId,
+    actorUserId,
+    localDirty: cloudPending,
+    enabled: panelActive && canView && isGridReady && Boolean(activeWarehouseId),
+  });
 
   useEffect(() => {
     setCounts(filteredItems.length, scopedWarehouseItems.length);

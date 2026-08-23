@@ -375,7 +375,6 @@ export function WarehouseExcelGrid({
     registerGridUndoHandler,
     registerGridRedoHandler,
     registerCloudPushHandler,
-    registerSyncHandler,
     gridZoom,
     warehouseItemHighlightId,
     setWarehouseItemHighlightId,
@@ -414,6 +413,7 @@ export function WarehouseExcelGrid({
   const dirtyStatusScheduledRef = useRef(false);
   const pendingRemoteItemsRef = useRef<InventoryItem[] | null>(null);
   const pendingDictionaryEntriesRef = useRef<Array<{ category: DomainCategory; name: string }>>([]);
+  const pushInFlightRef = useRef<Promise<void> | null>(null);
   const lastDragPointerRef = useRef({ x: 0, y: 0 });
   const onDragAutoScrollTickRef = useRef<() => void>(() => {});
 
@@ -578,15 +578,15 @@ export function WarehouseExcelGrid({
     queueMicrotask(() => {
       dirtyStatusScheduledRef.current = false;
       setDirtyVersion((current) => current + 1);
-      setSaveStatus("pending");
     });
-  }, [setSaveStatus]);
+  }, []);
 
   const markDirty = useCallback((rowId: string) => {
     const wasAcknowledged = localSaveAckRef.current.delete(rowId);
-    const wasDirty = dirtyRowsRef.current.has(rowId);
-    dirtyRowsRef.current.add(rowId);
-    if (!wasDirty || wasAcknowledged) {
+    if (!dirtyRowsRef.current.has(rowId)) {
+      dirtyRowsRef.current.add(rowId);
+      scheduleDirtyStatus();
+    } else if (wasAcknowledged) {
       scheduleDirtyStatus();
     }
   }, [scheduleDirtyStatus]);
@@ -606,12 +606,7 @@ export function WarehouseExcelGrid({
         ]);
       }
       if (options?.markDirty !== false) {
-        const wasAcknowledged = localSaveAckRef.current.delete(updatedRow.rowId);
-        const wasDirty = dirtyRowsRef.current.has(updatedRow.rowId);
-        dirtyRowsRef.current.add(updatedRow.rowId);
-        if (!wasDirty || wasAcknowledged) {
-          scheduleDirtyStatus();
-        }
+        markDirty(updatedRow.rowId);
       }
       return next;
     };
@@ -620,7 +615,7 @@ export function WarehouseExcelGrid({
     if (nextRows === rowsRef.current) return;
     rowsRef.current = nextRows;
     setRows(nextRows);
-  }, [scheduleDirtyStatus]);
+  }, [markDirty]);
 
   const applyMutation = useCallback((mutation: GridMutation, reverse: boolean) => {
     setCell(mutation.address, reverse ? mutation.oldValue : mutation.newValue, {
@@ -699,128 +694,204 @@ export function WarehouseExcelGrid({
   }, [dictionaryContext]);
 
   const pushToCloud = useCallback(async () => {
-    flushEditor();
-    if (!actorUserId || !companyId || !canEdit) return;
-    if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) {
-      if (pendingDictionaryEntriesRef.current.length > 0) {
-        await flushPendingDictionaryEntries();
-      }
-      setSaveStatus("idle");
+    if (pushInFlightRef.current) {
+      await pushInFlightRef.current;
       return;
     }
 
-    setSaveStatus("saving");
-    setSaveError(null);
-
-    try {
-      await flushPendingDictionaryEntries();
-      for (const itemId of [...pendingArchiveIdsRef.current]) {
-        await repository.archive(itemId, companyId, actorUserId);
+    const run = (async () => {
+      flushEditor();
+      if (!actorUserId || !companyId || !canEdit) return;
+      if (dirtyRowsRef.current.size === 0 && pendingArchiveIdsRef.current.size === 0) {
+        if (pendingDictionaryEntriesRef.current.length > 0) {
+          await flushPendingDictionaryEntries();
+        }
+        setSaveStatus("idle");
+        return;
       }
-      pendingArchiveIdsRef.current.clear();
 
-      const snapshotRows = rowsRef.current;
-      const baselineById = new Map(itemsRef.current.map((item) => [item.id, item]));
-      const rowReplacements = new Map<string, WarehouseGridRow>();
-      const pushedRowIds: string[] = [];
+      setSaveStatus("saving");
+      setSaveError(null);
 
-      const rowErrors: string[] = [];
-
-      for (const rowId of [...dirtyRowsRef.current]) {
-        const row = snapshotRows.find((item) => item.rowId === rowId);
-        if (!row) continue;
-        const baseline = row.rowKind === "saved" ? baselineById.get(row.id) : undefined;
-        if (!rowNeedsCloudSync(baseline, row)) {
-          dirtyRowsRef.current.delete(rowId);
-          continue;
+      try {
+        // rowsRef is updated synchronously by setCell/flushEditor — never use stale React state here.
+        await flushPendingDictionaryEntries();
+        for (const itemId of [...pendingArchiveIdsRef.current]) {
+          await repository.archive(itemId, companyId, actorUserId);
         }
-        if (row.rowKind === "empty" && !warehouseRowHasRequiredFields(row)) {
-          dirtyRowsRef.current.delete(rowId);
-          continue;
-        }
+        pendingArchiveIdsRef.current.clear();
 
-        try {
-          const syncResult = await syncWarehouseGridRowUseCase(
-            repository,
-            stockLevelRepository,
-            movementRepository,
-            warehouseRepository,
-            financialRepository,
-            {
-              companyId,
-              actorUserId,
-              warehouseId: activeWarehouseId,
-              row,
-              baseline,
-            },
-          );
+        const snapshotRows = rowsRef.current;
+        const baselineById = new Map(itemsRef.current.map((item) => [item.id, item]));
+        const dirtyRowIds = [...dirtyRowsRef.current];
+        const resolvedDirtyIds = new Set<string>();
+        const rowReplacements = new Map<string, WarehouseGridRow>();
+        const rowErrors: string[] = [];
 
-          if (syncResult === WAREHOUSE_ROW_ARCHIVED) {
-            rowReplacements.set(rowId, createEmptyWarehouseRow());
-            dirtyRowsRef.current.delete(rowId);
+        const createTasks: Array<() => Promise<void>> = [];
+        const updateTasks: Array<Promise<void>> = [];
+
+        for (const rowId of dirtyRowIds) {
+          const row = snapshotRows.find((item) => item.rowId === rowId);
+          if (!row) {
+            resolvedDirtyIds.add(rowId);
+            continue;
+          }
+          const baseline = row.rowKind === "saved" ? baselineById.get(row.id) : undefined;
+          if (!rowNeedsCloudSync(baseline, row)) {
+            resolvedDirtyIds.add(rowId);
+            continue;
+          }
+          if (row.rowKind === "empty" && !warehouseRowHasRequiredFields(row)) {
+            resolvedDirtyIds.add(rowId);
             continue;
           }
 
-          if (row.rowKind === "empty" && syncResult) {
-            rowReplacements.set(rowId, buildSavedRowFromCreate(row, syncResult, companyId));
-            pushedRowIds.push(`saved-${syncResult}`);
-          } else {
-            rowReplacements.set(rowId, row);
-            pushedRowIds.push(rowId);
-          }
-          dirtyRowsRef.current.delete(rowId);
-
-          const committedBrandName =
-            row.rowKind === "empty" ? row.draft.brandName.trim() : row.brandName?.trim();
-          if (committedBrandName && committedBrandName !== (baseline?.brandName ?? "").trim()) {
-            void emitKnowledgeEvent({
-              type: "field.committed",
-              payload: { fieldKey: "brandName", fieldValue: committedBrandName, scope: "company" },
+          if (row.rowKind === "empty") {
+            const emptyRow = row;
+            createTasks.push(async () => {
+              try {
+                const syncResult = await syncWarehouseGridRowUseCase(
+                  repository,
+                  stockLevelRepository,
+                  movementRepository,
+                  warehouseRepository,
+                  financialRepository,
+                  {
+                    companyId,
+                    actorUserId,
+                    warehouseId: activeWarehouseId,
+                    row: emptyRow,
+                    baseline,
+                  },
+                );
+                if (syncResult && syncResult !== WAREHOUSE_ROW_ARCHIVED) {
+                  rowReplacements.set(rowId, buildSavedRowFromCreate(emptyRow, syncResult, companyId));
+                  const committedBrandName = emptyRow.draft.brandName.trim();
+                  if (committedBrandName) {
+                    void emitKnowledgeEvent({
+                      type: "field.committed",
+                      payload: {
+                        fieldKey: "brandName",
+                        fieldValue: committedBrandName,
+                        scope: "company",
+                      },
+                    });
+                  }
+                }
+                resolvedDirtyIds.add(rowId);
+              } catch (rowError) {
+                const label =
+                  emptyRow.draft.sku || emptyRow.draft.name || userCopy.warehouse.excelGrid.newRowFallback;
+                rowErrors.push(`${label}: ${mapGridSaveError(rowError)}`);
+              }
             });
+            continue;
           }
-        } catch (rowError) {
-          const label =
-            row.rowKind === "saved"
-              ? row.sku || row.name || userCopy.warehouse.excelGrid.rowFallback
-              : row.draft.sku || row.draft.name || userCopy.warehouse.excelGrid.newRowFallback;
-          rowErrors.push(`${label}: ${mapGridSaveError(rowError)}`);
+
+          updateTasks.push(
+            (async () => {
+              try {
+                const syncResult = await syncWarehouseGridRowUseCase(
+                  repository,
+                  stockLevelRepository,
+                  movementRepository,
+                  warehouseRepository,
+                  financialRepository,
+                  {
+                    companyId,
+                    actorUserId,
+                    warehouseId: activeWarehouseId,
+                    row,
+                    baseline,
+                  },
+                );
+
+                if (syncResult === WAREHOUSE_ROW_ARCHIVED) {
+                  rowReplacements.set(rowId, createEmptyWarehouseRow());
+                } else {
+                  rowReplacements.set(rowId, row);
+                  const committedBrandName = row.brandName?.trim();
+                  if (committedBrandName && committedBrandName !== (baseline?.brandName ?? "").trim()) {
+                    void emitKnowledgeEvent({
+                      type: "field.committed",
+                      payload: {
+                        fieldKey: "brandName",
+                        fieldValue: committedBrandName,
+                        scope: "company",
+                      },
+                    });
+                  }
+                }
+                resolvedDirtyIds.add(rowId);
+              } catch (rowError) {
+                const label = row.sku || row.name || userCopy.warehouse.excelGrid.rowFallback;
+                rowErrors.push(`${label}: ${mapGridSaveError(rowError)}`);
+              }
+            })(),
+          );
         }
-      }
 
-      if (rowReplacements.size > 0) {
-        setRows((current) =>
-          current.map((currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow),
+        for (const createTask of createTasks) {
+          await createTask();
+        }
+        await Promise.all(updateTasks);
+
+        if (rowReplacements.size > 0) {
+          const nextRows = rowsRef.current.map(
+            (currentRow) => rowReplacements.get(currentRow.rowId) ?? currentRow,
+          );
+          rowsRef.current = nextRows;
+          setRows(nextRows);
+        }
+
+        const pushedRowIds = [...resolvedDirtyIds].map(
+          (rowId) => rowReplacements.get(rowId)?.rowId ?? rowId,
         );
-      }
+        for (const rowId of resolvedDirtyIds) {
+          dirtyRowsRef.current.delete(rowId);
+          localSaveAckRef.current.delete(rowId);
+        }
+        for (const rowId of pushedRowIds) {
+          pendingRemoteAckRef.current.add(rowId);
+        }
+        setDirtyVersion((current) => current + 1);
 
-      for (const rowId of pushedRowIds) {
-        pendingRemoteAckRef.current.add(rowId);
-      }
-      localSaveAckRef.current.clear();
-      setDirtyVersion((current) => current + 1);
+        if (rowErrors.length > 0) {
+          const message =
+            pushedRowIds.length > 0
+              ? userCopy.warehouse.excelGrid.savedWithErrors(pushedRowIds.length, rowErrors.join(" · "))
+              : rowErrors.join(" · ");
+          setSaveStatus(pushedRowIds.length > 0 ? "saved" : "error");
+          setSaveError(message);
+          if (pushedRowIds.length === 0) {
+            throw new Error(message);
+          }
+        } else {
+          setSaveStatus("saved");
+          setSaveError(null);
+        }
 
-      if (rowErrors.length > 0) {
-        setSaveStatus(pushedRowIds.length > 0 ? "saved" : "error");
-        setSaveError(
-          pushedRowIds.length > 0
-            ? userCopy.warehouse.excelGrid.savedWithErrors(pushedRowIds.length, rowErrors.join(" · "))
-            : rowErrors.join(" · "),
-        );
-      } else {
-        setSaveStatus("saved");
-        setSaveError(null);
+        if (pushedRowIds.length > 0) {
+          setSaveFlashRows(new Set(pushedRowIds));
+          window.setTimeout(() => setSaveFlashRows(new Set()), 450);
+        }
+        window.setTimeout(() => setSaveStatus("idle"), 1200);
+      } catch (error) {
+        setSaveStatus("error");
+        const message = mapGridSaveError(error);
+        setSaveError(message);
+        throw new Error(message);
       }
+    })();
 
-      if (pushedRowIds.length > 0) {
-        setSaveFlashRows(new Set(pushedRowIds));
-        window.setTimeout(() => setSaveFlashRows(new Set()), 450);
+    pushInFlightRef.current = run;
+    try {
+      await run;
+    } finally {
+      if (pushInFlightRef.current === run) {
+        pushInFlightRef.current = null;
       }
-      window.setTimeout(() => setSaveStatus("idle"), 1200);
-    } catch (error) {
-      setSaveStatus("error");
-      const message = mapGridSaveError(error);
-      setSaveError(message);
-      return;
     }
   }, [
     actorUserId,
@@ -838,10 +909,6 @@ export function WarehouseExcelGrid({
     warehouseRepository,
   ]);
 
-  const syncNow = useCallback(async () => {
-    await pushToCloud();
-  }, [pushToCloud]);
-
   const runSave = useCallback(() => {
     flushEditor();
   }, [flushEditor]);
@@ -851,12 +918,6 @@ export function WarehouseExcelGrid({
     registerSaveHandler(runSave);
     return () => registerSaveHandler(null);
   }, [isActive, registerSaveHandler, runSave]);
-
-  useEffect(() => {
-    if (!isActive) return;
-    registerSyncHandler(syncNow);
-    return () => registerSyncHandler(null);
-  }, [isActive, registerSyncHandler, syncNow]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -898,7 +959,8 @@ export function WarehouseExcelGrid({
     pushToCloud,
     enabled: isActive && canEdit,
     label: userCopy.warehouse.excelGrid.persistenceLabel,
-    scheduleInEngine: false,
+    // Match motors intent: persistence engine debounce owns cloud flush.
+    scheduleInEngine: true,
   });
 
   useEffect(() => {
@@ -1176,31 +1238,28 @@ export function WarehouseExcelGrid({
     (label: string, writes: Array<{ row: number; column: number; value: string }>) => {
       if (!canEdit || writes.length === 0) return;
       const mutations: GridMutation[] = [];
-      setRows((current) => {
-        const next = [...current];
-        for (const write of writes) {
-          if (!isClearableColumn(write.column)) continue;
-          const rowRef = next[write.row];
-          if (!rowRef) continue;
-          const oldValue = valueAtCell(rowRef, write.column);
-          if (oldValue === write.value) continue;
-          next[write.row] = applyCellValue(rowRef, write.column, write.value);
-          localSaveAckRef.current.delete(next[write.row].rowId);
-          dirtyRowsRef.current.add(next[write.row].rowId);
-          mutations.push({
-            address: { row: write.row, column: write.column },
-            oldValue,
-            newValue: write.value,
-          });
-        }
-        if (mutations.length > 0) {
-          scheduleDirtyStatus();
-        }
-        return next;
-      });
+      const current = rowsRef.current;
+      const next = [...current];
+      for (const write of writes) {
+        if (!isClearableColumn(write.column)) continue;
+        const rowRef = next[write.row];
+        if (!rowRef) continue;
+        const oldValue = valueAtCell(rowRef, write.column);
+        if (oldValue === write.value) continue;
+        next[write.row] = applyCellValue(rowRef, write.column, write.value);
+        markDirty(next[write.row].rowId);
+        mutations.push({
+          address: { row: write.row, column: write.column },
+          oldValue,
+          newValue: write.value,
+        });
+      }
+      if (mutations.length === 0) return;
+      rowsRef.current = next;
+      setRows(next);
       commandBusRef.current.commit(label, mutations);
     },
-    [canEdit, scheduleDirtyStatus],
+    [canEdit, markDirty],
   );
 
   const ensureRowCapacity = useCallback(

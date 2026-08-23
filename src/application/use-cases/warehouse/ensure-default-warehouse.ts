@@ -18,7 +18,7 @@ export async function ensureDefaultWarehouseUseCase(
 
   const warehouseId = await repository.ensureDefault({
     companyId,
-    name: "Основной склад",
+    name: "Main warehouse",
     code: "MAIN",
     actorUserId,
     docId,

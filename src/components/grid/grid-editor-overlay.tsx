@@ -170,18 +170,18 @@ export function GridEditorOverlay({
     };
   }, [onSuggestionsOpenChange]);
 
-  async function persistDictionaryEntry(resolved: string) {
+  function persistDictionaryEntry(resolved: string) {
     if (!domainCategory) return;
     if (deferDictionaryWrites) {
       onDeferredDictionaryEntry?.(domainCategory, resolved);
       return;
     }
     if (domainValueNeedsCompanyEntry(resolved, results)) {
-      await domain.addToCompanyDictionary(resolved);
+      void domain.addToCompanyDictionary(resolved);
     }
   }
 
-  async function commitDomainValue(direction?: CommitDirection) {
+  function commitDomainValue(direction?: CommitDirection) {
     const trimmed = value.trim();
     if (!trimmed) {
       onCommit(direction);
@@ -196,14 +196,14 @@ export function GridEditorOverlay({
         userNavigatedRef.current,
       );
 
-      await persistDictionaryEntry(resolved);
-
+      // Commit first so Enter/click never wait on dictionary I/O (value must land without Tab).
       onChange(resolved);
       onCommit(direction, resolved);
+      persistDictionaryEntry(resolved);
       return;
     }
 
-    if (userNavigatedRef.current && results[activeIndex]) {
+    if (results[activeIndex]) {
       const resolved = results[activeIndex].entry.name;
       onChange(resolved);
       onCommit(direction, resolved);
@@ -217,15 +217,18 @@ export function GridEditorOverlay({
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     onChange(entry.name);
     onCommit(direction, entry.name);
+    persistDictionaryEntry(entry.name);
   }
 
   function handleSuggestionAccept(direction: CommitDirection): boolean {
     if (!suggestionsVisible) return false;
-    if (userNavigatedRef.current && results[activeIndex]) {
+    // Highlighted row is always the selection target (Enter / Tab / click) —
+    // do not require arrow navigation first.
+    if (results[activeIndex]) {
       selectEntry(results[activeIndex].entry, direction);
       return true;
     }
-    void commitDomainValue(direction);
+    commitDomainValue(direction);
     return true;
   }
 
@@ -233,7 +236,7 @@ export function GridEditorOverlay({
     if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = setTimeout(() => {
       if (domainCategory || columnSuggestions.length > 0) {
-        void commitDomainValue();
+        commitDomainValue();
         return;
       }
       onCommit();
@@ -280,8 +283,9 @@ export function GridEditorOverlay({
 
     if (event.key === "Tab") {
       event.preventDefault();
+      event.stopPropagation();
       if (suggestionsVisible) {
-        void handleSuggestionAccept(event.shiftKey ? "left" : "right");
+        handleSuggestionAccept(event.shiftKey ? "left" : "right");
         return;
       }
       if (autocompleteSuffix) {
@@ -294,8 +298,9 @@ export function GridEditorOverlay({
 
     if (event.key === "Enter" && !event.altKey) {
       event.preventDefault();
+      event.stopPropagation();
       if (suggestionsVisible) {
-        void handleSuggestionAccept(event.shiftKey ? "up" : "down");
+        handleSuggestionAccept(event.shiftKey ? "up" : "down");
         return;
       }
       if (autocompleteSuffix) {

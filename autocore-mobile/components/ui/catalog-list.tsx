@@ -1,5 +1,5 @@
 import { forwardRef, memo, useEffect, useState, type ReactNode } from 'react';
-import { Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -394,18 +394,27 @@ export function CatalogAddButton({
   label = 'Add',
   accessibilityLabel,
   onPress,
+  disabled = false,
+  loading = false,
 }: {
   label?: string;
   accessibilityLabel: string;
   onPress: () => void;
+  /** Dimmed and inert — the thing it would add is not ready yet. */
+  disabled?: boolean;
+  /** Mid-commit: spinner replaces the glyph, press is refused. */
+  loading?: boolean;
 }) {
   const { colors } = useTheme();
   const [pressed, setPressed] = useState(false);
+  const inert = disabled || loading;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: inert, busy: loading }}
+      disabled={inert}
       hitSlop={6}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
@@ -423,10 +432,14 @@ export function CatalogAddButton({
         alignItems: 'center',
         gap: 5,
         backgroundColor: colors.primary,
-        opacity: pressed ? 0.85 : 1,
+        opacity: inert ? tokens.opacity.disabled : pressed ? 0.85 : 1,
       }}
     >
-      <PlusIcon size={17} color={colors.primaryForeground} strokeWidth={2.5} />
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.primaryForeground} />
+      ) : (
+        <PlusIcon size={17} color={colors.primaryForeground} strokeWidth={2.5} />
+      )}
       <Text
         variant="button"
         maxFontSizeMultiplier={1.2}

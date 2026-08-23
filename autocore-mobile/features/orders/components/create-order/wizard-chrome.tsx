@@ -17,6 +17,10 @@ const STEP_SUBTITLES: Record<number, string> = {
   3: 'Check before you save',
 };
 
+/** Stable identities — inline `.duration()` each render restarts entering. */
+const HEADER_ENTERING = FadeInDown.duration(duration.fast).easing(autocoreEase);
+const TRAIL_ENTERING = FadeIn.duration(duration.fast).easing(autocoreEase);
+
 type WizardStepHeaderProps = {
   title: string;
   step: number;
@@ -29,11 +33,7 @@ export function WizardStepHeader({ title, step }: WizardStepHeaderProps) {
 
   return (
     <Animated.View
-      entering={
-        reducedMotion
-          ? undefined
-          : FadeInDown.duration(duration.fast).easing(autocoreEase)
-      }
+      entering={reducedMotion ? undefined : HEADER_ENTERING}
       style={{ gap: tokens.space.micro, paddingBottom: tokens.space.micro }}
     >
       <Text
@@ -65,16 +65,22 @@ type WizardStepTrailProps = {
   onSelect: (step: number) => void;
 };
 
-/** Music-like pill segment trail for wizard steps. */
+/**
+ * Music-like pill segment trail for wizard steps.
+ *
+ * Every step is reachable in both directions. The trail used to allow backward
+ * jumps only, which made it a progress indicator wearing a control's clothes —
+ * the reader had to keep pressing Next to move forward even when they knew
+ * exactly which part they came to edit. Commit-time validation, not navigation,
+ * is what keeps an incomplete order from being saved.
+ */
 export function WizardStepTrail({ step, onSelect }: WizardStepTrailProps) {
   const { colors } = useTheme();
   const reducedMotion = useReducedMotion();
 
   return (
     <Animated.View
-      entering={
-        reducedMotion ? undefined : FadeIn.duration(duration.fast).easing(autocoreEase)
-      }
+      entering={reducedMotion ? undefined : TRAIL_ENTERING}
       style={{
         flexDirection: 'row',
         backgroundColor: colors.secondary,
@@ -86,17 +92,15 @@ export function WizardStepTrail({ step, onSelect }: WizardStepTrailProps) {
       {STEPS.map((item) => {
         const active = step === item.id;
         const done = step > item.id;
-        const canJump = item.id < step;
 
         return (
           <Pressable
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={item.label}
-            accessibilityState={{ selected: active, disabled: !canJump && !active }}
-            disabled={!canJump && !active}
+            accessibilityState={{ selected: active }}
             onPress={() => {
-              if (!canJump) return;
+              if (active) return;
               haptics.selection();
               onSelect(item.id);
             }}

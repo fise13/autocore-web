@@ -3,6 +3,7 @@ import {
   type ComponentType,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,6 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ClockIcon,
-  EllipsisIcon,
   PackageIcon,
   PhoneIcon,
   WrenchIcon,
@@ -49,10 +49,6 @@ import {
   OrderDetailActionTab,
 } from './components/order-detail-action-tab';
 import { OrderClaimSection } from './components/order-claim-section';
-import {
-  OrderStatusMoreSheet,
-  type OrderStatusMoreSheetRef,
-} from './components/order-status-more-sheet';
 import { OrderStatusBadge } from './components/order-status-badge';
 import { OrderDocumentsSection } from './components/order-documents-section';
 import { OrderLinesList } from './components/order-lines-list';
@@ -162,9 +158,27 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
   const { employees } = useEmployeesRealtime(companyId);
   const order = orders.find((entry) => entry.id === orderId);
   const domainOrder = domainOrders.find((entry) => entry.id === orderId);
-  const [transitioning, setTransitioning] = useState(false);
+  /**
+   * Status the reader just chose. Wins over the realtime document until the
+   * listener catches up — so a stale snapshot cannot yank the dock backward
+   * while the write is still in flight.
+   */
+  const [pendingStatus, setPendingStatus] = useState<WorkOrderStatus | null>(null);
+  const pendingStatusRef = useRef<WorkOrderStatus | null>(null);
+  /** Serialise server writes so rapid taps stay ordered without blocking the UI. */
+  const syncChainRef = useRef(Promise.resolve());
+
   const [claiming, setClaiming] = useState(false);
-  const moreSheetRef = useRef<OrderStatusMoreSheetRef>(null);
+
+  const effectiveStatus = pendingStatus ?? order?.status;
+
+  // Real listener caught up — not our optimistic cache paint.
+  useEffect(() => {
+    if (pendingStatus && order?.status === pendingStatus) {
+      pendingStatusRef.current = null;
+      setPendingStatus(null);
+    }
+  }, [order?.status, pendingStatus]);
 
   const claimEligibility = useMemo(() => {
     if (!domainOrder || !uid || !profile) return null;
@@ -180,38 +194,52 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     });
   }, [domainOrder, domainOrders, employees, profile, uid]);
 
+  const setDomainStatus = useCallback(
+    (status: WorkOrderStatus) => {
+      if (!order) return;
+      if (!can('work_orders_edit')) {
+        toast({ title: 'You do not have permission to edit this order', variant: 'warning' });
+        return;
+      }
 
-  const setDomainStatus = async (status: WorkOrderStatus) => {
-    if (!order) return;
-    if (!can('work_orders_edit')) {
-      toast({ title: 'You do not have permission to edit this order', variant: 'warning' });
-      return;
-    }
-    setTransitioning(true);
-    haptics.light();
-    try {
-      await transitionWorkOrder(orderId, status);
-      haptics.success();
-      toast({
-        title: STATUS_LABELS[status],
-        description: `${formatWorkOrderLabel(order.number)} updated`,
-        variant: 'success',
-      });
-    } catch (error) {
-      haptics.warning();
-      const raw = error instanceof Error ? error.message : 'Failed to update status';
-      const isInvalid = /cannot move|недопустим|invalid transition/i.test(raw);
-      toast({
-        title: isInvalid ? 'Status change not allowed' : 'Failed to update status',
-        description: raw,
-        variant: 'destructive',
-      });
-    } finally {
-      setTransitioning(false);
-    }
-  };
+      const from = pendingStatusRef.current ?? domainOrder?.status;
+      if (!from || from === status) return;
+      if (!nextStatuses(from).includes(status)) return;
 
-  const availableTransitions = domainOrder ? nextStatuses(domainOrder.status) : [];
+      // Instant dock + badge. Server follows on a background chain — no spinner.
+      pendingStatusRef.current = status;
+      setPendingStatus(status);
+      haptics.light();
+
+      syncChainRef.current = syncChainRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          try {
+            await transitionWorkOrder(orderId, status);
+            haptics.success();
+          } catch (error) {
+            if (pendingStatusRef.current === status) {
+              pendingStatusRef.current = null;
+              setPendingStatus(null);
+            }
+            haptics.warning();
+            const raw = error instanceof Error ? error.message : 'Failed to update status';
+            const isInvalid = /cannot move|недопустим|invalid transition/i.test(raw);
+            toast({
+              title: isInvalid ? 'Status change not allowed' : 'Failed to update status',
+              description: raw,
+              variant: 'destructive',
+            });
+            throw error;
+          }
+        });
+    },
+    [can, domainOrder?.status, order, orderId],
+  );
+
+  // Dock follows the optimistic tip so the next action appears under the finger
+  // immediately — no spinner, no wait for Firestore.
+  const availableTransitions = effectiveStatus ? nextStatuses(effectiveStatus) : [];
   const statusActions = availableTransitions.filter((status) => status !== 'cancelled');
   const primaryStatus = statusActions[0];
   const secondaryStatuses = statusActions.slice(1);
@@ -249,7 +277,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
 
   const canEditOrder =
     Boolean(domainOrder) &&
-    (domainOrder?.status === 'draft' || domainOrder?.status === 'confirmed') &&
+    (effectiveStatus === 'draft' || effectiveStatus === 'confirmed') &&
     can('work_orders_edit');
 
   const laborLines =
@@ -294,11 +322,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
     navigateOrderEdit(router, orderId);
   }, [orderId, router]);
 
-  const openSecondaryStatuses = useCallback(() => {
-    if (secondaryStatuses.length === 0) return;
-    haptics.selection();
-    moreSheetRef.current?.present();
-  }, [secondaryStatuses.length]);
 
   const headerRight = useCallback(() => {
     if (!canEditOrder) return null;
@@ -367,7 +390,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
           <View style={{ gap: 8 }}>
             {/* Status moved out of the custom header into the hero when the nav
                 bar became native — the native bar owns title and actions only. */}
-            <OrderStatusBadge status={order.status} size="md" />
+            <OrderStatusBadge status={effectiveStatus ?? order.status} size="md" />
             <Text variant="pageTitle" style={woType.heroClient}>
               {order.customer}
             </Text>
@@ -415,7 +438,7 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
             </Text>
           </View>
 
-          <OrderWorkflowProgress status={order.status} />
+          <OrderWorkflowProgress status={effectiveStatus ?? order.status} />
         </View>
 
         {canClaimBase ? (
@@ -510,21 +533,19 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
             label={footerStatusLabel(primaryStatus)}
             icon={footerStatusIcon(primaryStatus)}
             active
-            loading={transitioning}
-            disabled={transitioning}
-            onPress={() => void setDomainStatus(primaryStatus)}
+            onPress={() => setDomainStatus(primaryStatus)}
           />
         ) : null}
 
-        {secondaryStatuses.length > 0 ? (
+        {secondaryStatuses.map((status) => (
           <OrderDetailActionTab
-            contentKey="more"
-            label="More"
-            icon={EllipsisIcon}
-            disabled={transitioning}
-            onPress={openSecondaryStatuses}
+            key={status}
+            contentKey={status}
+            label={footerStatusLabel(status)}
+            icon={footerStatusIcon(status)}
+            onPress={() => setDomainStatus(status)}
           />
-        ) : null}
+        ))}
 
         {!canEditOrder && !primaryStatus ? (
           <OrderDetailActionTab
@@ -536,15 +557,6 @@ export function OrderDetailScreen({ orderId }: OrderDetailScreenProps) {
         ) : null}
       </OrderDetailActionDock>
 
-      {secondaryStatuses.length > 0 ? (
-        <OrderStatusMoreSheet
-          ref={moreSheetRef}
-          statuses={secondaryStatuses}
-          statusIcon={footerStatusIcon}
-          busy={transitioning}
-          onSelect={(status) => void setDomainStatus(status)}
-        />
-      ) : null}
     </View>
   );
 }

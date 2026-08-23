@@ -47,7 +47,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
 
   batch.set(db.collection("warehouses").doc(DEMO_WAREHOUSE_ID), {
     companyId: DEMO_COMPANY_ID,
-    name: "Основной склад",
+    name: "Main warehouse",
     code: "MAIN",
     isDefault: true,
     isActive: true,
