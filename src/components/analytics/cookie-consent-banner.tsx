@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
  * the level of detail a banner is for; which provider does the measuring is in
  * the privacy policy this links to, where there is room to be exact.
  *
+ * The answer lives in a cookie on the shared parent domain, so accepting on the
+ * marketing site also settles it for the app host — see `lib/analytics/consent`.
+ *
  * Transitions are CSS and the unmount is a timer, with no animation library in
  * the path. `AnimatePresence` played the exit here but never removed the node,
  * which left a fully transparent card holding 226px of layout across the bottom
