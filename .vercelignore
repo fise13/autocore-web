@@ -1,0 +1,40 @@
+# What Vercel does not need to build the Next.js app.
+#
+# Written because `vercel --prod` failed with "Request body too large. Limit:
+# 10mb": the CLI uploads the working directory, and this repo carries three
+# sibling products whose build output dwarfs the web app — autocore-mobile is
+# ~7.9G with its Expo caches and native builds, src-tauri ~5.8G, graphify-out
+# ~686M of generated graph JSON.
+#
+# Everything excluded here is already outside the web build's reach:
+# `tsconfig.json` excludes `autocore-mobile`, `firebase/functions` and every
+# `*.test.ts`, so `next build` never type-checks them, and nothing under `src/`
+# or `packages/` imports from them at runtime. The only cross-tree references
+# are in test files, which do not run on Vercel.
+#
+# Keep `src/`, `packages/`, `public/`, `assets/`, `scripts/` and the root config
+# files — `prebuild` reads `assets/meta/favicon.png`, `src/styles/documents.css`
+# and `packages/design-tokens/`.
+
+# Sibling products, deployed by their own pipelines (EAS, Tauri, Firebase).
+autocore-mobile/
+src-tauri/
+autocore-desktop/
+firebase/
+
+# Generated knowledge graph — large, and read by tooling rather than the app.
+graphify-out/
+.graphify/
+
+# Native and tooling caches that can appear at the root.
+.expo/
+ios/
+android/
+
+# Documentation and collateral that never ship in the bundle.
+docs/
+*.pdf
+
+# Local build artefacts.
+tsconfig.tsbuildinfo
+.next/
