@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authorizeCron } from "@/lib/cron/authorize-cron";
+import { pageAllCompanyIds } from "@/lib/cron/page-company-ids";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import {
   runCompanyNotificationRules,
@@ -16,22 +17,38 @@ export async function POST(request: NextRequest) {
   }
 
   const schedule = request.nextUrl.searchParams.get("schedule") ?? "hourly";
-  const companiesSnap = await getAdminFirestore().collection("companies").limit(200).get();
+  const { companyIds, pages } = await pageAllCompanyIds(getAdminFirestore());
 
   let evaluated = 0;
-  for (const companyDoc of companiesSnap.docs) {
-    const companyId = companyDoc.id;
-    if (schedule === "evening") {
-      await runEveningNotificationRules(companyId);
-    } else if (schedule === "morning") {
-      await runMorningNotificationRules(companyId);
-    } else {
-      await runCompanyNotificationRules(companyId);
+  let failed = 0;
+  for (const companyId of companyIds) {
+    try {
+      if (schedule === "evening") {
+        await runEveningNotificationRules(companyId);
+      } else if (schedule === "morning") {
+        await runMorningNotificationRules(companyId);
+      } else {
+        await runCompanyNotificationRules(companyId);
+      }
+      evaluated += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("[cron/notifications] company failed", {
+        companyId,
+        schedule,
+        error,
+      });
     }
-    evaluated += 1;
   }
 
-  return NextResponse.json({ ok: true, evaluated, schedule });
+  return NextResponse.json({
+    ok: true,
+    evaluated,
+    failed,
+    scanned: companyIds.length,
+    pages,
+    schedule,
+  });
 }
 
 /** Vercel Cron invokes schedules with GET. */

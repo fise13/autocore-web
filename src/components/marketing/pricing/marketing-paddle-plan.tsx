@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { usePaddleCheckout } from "@/components/billing/paddle-provider";
 import { usePaddleCountry } from "@/components/marketing/paddle-country-provider";
@@ -25,6 +25,9 @@ type MarketingPaddlePlanProps = {
   intervalAriaLabel: string;
   note: string;
   buyLabel: string;
+  yearlySaveLabel?: string;
+  buyVariant?: "default" | "outline";
+  secondaryAction?: ReactNode;
   className?: string;
   priceClassName?: string;
   showIntervalToggle?: boolean;
@@ -41,6 +44,9 @@ export function MarketingPaddlePlan({
   intervalAriaLabel,
   note,
   buyLabel,
+  yearlySaveLabel,
+  buyVariant = "default",
+  secondaryAction,
   className,
   priceClassName,
   showIntervalToggle = true,
@@ -72,51 +78,48 @@ export function MarketingPaddlePlan({
   }, [frequency, subscribe]);
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
+    <div className={cn("marketing-paddle-plan", className)}>
       {showIntervalToggle ? (
-        <div
-          className="mb-4 inline-flex rounded-full border border-border/60 bg-muted/40 p-1 text-sm"
-          role="group"
-          aria-label={intervalAriaLabel}
-        >
+        <div className="marketing-paddle-toggle" role="group" aria-label={intervalAriaLabel}>
           {(["month", "year"] as const).map((value) => (
             <button
               key={value}
               type="button"
-              className={cn(
-                "rounded-full px-4 py-1.5 transition-colors",
-                frequency === value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              className={cn("marketing-paddle-toggle-btn", frequency === value && "is-active")}
               onClick={() => setFrequency(value)}
             >
-              {value === "month" ? monthlyLabel : yearlyLabel}
+              <span>{value === "month" ? monthlyLabel : yearlyLabel}</span>
+              {value === "year" && yearlySaveLabel ? (
+                <span className="marketing-paddle-save">{yearlySaveLabel}</span>
+              ) : null}
             </button>
           ))}
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-baseline justify-center gap-2">
+      <div className="marketing-paddle-price">
         <span className={cn("exp-display tracking-tight", priceClassName ?? "text-6xl sm:text-7xl")}>
           {displayPrice}
         </span>
-        <span className="text-lg text-muted-foreground sm:text-xl">{periodLabel}</span>
+        <span className="marketing-paddle-period">{periodLabel}</span>
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">{note}</p>
+      <p className="marketing-paddle-note">{note}</p>
 
-      <Button
-        size="lg"
-        variant="outline"
-        className="mt-8 h-10 min-w-[11rem] px-5 text-sm"
-        disabled={!configured || !ready || checkoutPending}
-        onClick={subscribeToPlan}
-      >
-        {buyLabel}
-      </Button>
+      <div className="marketing-paddle-actions">
+        <Button
+          size="lg"
+          variant={buyVariant}
+          className="h-10 min-w-[11rem] px-5 text-sm"
+          disabled={!configured || !ready || checkoutPending}
+          onClick={subscribeToPlan}
+        >
+          {buyLabel}
+        </Button>
+        {secondaryAction}
+      </div>
 
       {previewError ? (
-        <p className="mt-3 max-w-sm text-center text-xs text-destructive" role="alert">
+        <p className="marketing-paddle-error" role="alert">
           {previewError}
         </p>
       ) : null}

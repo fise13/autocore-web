@@ -1,3 +1,4 @@
+import type { CreateDonorInput } from "@/domain/donor";
 import type { UpsertInventoryItemInput } from "@/domain/inventory";
 import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 import { INVENTORY_TAXONOMY, subcategoryLabel } from "@/domain/inventory-taxonomy";
@@ -183,5 +184,34 @@ export function buildSpecificRecordDataFromMigrationRow(
     "Коробка": "",
     "Дата прихода": "",
     "Дата продажи": "",
+  };
+}
+
+export function buildDonorInputFromMigrationRow(
+  values: RowValues,
+  companyId: string,
+  actorUserId: string,
+  rowId?: string,
+): CreateDonorInput | null {
+  const make = values.brand?.trim() || values.name?.trim();
+  const model = values.model?.trim() || values.name?.trim();
+  if (!make && !model && !values.vin?.trim()) return null;
+  const yearRaw = values.year?.trim();
+  const year = yearRaw ? Number(yearRaw) : undefined;
+  const priceRaw = values.price?.replace(/\s/g, "").replace(",", ".") ?? "";
+  const purchasePrice = Number(priceRaw);
+  return {
+    id: rowId,
+    companyId,
+    createdByUserId: actorUserId,
+    vin: values.vin?.trim() ?? "",
+    make: make || "—",
+    model: model || "—",
+    year: Number.isFinite(year) ? year : undefined,
+    purchasePrice: Number.isFinite(purchasePrice) ? purchasePrice : 0,
+    currency: values.currency?.trim() || "KZT",
+    source: values.comment?.trim(),
+    yardLocation: values.location?.trim() || values.warehouse?.trim(),
+    notes: values.comment?.trim(),
   };
 }

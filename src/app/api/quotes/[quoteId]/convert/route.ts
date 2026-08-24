@@ -10,6 +10,7 @@ import {
 } from "@/lib/documents/verify-document-access";
 import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { maybeEmitWorkOrderAvailableNotification } from "@/lib/notifications/emit-work-order-available.server";
+import { runSideEffect } from "@/lib/side-effects/run-side-effect";
 
 export const runtime = "nodejs";
 
@@ -33,23 +34,35 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     );
 
-    void fetch(`${request.nextUrl.origin}/api/work-orders/${encodeURIComponent(workOrderId)}/process-events`, {
-      method: "POST",
-      headers: {
-        Authorization: request.headers.get("authorization") ?? "",
-        "Content-Type": "application/json",
-      },
-    }).catch(() => undefined);
+    await runSideEffect(
+      "quote-convert-process-events",
+      () =>
+        fetch(`${request.nextUrl.origin}/api/work-orders/${encodeURIComponent(workOrderId)}/process-events`, {
+          method: "POST",
+          headers: {
+            Authorization: request.headers.get("authorization") ?? "",
+            "Content-Type": "application/json",
+          },
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`process-events ${response.status}`);
+          }
+        }),
+      { workOrderId, quoteId },
+    );
 
     const order = await fetchWorkOrder(access.companyId, workOrderId);
     if (order) {
-      void maybeEmitWorkOrderAvailableNotification({
-        companyId: access.companyId,
-        order,
-        actorUserId: access.uid,
-      }).catch((error) => {
-        console.error("[quotes/convert] available notification failed", error);
-      });
+      await runSideEffect(
+        "quote-convert-available-notify",
+        () =>
+          maybeEmitWorkOrderAvailableNotification({
+            companyId: access.companyId,
+            order,
+            actorUserId: access.uid,
+          }),
+        { companyId: access.companyId, workOrderId },
+      );
     }
 
     return NextResponse.json({ workOrderId });

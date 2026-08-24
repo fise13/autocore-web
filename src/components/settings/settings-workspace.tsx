@@ -12,6 +12,7 @@ import { BrandingSettingsCard } from "@/components/settings/branding-settings-ca
 import { CompanyAppConfigSettingsCard } from "@/components/settings/company-app-config-settings-card";
 import { DisplayCurrencySettingsCard } from "@/components/settings/display-currency-settings-card";
 import { CompanySettingsPanel } from "@/components/settings/company-settings-panel";
+import { MarketplaceSettingsCard } from "@/components/settings/marketplace-settings-card";
 import { DataCleanupPanel } from "@/components/settings/data-cleanup-panel";
 import { SettingsSectionId, SettingsShell } from "@/components/settings/settings-shell";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -104,13 +105,16 @@ export function SettingsWorkspace() {
         ) : null;
       case "company":
         return profile?.companyId ? (
-          <CompanySettingsPanel
-            companyId={profile.companyId}
-            uid={uid}
-            showPlansInitially={showPlansInitially}
-            initialTeamTab={initialTeamTab}
-            onStatus={setStatus}
-          />
+          <div className="space-y-5">
+            <CompanySettingsPanel
+              companyId={profile.companyId}
+              uid={uid}
+              showPlansInitially={showPlansInitially}
+              initialTeamTab={initialTeamTab}
+              onStatus={setStatus}
+            />
+            <MarketplaceSettingsCard companyId={profile.companyId} onStatus={setStatus} />
+          </div>
         ) : null;
       case "appConfig":
         return profile?.companyId ? (

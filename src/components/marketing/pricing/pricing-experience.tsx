@@ -5,14 +5,13 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { MarketingPaddlePlan } from "@/components/marketing/pricing/marketing-paddle-plan";
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
+import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
-import { appDemoUrl } from "@/lib/site-urls";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -71,12 +70,7 @@ function ScrollReveal({
   );
 }
 
-function openProductDemo() {
-  window.location.href = appDemoUrl();
-}
-
 export function PricingExperience({ country }: { country: string | null }) {
-  const reduced = useReducedMotion();
   const pages = useMarketingPages();
   const copy = pages.pricing;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
@@ -93,30 +87,19 @@ export function PricingExperience({ country }: { country: string | null }) {
   return (
     <div className="pricing-page">
       <section className="pricing-panel pricing-panel-hero" aria-label={pages.breadcrumbs.pricing}>
-        <motion.div
-          className="pricing-fragment"
-          aria-hidden
-          initial={reduced ? false : { opacity: 0, y: 28 }}
-          animate={{ opacity: 0.05, y: 0 }}
-          transition={{ duration: 0.82, delay: 1.02, ease: EASE }}
-        >
-          <div className="pricing-fragment-bar w-[38%]" />
-          <div className="pricing-fragment-bar mt-3 w-full" />
-          <div className="pricing-fragment-bar mt-2 w-[64%]" />
-        </motion.div>
-
         <div className="exp-section-inner pricing-panel-inner">
-          <HeroReveal delay={0} duration={0.72} y={22}>
+          <HeroReveal delay={0} duration={0.62} y={16}>
             <h1 className="exp-display pricing-hero-title">
               <span className="block">{copy.hero.titleLine1}</span>
+              <span className="pricing-hero-title-line2">{copy.hero.titleLine2}</span>
             </h1>
           </HeroReveal>
 
-          <HeroReveal className="pricing-hero-title-line2" delay={0.38} duration={0.58} y={16}>
-            <p className="exp-display text-muted-foreground">{copy.hero.titleLine2}</p>
+          <HeroReveal delay={0.12} duration={0.55} y={12}>
+            <p className="pricing-hero-lead">{copy.hero.lead}</p>
           </HeroReveal>
 
-          <HeroReveal delay={0.55} duration={0.62} y={20}>
+          <HeroReveal className="pricing-offer" delay={0.22} duration={0.58} y={18}>
             <MarketingPaddlePlan
               country={country}
               fallbackPrice={copy.plan.price}
@@ -127,26 +110,20 @@ export function PricingExperience({ country }: { country: string | null }) {
               yearlyLabel={copy.plan.yearlyLabel}
               intervalAriaLabel={copy.plan.intervalAria}
               note={copy.plan.note}
+              yearlySaveLabel={copy.plan.yearlySave}
               buyLabel={copy.cta.buy}
-              priceClassName="pricing-hero-amount text-6xl sm:text-7xl"
+              buyVariant="default"
+              priceClassName="pricing-hero-amount"
+              secondaryAction={<TrialButton variant="outline">{copy.cta.primary}</TrialButton>}
             />
-          </HeroReveal>
-
-          <HeroReveal delay={0.64} duration={0.5} y={12}>
-            <p className="pricing-hero-note">{copy.cta.trialDays}. {copy.cta.noCard}.</p>
-          </HeroReveal>
-
-          <HeroReveal className="pricing-hero-cta" delay={0.72} duration={0.48} y={14}>
-            <div className="pricing-hero-actions">
-              <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
-                {copy.cta.primary}
-              </Button>
-            </div>
+            <p className="pricing-hero-note">
+              {copy.cta.trialDays}. {copy.cta.noCard}.
+            </p>
           </HeroReveal>
         </div>
       </section>
 
-      <section className="pricing-panel" aria-labelledby="pricing-included-heading">
+      <section className="pricing-panel pricing-panel-included" aria-labelledby="pricing-included-heading">
         <div className="exp-section-inner pricing-panel-inner">
           <ScrollReveal margin="-80px">
             <h2 id="pricing-included-heading" className="exp-display pricing-included-title">
@@ -154,11 +131,11 @@ export function PricingExperience({ country }: { country: string | null }) {
             </h2>
           </ScrollReveal>
 
-          <ul className="pricing-checklist">
+          <ul className="pricing-included-grid">
             {copy.included.items.map((item, index) => (
               <li key={item}>
-                <ScrollReveal delay={0.08 + index * 0.05} y={14} margin="-40px">
-                  <span className="pricing-checklist-item">{item}</span>
+                <ScrollReveal delay={0.04 + index * 0.03} y={10} margin="-40px">
+                  <span className="pricing-included-item">{item}</span>
                 </ScrollReveal>
               </li>
             ))}
@@ -166,7 +143,7 @@ export function PricingExperience({ country }: { country: string | null }) {
         </div>
       </section>
 
-      <section className="pricing-panel" aria-labelledby="pricing-philosophy-heading">
+      <section className="pricing-panel pricing-panel-copy" aria-labelledby="pricing-philosophy-heading">
         <div className="exp-section-inner pricing-panel-inner pricing-philosophy-inner">
           <ScrollReveal margin="-80px">
             <h2 id="pricing-philosophy-heading" className="exp-display pricing-philosophy-kicker">
@@ -174,17 +151,17 @@ export function PricingExperience({ country }: { country: string | null }) {
             </h2>
           </ScrollReveal>
 
-          <ScrollReveal className="pricing-philosophy-statement-wrap" delay={0.08} y={18} margin="-60px">
+          <ScrollReveal className="pricing-philosophy-statement-wrap" delay={0.06} y={14} margin="-60px">
             <p className="pricing-philosophy-statement">{copy.philosophy.statement}</p>
           </ScrollReveal>
 
-          <ScrollReveal delay={0.14} y={12} margin="-50px">
+          <ScrollReveal delay={0.1} y={10} margin="-50px">
             <p className="pricing-philosophy-body">{copy.philosophy.body}</p>
           </ScrollReveal>
         </div>
       </section>
 
-      <section className="pricing-panel" aria-labelledby="pricing-faq-heading">
+      <section className="pricing-panel pricing-panel-copy" aria-labelledby="pricing-faq-heading">
         <div className="exp-section-inner pricing-panel-inner pricing-faq-inner">
           <ScrollReveal margin="-80px">
             <h2 id="pricing-faq-heading" className="exp-display pricing-faq-title">
@@ -217,10 +194,8 @@ export function PricingExperience({ country }: { country: string | null }) {
             </h2>
           </ScrollReveal>
 
-          <ScrollReveal className="pricing-close-cta" delay={0.12} y={10} margin="-50px">
-            <Button size="lg" className="h-10 min-w-[11rem] px-5 text-sm" onClick={openProductDemo}>
-              {copy.closing.button}
-            </Button>
+          <ScrollReveal className="pricing-close-cta" delay={0.1} y={10} margin="-50px">
+            <TrialButton>{copy.closing.button}</TrialButton>
           </ScrollReveal>
         </div>
       </section>

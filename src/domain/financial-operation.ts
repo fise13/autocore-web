@@ -31,6 +31,8 @@ export type FinancialOperation = {
   relatedMovementId?: string | null;
   relatedWarehouseId?: string | null;
   relatedWorkOrderId?: string | null;
+  relatedDonorId?: string | null;
+  relatedUsedPartId?: string | null;
   costBasis?: number | null;
   createdAt: Date;
   createdByUserId: string;
@@ -58,6 +60,8 @@ export type CreateFinancialOperationInput = {
   relatedMovementId?: string | null;
   relatedWarehouseId?: string | null;
   relatedWorkOrderId?: string | null;
+  relatedDonorId?: string | null;
+  relatedUsedPartId?: string | null;
   costBasis?: number | null;
   comment?: string | null;
   category?: string | null;

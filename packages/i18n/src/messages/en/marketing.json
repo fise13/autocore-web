@@ -906,12 +906,21 @@
   "landing": {
     "hero": {
       "ariaLabel": "Home",
-      "title": "Auto parts inventory software for salvage yards.",
-      "subtitle": "Warehouse stock, used engines, VIN and barcode tracking, work orders, and documents — one system for auto recyclers and repair shops. No WhatsApp bookkeeping.",
+      "kicker": "Salvage yards and repair shops",
+      "title": "From donor car to sold part.",
+      "subtitle": "Buy the car, pull used parts, list on Avito and Drom, sell, and see payback on the donor card. Warehouse, engines, VIN, work orders, and documents — one system. No WhatsApp bookkeeping.",
       "ctaPrimary": "Open the demo",
       "ctaSecondary": "See how it works",
+      "ctaPricing": "See pricing",
+      "priceTeaser": "$40 / company · 14-day trial",
       "trust": "Live demo company · real workflows",
-      "visualCaption": "Demo company · engines · G4KC"
+      "visualCaption": "Demo company · engines · G4KC",
+      "proof": [
+        "Donor cars",
+        "Used parts",
+        "Avito · Drom",
+        "VIN & barcode"
+      ]
     },
     "chaos": {
       "eyebrow": "A typical day",
@@ -1020,12 +1029,15 @@
       "yearlyLabel": "Yearly",
       "intervalAria": "Billing interval",
       "note": "per company",
+      "yearlySave": "2 months free",
       "included": [
         "Warehouse",
-        "Work Orders",
-        "Engines",
+        "Work orders",
+        "Donors",
+        "Used parts",
+        "Marketplace feeds",
         "Documents",
-        "Mobile",
+        "Mobile · desktop",
         "Overview"
       ],
       "risk": "14 days free · payment method required · no extra fees for modules",
@@ -1092,11 +1104,11 @@
         },
         {
           "q": "What happens after 14 days? Are there extra fees for modules?",
-          "a": "It's $40 per month per company, or you can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
+          "a": "It's $40 per month per company, or $400 per year (two months free). You can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
         },
         {
           "q": "How do I buy a subscription?",
-          "a": "Email support@myautocore.com — we'll help you get set up and started."
+          "a": "Open Pricing, pick monthly or yearly, and pay with a card. Yearly is $400 — two months free versus $40 × 12."
         }
       ],
       "ctaPrimary": "Open the demo",
@@ -1636,11 +1648,12 @@
     "pricing": {
       "meta": {
         "title": "Pricing",
-        "description": "Salvage yard and auto recycler software: $40 monthly or $400 yearly per company. Full inventory, engines, and work orders. 14-day free trial; payment method required."
+        "description": "Salvage yard software: $40 monthly or $400 yearly per company. Donors, used parts, Avito/Drom feeds, warehouse, and work orders. 14-day trial; payment method required."
       },
       "hero": {
-        "titleLine1": "Salvage yard software.",
-        "titleLine2": "Everything included."
+        "titleLine1": "One plan.",
+        "titleLine2": "The whole yard.",
+        "lead": "Donors, used parts, Avito and Drom feeds, warehouse, work orders, and documents. $40 a month or $400 a year per company — no module upsells."
       },
       "plan": {
         "price": "$40",
@@ -1650,7 +1663,8 @@
         "monthlyLabel": "Monthly",
         "yearlyLabel": "Yearly",
         "intervalAria": "Billing interval",
-        "note": "per company"
+        "note": "per company",
+        "yearlySave": "2 months free"
       },
       "cta": {
         "primary": "Open the demo",
@@ -1669,17 +1683,16 @@
         "button": "Open the demo"
       },
       "included": {
-        "title": "Everything included.",
+        "title": "Everything in the plan.",
         "items": [
-          "Warehouse",
-          "Work Orders",
-          "Documents",
-          "Mobile",
-          "Desktop",
-          "Cloud Sync",
-          "AI Import",
-          "Overview",
-          "Analytics"
+          "Warehouse and stocktake",
+          "Donor cars and P&L",
+          "Used parts catalog",
+          "Avito and Drom feeds",
+          "Serialized engines",
+          "Work orders",
+          "Documents and PDF",
+          "Mobile, desktop, cloud"
         ]
       },
       "philosophy": {
@@ -1691,15 +1704,15 @@
       "faq": [
         {
           "q": "Do I need a card for the trial?",
-          "a": "Yes. A payment method is required to start the 14-day free trial. You can cancel before renewal."
+          "a": "Yes. A payment method is required to start the 14-day free trial. You can cancel before the first charge."
         },
         {
           "q": "What happens after the trial?",
-          "a": "It's $40 per month per company, or you can pause. Your data is kept."
+          "a": "It's $40 per month per company, or $400 per year (two months free). You can pause; your data is kept."
         },
         {
           "q": "Are there extra fees for modules?",
-          "a": "No. One price unlocks the entire product."
+          "a": "No. Donors, used parts, marketplace feeds, warehouse, work orders, and documents are all in the same plan."
         },
         {
           "q": "Can I cancel my subscription?",

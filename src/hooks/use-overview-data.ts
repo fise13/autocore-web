@@ -13,9 +13,14 @@ import { computeOverviewMetrics } from "@/lib/overview/compute-overview-metrics"
 import { computeInventoryAnalytics } from "@/lib/overview/compute-inventory-analytics";
 import { computeOperationsStats } from "@/lib/overview/compute-operations-stats";
 import { enrichActivityLogs } from "@/lib/overview/enrich-activity-logs";
+import { computeDonorPnl } from "@/lib/dismantler/compute-donor-pnl";
+import { computeDismantlerAttention } from "@/lib/dismantler/compute-dismantler-attention";
+import { userCopy } from "@/lib/user-copy";
 import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useInventoryMovementsRealtime } from "@/hooks/use-inventory-movements-realtime";
 import { useWorkOrdersRealtime } from "@/hooks/use-work-orders-realtime";
+import { useDonorsRealtime } from "@/hooks/use-donors-realtime";
+import { useUsedPartsRealtime } from "@/hooks/use-used-parts-realtime";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
 import { createInventoryMovementRepository } from "@/infrastructure/firestore/inventory-movement-repository";
@@ -80,6 +85,9 @@ export function useOverviewData({
     companyId,
     enabled && canWorkOrders,
   );
+
+  const { donors } = useDonorsRealtime(companyId, enabled && canInventory);
+  const { parts: usedParts } = useUsedPartsRealtime(companyId, enabled && canInventory);
 
   const { employees, isLoading: employeesLoading } = useEmployeesRealtime(
     companyId,
@@ -171,6 +179,22 @@ export function useOverviewData({
       .slice(0, 5);
   }, [warehouseItems]);
 
+  const dismantlerAttention = useMemo(() => {
+    if (!canInventory) return [];
+    const copy = userCopy.overview.dashboard.dismantler;
+    const pnls = donors.map((donor) => ({
+      ...computeDonorPnl({ donor, parts: usedParts, motors, operations }),
+      purchasedAt: donor.purchasedAt,
+      createdAt: donor.createdAt,
+    }));
+    return computeDismantlerAttention({
+      pnls,
+      parts: usedParts,
+      staleDonorText: copy.staleDonors,
+      slowPartText: copy.slowParts,
+    });
+  }, [canInventory, donors, usedParts, motors, operations]);
+
   return {
     overview,
     operationsStats,
@@ -188,6 +212,7 @@ export function useOverviewData({
     recentlyModifiedMotors,
     recentWarehouseItems,
     lowStockWarehouseItems,
+    dismantlerAttention,
     isLoading,
     permissions: {
       canAccounting,

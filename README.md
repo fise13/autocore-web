@@ -33,7 +33,7 @@ src/
   components/             Product and UI components
   domain/                 Domain entities, schemas, and state machines
   hooks/                  Client subscriptions and application hooks
-  infrastructure/         Firebase, Firestore, Stripe, and external adapters
+  infrastructure/         Firebase, Firestore, Paddle, and external adapters
   lib/                    Server services and shared implementation utilities
 autocore-mobile/          Expo mobile application
 firebase/functions/       Firebase Functions TypeScript sources
@@ -144,7 +144,7 @@ Treat Firestore rule and index changes as production database changes. Validate 
 - Documents: render and worker secrets plus Chromium configuration.
 - Email: Resend API key and sender identities.
 - AI: OpenRouter key and model selection.
-- Billing: Stripe price IDs for the web client; Stripe secrets belong in Firebase Functions.
+- Billing: Paddle price IDs for the web client; Paddle secrets belong on Vercel. Apple IAP is handled separately for iOS.
 - Optional internal licensing: `ALLOW_INTERNAL_PRO_ACTIVATION=true` only in controlled environments.
 
 Use `.env.local.example` for local guidance and `.env.vercel.example` as the production checklist. Example files must contain placeholders or non-production values only.

@@ -1,6 +1,7 @@
 import {
   CircleDollarSign,
   Camera,
+  Car,
   ClipboardList,
   Cog,
   FileText,
@@ -36,7 +37,8 @@ export type BusinessNavId =
   | "work_orders"
   | "accounting"
   | "documents"
-  | "my_earnings";
+  | "my_earnings"
+  | "donors";
 
 export type BusinessNavItem = {
   id: BusinessNavId;
@@ -125,6 +127,15 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
     });
   }
 
+  if (canAccessInventory(user)) {
+    business.push({
+      id: "donors",
+      label: businessNavCopy.business.donors,
+      href: "/donors",
+      icon: Car,
+    });
+  }
+
   if (isNavAllowed(user, "work_orders")) {
     business.push({
       id: "work_orders",
@@ -204,9 +215,19 @@ export function isBusinessNavActive(
 ): boolean {
   switch (item.id) {
     case "inventory":
-      return pathname === "/motors" || pathname === "/warehouse" || pathname.startsWith("/specific/");
+      if (collection === "consumables") {
+        return pathname === "/warehouse" || pathname.startsWith("/stocktake");
+      }
+      return (
+        pathname === "/motors" ||
+        pathname === "/warehouse" ||
+        pathname.startsWith("/stocktake") ||
+        pathname.startsWith("/specific/")
+      );
     case "sales":
       return pathname === "/sold";
+    case "donors":
+      return pathname.startsWith("/donors") || pathname.startsWith("/used-parts");
     case "engine_intake":
       return pathname.startsWith("/engine-intake");
     case "work_orders":

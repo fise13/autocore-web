@@ -11,6 +11,7 @@ import type { DomainEvent } from "@/domain/domain-event";
 import { loadDocumentContext } from "@/lib/documents/load-document-context";
 import { resolveDocumentsFromPendingEvents } from "@/lib/documents/policy/document-policy";
 import { emitNotificationsFromDomainEvents } from "@/lib/notifications/from-domain-event.server";
+import { runSideEffect } from "@/lib/side-effects/run-side-effect";
 
 export type ProcessWorkOrderEventsResult = {
   processed: number;
@@ -52,12 +53,15 @@ export async function processWorkOrderEventsUseCase(params: {
   }
 
   if (processedEvents.length > 0) {
-    void emitNotificationsFromDomainEvents({
-      events: processedEvents,
-      actorUserId: params.actorUserId,
-    }).catch((error) => {
-      console.error("[process-work-order-events] notification emit failed", error);
-    });
+    await runSideEffect(
+      "work-order-notifications",
+      () =>
+        emitNotificationsFromDomainEvents({
+          events: processedEvents,
+          actorUserId: params.actorUserId,
+        }),
+      { companyId: params.companyId, workOrderId: params.workOrderId },
+    );
   }
 
   let context;

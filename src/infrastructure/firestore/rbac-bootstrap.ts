@@ -12,7 +12,7 @@ type BootstrapUserDoc = {
   isActive?: boolean;
 };
 
-async function trySetDoc(
+async function writeDoc(
   label: string,
   ref: ReturnType<typeof doc>,
   payload: Record<string, unknown>,
@@ -20,7 +20,20 @@ async function trySetDoc(
   try {
     await setDoc(ref, payload, { merge: true });
   } catch (error) {
-    console.warn(`RBAC bootstrap skipped ${label}:`, error);
+    console.error(`RBAC bootstrap failed ${label}:`, error);
+    throw error;
+  }
+}
+
+async function trySetOptionalDoc(
+  label: string,
+  ref: ReturnType<typeof doc>,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await setDoc(ref, payload, { merge: true });
+  } catch (error) {
+    console.warn(`RBAC bootstrap skipped optional ${label}:`, error);
   }
 }
 
@@ -41,7 +54,8 @@ export async function ensureRbacBootstrap(uid: string): Promise<void> {
       ? (companySnap.data() as { ownerId?: string }).ownerId
       : undefined;
   } catch (error) {
-    console.warn("RBAC bootstrap skipped company lookup:", error);
+    console.error("RBAC bootstrap failed company lookup:", error);
+    throw error;
   }
 
   const isCompanyOwner = ownerId === uid;
@@ -57,11 +71,12 @@ export async function ensureRbacBootstrap(uid: string): Promise<void> {
     const employeeSnap = await getDoc(employeeRef);
     employeeExists = employeeSnap.exists();
   } catch (error) {
-    console.warn("RBAC bootstrap skipped employee lookup:", error);
+    console.error("RBAC bootstrap failed employee lookup:", error);
+    throw error;
   }
 
   if (!employeeExists) {
-    await trySetDoc("employee create", employeeRef, {
+    await writeDoc("employee create", employeeRef, {
       uid,
       companyId,
       email: String(userData.email ?? ""),
@@ -74,7 +89,7 @@ export async function ensureRbacBootstrap(uid: string): Promise<void> {
       lastActiveAt: serverTimestamp(),
     });
   } else if (isCompanyOwner) {
-    await trySetDoc("employee owner sync", employeeRef, {
+    await writeDoc("employee owner sync", employeeRef, {
       uid,
       companyId,
       role: "owner",
@@ -95,7 +110,7 @@ export async function ensureRbacBootstrap(uid: string): Promise<void> {
         return;
       }
 
-      await trySetDoc(`role ${roleId}`, roleRef, {
+      await trySetOptionalDoc(`role ${roleId}`, roleRef, {
         companyId,
         role: roleId,
         permissions: ROLE_PERMISSIONS[roleId],

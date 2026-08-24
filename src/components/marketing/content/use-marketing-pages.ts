@@ -17,6 +17,7 @@ export function useMarketingPages() {
         hero: {
           titleLine1: t("pricing.hero.titleLine1"),
           titleLine2: t("pricing.hero.titleLine2"),
+          lead: t("pricing.hero.lead"),
         },
         plan: {
           price: t("pricing.plan.price"),
@@ -27,6 +28,7 @@ export function useMarketingPages() {
           yearlyLabel: t("pricing.plan.yearlyLabel"),
           intervalAria: t("pricing.plan.intervalAria"),
           note: t("pricing.plan.note"),
+          yearlySave: t("pricing.plan.yearlySave"),
         },
         cta: {
           primary: t("pricing.cta.primary"),

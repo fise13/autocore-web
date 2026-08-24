@@ -11,6 +11,7 @@ import { McRevenueChart } from "@/components/overview/dashboard/mc-revenue-chart
 import { McTeamOnDuty } from "@/components/overview/dashboard/mc-team-on-duty";
 import { McWarehouseHealth } from "@/components/overview/dashboard/mc-warehouse-health";
 import { McWorkOrdersChart } from "@/components/overview/dashboard/mc-work-orders-chart";
+import { McAttentionBanner } from "@/components/overview/employee/mc-attention-banner";
 import { QuickActionsPanel } from "@/components/overview/quick-actions/quick-actions-panel";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { useOverviewData } from "@/hooks/use-overview-data";
@@ -30,6 +31,7 @@ export function McDashboardGrid(props: McDashboardGridProps) {
     activityError,
     isLoading,
     permissions,
+    dismantlerAttention,
   } = props;
   const { formatMoney } = useAppDisplayCurrency();
 
@@ -49,6 +51,13 @@ export function McDashboardGrid(props: McDashboardGridProps) {
 
   const grid = (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <McAttentionBanner
+        items={dismantlerAttention.map((item) => ({
+          ...item,
+          tone: "warning" as const,
+        }))}
+      />
+
       <McDashboardStats stats={stats} isLoading={isLoading} />
 
       {permissions.canAccounting ? <McRevenueChart operations={operations} isLoading={isLoading} /> : null}

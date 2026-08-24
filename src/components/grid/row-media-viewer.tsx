@@ -10,6 +10,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createInventoryItemRepository } from "@/infrastructure/firestore/inventory-item-repository";
+import { createUsedPartRepository } from "@/infrastructure/firestore/used-part-repository";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { saveFile } from "@/platform";
 import {
@@ -23,6 +24,7 @@ import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const inventoryRepository = createInventoryItemRepository();
+const usedPartRepository = createUsedPartRepository();
 
 async function authToken(): Promise<string> {
   const user = getFirebaseAuth().currentUser;
@@ -61,6 +63,12 @@ async function loadUrlsFromFirestore(input: {
     const data = snapshot.data() as { companyId?: string; photoUrls?: unknown };
     if (normalizeCompanyId(data.companyId ?? "") !== input.companyId) return [];
     return Array.isArray(data.photoUrls) ? data.photoUrls.map(String).filter(Boolean) : [];
+  }
+
+  if (input.entityKind === "used-part") {
+    const part = await usedPartRepository.getById(input.companyId, input.entityId);
+    if (!part || normalizeCompanyId(part.companyId) !== input.companyId) return [];
+    return part.photoUrls ?? [];
   }
 
   return [];
@@ -134,7 +142,13 @@ export function RowMediaViewer() {
             entityKind,
             entityId,
             returnTo:
-              entityKind === "warehouse" ? "/warehouse" : entityKind === "motor" ? "/motors" : undefined,
+              entityKind === "warehouse"
+                ? "/warehouse"
+                : entityKind === "motor"
+                  ? "/motors"
+                  : entityKind === "used-part"
+                    ? "/used-parts"
+                    : undefined,
           });
           setIndex(Math.min(initialIndexRef.current, urls.length - 1));
         }

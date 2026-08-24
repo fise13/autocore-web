@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
 import {
   useEngineIntakeJobRealtime,
@@ -64,12 +65,15 @@ const FILTER_STATES: Record<QueueFilter, EngineIntakeJobState[]> = {
   ],
 };
 
-const FILTER_OPTIONS: Array<{ value: QueueFilter; label: string }> = [
-  { value: "active", label: "Documenting" },
-  { value: "verification", label: "In review" },
-  { value: "complete", label: "Released" },
-  { value: "all", label: "All" },
-];
+function filterOptions(): Array<{ value: QueueFilter; label: string }> {
+  const copy = userCopy.engineIntake.workspace;
+  return [
+    { value: "active", label: copy.filterDocumenting },
+    { value: "verification", label: copy.filterInReview },
+    { value: "complete", label: copy.filterReleased },
+    { value: "all", label: copy.filterAll },
+  ];
+}
 
 function QueueSkeleton() {
   return (
@@ -235,9 +239,9 @@ export function EngineIntakeWorkspace() {
             <EmptyMedia variant="icon">
               <ShieldCheck />
             </EmptyMedia>
-            <EmptyTitle>Engine intake unavailable</EmptyTitle>
+            <EmptyTitle>{userCopy.engineIntake.workspace.unavailableTitle}</EmptyTitle>
             <EmptyDescription>
-              Select a company with Engine intake access, or ask an admin for permission.
+              {userCopy.engineIntake.workspace.unavailableDescription}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -251,10 +255,12 @@ export function EngineIntakeWorkspace() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Camera className="size-4 text-primary" />
-            <h1 className="font-heading text-lg font-semibold tracking-tight">Engine intake</h1>
+            <h1 className="font-heading text-lg font-semibold tracking-tight">
+              {userCopy.engineIntake.workspace.title}
+            </h1>
           </div>
           <p className="truncate text-xs text-muted-foreground">
-            Document engines on mobile. Label photos here, then edit anything before release.
+            {userCopy.engineIntake.workspace.subtitle}
           </p>
         </div>
         {canVerify ? (
@@ -269,7 +275,7 @@ export function EngineIntakeWorkspace() {
       {error ? (
         <Alert variant="destructive" className="mx-5 mt-3 w-auto shrink-0">
           <AlertTriangle />
-          <AlertTitle>Warehouse stream unavailable</AlertTitle>
+          <AlertTitle>{userCopy.engineIntake.workspace.streamUnavailable}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
@@ -284,16 +290,16 @@ export function EngineIntakeWorkspace() {
               <InputGroupInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Serial, identity, worker"
-                  aria-label="Search Engine intake"
+                placeholder={userCopy.engineIntake.workspace.searchPlaceholder}
+                  aria-label={userCopy.engineIntake.workspace.searchAria}
               />
             </InputGroup>
             <div
               className="autocore-segmented-tabs inline-flex w-full rounded-lg p-0.5"
               role="tablist"
-              aria-label="Engine intake queue filter"
+              aria-label={userCopy.engineIntake.workspace.filterAria}
             >
-              {FILTER_OPTIONS.map((option) => {
+              {filterOptions().map((option) => {
                 const selected = filter === option.value;
                 return (
                   <button
@@ -332,9 +338,9 @@ export function EngineIntakeWorkspace() {
                   <EmptyMedia variant="icon">
                     <Camera />
                   </EmptyMedia>
-                  <EmptyTitle>No engines here</EmptyTitle>
+                  <EmptyTitle>{userCopy.engineIntake.workspace.emptyTitle}</EmptyTitle>
                   <EmptyDescription>
-                    Switch filter, or create a serial draft for the next engine on the floor.
+                    {userCopy.engineIntake.workspace.emptyDescription}
                   </EmptyDescription>
                 </EmptyHeader>
                 {canVerify ? (

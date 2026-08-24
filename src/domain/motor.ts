@@ -77,6 +77,7 @@ export type MotorEntity = {
   installedOnVehicleId?: string | null;
   installedWorkOrderId?: string | null;
   warrantyId?: string | null;
+  donorId?: string | null;
   motorHistory?: MotorHistoryEntry[];
 };
 
@@ -106,4 +107,5 @@ export type UpsertMotorInput = {
   installedOnVehicleId?: string | null;
   installedWorkOrderId?: string | null;
   warrantyId?: string | null;
+  donorId?: string | null;
 };

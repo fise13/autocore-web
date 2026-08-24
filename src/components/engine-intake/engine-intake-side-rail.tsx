@@ -29,13 +29,14 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 function employeeLabel(employee: CompanyEmployee): string {
   const name = employee.fullName?.trim();
   if (name) return name;
   const email = employee.email?.trim();
   if (email) return email.split("@")[0] || email;
-  return "Worker";
+  return userCopy.engineIntake.workspace.worker;
 }
 
 export function EngineIntakeSideRail({
@@ -84,10 +85,11 @@ export function EngineIntakeSideRail({
   const matchedAssignee = assigneeUid
     ? assigneeOptions.find((employee) => employee.uid === assigneeUid)
     : null;
+  const copy = userCopy.engineIntake.workspace;
   const assigneeDisplay = matchedAssignee
     ? employeeLabel(matchedAssignee)
     : job.assignment.assigneeName?.trim() ||
-      (assigneeUid ? "Assigned worker" : "Unassigned queue");
+      (assigneeUid ? copy.assignedWorker : copy.unassignedQueue);
 
   const checklistStatus = jobChecklistStatusLabel(job);
 
@@ -99,28 +101,28 @@ export function EngineIntakeSideRail({
         <div className="flex items-center gap-2">
           <Smartphone className="size-3.5 text-muted-foreground" />
           <h3 className="font-heading text-xs font-semibold tracking-wide uppercase">
-            Field session
+            {copy.fieldSession}
           </h3>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
-          <dt className="text-muted-foreground">Worker</dt>
+          <dt className="text-muted-foreground">{copy.worker}</dt>
           <dd className="truncate text-right font-medium">
-            {job.assignment.claimedByName || job.assignment.assigneeName || "Unassigned"}
+            {job.assignment.claimedByName || job.assignment.assigneeName || copy.unassigned}
           </dd>
-          <dt className="text-muted-foreground">Heartbeat</dt>
+          <dt className="text-muted-foreground">{copy.heartbeat}</dt>
           <dd className="text-right">{formatIntakeDate(job.assignment.lastHeartbeatAt)}</dd>
-          <dt className="text-muted-foreground">Sync</dt>
+          <dt className="text-muted-foreground">{copy.sync}</dt>
           <dd className="text-right tabular-nums">
             {job.progress.syncQueueDepth === 0
-              ? "Synced"
-              : `${job.progress.syncQueueDepth} pending`}
+              ? copy.synced
+              : copy.pendingCount(job.progress.syncQueueDepth)}
           </dd>
-          <dt className="text-muted-foreground">Location</dt>
+          <dt className="text-muted-foreground">{copy.location}</dt>
           <dd className="text-right font-medium">{job.location?.code || "—"}</dd>
         </dl>
         {canVerify ? (
           <Field>
-            <FieldLabel className="text-xs">Assigned worker</FieldLabel>
+            <FieldLabel className="text-xs">{copy.assignedWorkerLabel}</FieldLabel>
             <Select
               value={assigneeValue}
               onValueChange={(value) =>
@@ -128,15 +130,15 @@ export function EngineIntakeSideRail({
               }
             >
               <SelectTrigger className="h-8 w-full min-w-0 text-xs">
-                <SelectValue placeholder="Unassigned queue">{assigneeDisplay}</SelectValue>
+                <SelectValue placeholder={copy.unassignedQueue}>{assigneeDisplay}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="unassigned">Unassigned queue</SelectItem>
+                  <SelectItem value="unassigned">{copy.unassignedQueue}</SelectItem>
                   {assigneeOptions.map((employee) => (
                     <SelectItem key={employee.uid} value={employee.uid}>
                       {employeeLabel(employee)}
-                      {!employee.isActive ? " (inactive)" : ""}
+                      {!employee.isActive ? ` ${copy.inactive}` : ""}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -150,12 +152,12 @@ export function EngineIntakeSideRail({
         <div className="flex items-center gap-2">
           <MapPin className="size-3.5 text-muted-foreground" />
           <h3 className="font-heading text-xs font-semibold tracking-wide uppercase">
-            Release
+            {copy.release}
           </h3>
         </div>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-start justify-between gap-2 text-xs">
-            <span className="shrink-0 text-muted-foreground">Checklist</span>
+            <span className="shrink-0 text-muted-foreground">{copy.checklist}</span>
             <span
               className={cn(
                 "min-w-0 text-right font-medium leading-snug",
@@ -166,7 +168,7 @@ export function EngineIntakeSideRail({
             </span>
           </div>
           <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-muted-foreground">Photos</span>
+            <span className="text-muted-foreground">{copy.photos}</span>
             <span className="tabular-nums font-medium">{job.progress.capturedCount}</span>
           </div>
         </div>
@@ -174,32 +176,32 @@ export function EngineIntakeSideRail({
           <div className="flex flex-col gap-2">
             <Button size="sm" onClick={onRelease} disabled={!canApprove || busy}>
               <Check data-icon="inline-start" />
-              Release to Motors Grid
+              {copy.releaseToGrid}
             </Button>
             <div className="grid grid-cols-2 gap-2">
               <Button size="sm" variant="outline" disabled={busy} onClick={onQuarantine}>
                 <ShieldAlert data-icon="inline-start" />
-                Quarantine
+                {copy.quarantine}
               </Button>
               <Button size="sm" variant="outline" disabled={busy} onClick={onReject}>
-                Reject
+                {copy.reject}
               </Button>
             </div>
             {!canApprove ? (
               <p className="text-[11px] text-muted-foreground">
-                Need serial and at least one photo before release.
+                {copy.needSerialPhoto}
               </p>
             ) : null}
           </div>
         ) : null}
         {canVerify && job.state === "quarantine" ? (
           <Button size="sm" variant="destructive" disabled={busy} onClick={onReject}>
-            Reject engine
+            {copy.rejectEngine}
           </Button>
         ) : null}
         {canVerify && job.state === "verified" ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={onClose}>
-            Close intake chapter
+            {copy.closeChapter}
           </Button>
         ) : null}
       </section>
@@ -207,10 +209,10 @@ export function EngineIntakeSideRail({
       <Tabs defaultValue="timeline" className="flex min-h-0 flex-1 flex-col gap-0">
         <TabsList className="w-full shrink-0" variant="line">
           <TabsTrigger value="timeline" className="flex-1 text-xs">
-            Timeline
+            {copy.timeline}
           </TabsTrigger>
           <TabsTrigger value="sessions" className="flex-1 text-xs">
-            Sessions
+            {copy.sessions}
           </TabsTrigger>
         </TabsList>
         <TabsContent

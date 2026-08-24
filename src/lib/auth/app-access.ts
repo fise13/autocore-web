@@ -111,6 +111,9 @@ export function canAccessPath(
   if (pathname === "/sold") {
     return isNavAllowed(user, "sold");
   }
+  if (pathname.startsWith("/donors") || pathname.startsWith("/used-parts") || pathname.startsWith("/stocktake")) {
+    return can(user, "inventory_view");
+  }
   if (pathname.startsWith("/employees") || pathname.startsWith("/roles")) {
     return can(user, "employee_view") || can(user, "employee_manage");
   }

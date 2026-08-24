@@ -14,7 +14,7 @@ flowchart LR
   Auth[Firebase Auth]
   Firestore[Cloud Firestore]
   Storage[Firebase Storage]
-  External[Stripe / Resend / OpenRouter / Expo Push]
+  External[Paddle / Resend / OpenRouter / Expo Push]
 
   Desktop --> Web
   Web --> Auth
@@ -165,7 +165,7 @@ Require targeted tests and manual review for:
 
 - Firestore security rules and indexes.
 - Company membership, roles, and invitations.
-- Billing and Stripe callbacks.
+- Billing and Paddle callbacks.
 - Warehouse movement and balance logic.
 - Work-order state transitions.
 - Document tokens, queues, and PDF rendering.

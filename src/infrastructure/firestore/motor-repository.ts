@@ -126,6 +126,7 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
       typeof data.reservedForWorkOrderId === "string" ? data.reservedForWorkOrderId : null,
     installedOnVehicleId:
       typeof data.installedOnVehicleId === "string" ? data.installedOnVehicleId : null,
+    donorId: typeof data.donorId === "string" ? data.donorId : null,
   };
 }
 
@@ -257,6 +258,7 @@ export function createMotorRepository() {
       status: input.status ?? (input.soldDate ? "sold" : "available"),
       reservedForWorkOrderId: input.reservedForWorkOrderId ?? null,
       installedOnVehicleId: input.installedOnVehicleId ?? null,
+      donorId: input.donorId ?? null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

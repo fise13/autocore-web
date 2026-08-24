@@ -19,6 +19,7 @@ export const BUSINESS_NAV_TO_SIDEBAR_ID: Record<BusinessNavId, SidebarNavItemId>
   accounting: "accounting",
   documents: "motors",
   my_earnings: "my_earnings",
+  donors: "motors",
 };
 
 export function collectionToSidebarNavId(

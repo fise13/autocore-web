@@ -41,6 +41,7 @@ import {
 } from "firebase-admin/firestore";
 
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { findDonorIdByVinAdmin } from "@/infrastructure/firestore/admin/donor-admin";
 import type { VerifiedEngineIntakeAccess } from "@/lib/auth/verify-engine-intake-access.server";
 
 const CLAIM_TTL_MS = 30 * 60 * 1_000;
@@ -301,6 +302,8 @@ async function createJob(
     .doc(receiptId(command.idempotencyKey));
   const motorId = draftMotorId(jobRef.id);
   const motorRef = db.collection("users").doc(access.uid).collection("motors").doc(motorId);
+  const donorVin = command.payload.expectedIdentity?.donorVin?.trim().toUpperCase() ?? "";
+  const linkedDonorId = donorVin ? await findDonorIdByVinAdmin(access.companyId, donorVin) : null;
 
   return db.runTransaction(async (transaction) => {
     const [receiptSnapshot, templateSnapshot] = await Promise.all([
@@ -378,6 +381,7 @@ async function createJob(
       status: "draft",
       intakeStatus: "open",
       intakeJobId: jobRef.id,
+      donorId: linkedDonorId,
       primaryLocationId: ENGINE_INTAKE_STAGING_LOCATION_ID,
       primaryLocationCode: ENGINE_INTAKE_STAGING_LOCATION_CODE,
       warehouseLocation: ENGINE_INTAKE_STAGING_LOCATION_CODE,

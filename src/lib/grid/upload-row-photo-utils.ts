@@ -33,7 +33,7 @@ const TYPE_BY_EXTENSION: Record<string, string> = {
 
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v"]);
 
-export type RowPhotoEntityKind = "motor" | "warehouse" | "specific";
+export type RowPhotoEntityKind = "motor" | "warehouse" | "specific" | "used-part";
 
 export function inferRowPhotoContentType(type: string, fileName?: string): string {
   const normalizedType = type.trim().toLowerCase();
@@ -100,7 +100,7 @@ export function buildRowPhotoStoragePath(
 }
 
 export function isRowPhotoEntityKind(value: string): value is RowPhotoEntityKind {
-  return value === "motor" || value === "warehouse" || value === "specific";
+  return value === "motor" || value === "warehouse" || value === "specific" || value === "used-part";
 }
 
 export function assertRowMediaCount(currentCount: number, addingCount: number): void {

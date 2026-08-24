@@ -33,6 +33,9 @@ test("every area offers contextual suggestions", () => {
     "/specific",
     "/imports",
     "/quotes",
+    "/donors",
+    "/used-parts",
+    "/stocktake",
     "/team",
     "/settings",
   ]) {

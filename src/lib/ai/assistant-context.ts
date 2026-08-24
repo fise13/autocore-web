@@ -76,6 +76,13 @@ function areaDefinition(pathname: string): { areaId: AssistantAreaId; areaLabel:
   if (pathname.startsWith("/imports")) return { areaId: "imports", areaLabel: "Imports" };
   if (pathname.startsWith("/quotes")) return { areaId: "quotes", areaLabel: "Quotes" };
   if (
+    pathname.startsWith("/donors") ||
+    pathname.startsWith("/used-parts") ||
+    pathname.startsWith("/stocktake")
+  ) {
+    return { areaId: "warehouse", areaLabel: userCopy.donors.title };
+  }
+  if (
     pathname.startsWith("/team") ||
     pathname.startsWith("/employees") ||
     pathname.startsWith("/roles")

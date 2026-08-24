@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { adjustStockUseCase } from "@/application/use-cases/warehouse/adjust-stock";
@@ -423,6 +424,12 @@ export function WarehouseWorkspace() {
               {userCopy.warehouse.createMainWarehouse}
             </button>
           ) : null}
+          <Link
+            href="/stocktake"
+            className="rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
+          >
+            {userCopy.warehouse.stocktake}
+          </Link>
         </div>
       </div>
       {itemsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}

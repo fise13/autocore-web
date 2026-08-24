@@ -4,7 +4,7 @@ Kill-by dates for dual-write / legacy surfaces. Owners: platform eng.
 
 | Path | Status | Kill-by | Notes |
 |------|--------|---------|-------|
-| `documentImports` dual-write from `api/mobile/imports` | Active dual-write | 2026-09-30 | Keep until import hub fully on `importBatches` |
+| `documentImports` dual-write from `api/mobile/imports` | Stopped (2026-08-24) | 2026-09-30 | New uploads write `importBatches` only. `/imports/[id]` still reads legacy jobs, then redirects to `/imports/batch/{id}`. |
 | Legacy `motors` collection reads in `motor-sale-documents` | Read fallback | 2026-09-30 | Migrate remaining docs to company-scoped motors |
 | `warrantyMonths` → days (`domain/warranty`, `document-config`) | Compat field | 2026-10-31 | Write only `warrantyDays`; drop months on read after backfill |
 | `isMarketingInternalPath` deprecated alias | Soft | 2026-08-31 | Prefer `isMarketingContentPath` |

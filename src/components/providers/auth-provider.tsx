@@ -30,7 +30,6 @@ import {
 
 import { Permission, UserEntity, UserRole } from "@/domain/user";
 import {
-  createCompany as createCompanyRecord,
   ensureDefaultCompany as assignDefaultCompany,
 } from "@/infrastructure/firestore/company-service";
 import {
@@ -750,14 +749,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         let companyId: string;
         try {
-          try {
-            companyId = await createCompanyViaApi(user, name);
-          } catch (apiError) {
-            console.warn("[createCompany] API path failed, using client:", apiError);
-            companyId = await createCompanyRecord(user.uid, name);
-          }
+          companyId = await createCompanyViaApi(user, name);
         } catch (error) {
-          // Partial client write may have already linked users/{uid}.companyId.
+          // Partial Admin write may have already linked users/{uid}.companyId.
           const recoveredId = await recoverIfLinked();
           if (recoveredId) return recoveredId;
           throw error;

@@ -93,10 +93,10 @@ describe("firestore.rules — motor mirror tenancy", () => {
     );
   });
 
-  it("defines the legacy-link helper it depends on", () => {
+  it("pins a kill-by date so the legacy hatch cannot linger unmarked", () => {
     assert.ok(
-      /function motorCompanyLinkIsLegacy\(/.test(RULES),
-      "motorCompanyLinkIsLegacy must be defined for the motor rules to evaluate",
+      /Kill-by 2026-09-30/.test(RULES),
+      "motorCompanyLinkIsLegacy must stay dated until leftover unscoped motors are gone",
     );
   });
 });
@@ -202,6 +202,25 @@ describe("firestore.rules — global invariants", () => {
       assert.ok(
         block.includes("companyId"),
         `${header} must scope access by companyId`,
+      );
+    }
+  });
+
+  it("scopes nested dismantler collections to company inventory access", () => {
+    for (const header of [
+      "match /donors/{donorId}",
+      "match /usedParts/{partId}",
+      "match /marketplaceListings/{listingId}",
+      "match /stocktakeSessions/{sessionId}",
+    ]) {
+      const block = normalize(matchBlock(header));
+      assert.ok(
+        block.includes("companyId"),
+        `${header} must scope writes by companyId`,
+      );
+      assert.ok(
+        block.includes("canInventoryRead"),
+        `${header} must require inventory read`,
       );
     }
   });

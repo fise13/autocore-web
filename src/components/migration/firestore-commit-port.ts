@@ -15,10 +15,12 @@ import {
   createMotorRepository,
   generateWebLocalId,
 } from "@/infrastructure/firestore/motor-repository";
+import { createDonorRepository } from "@/infrastructure/firestore/donor-repository";
 import { createWarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import {
   buildInventoryInputFromMigrationRow,
   buildMotorInputFromMigrationRow,
+  buildDonorInputFromMigrationRow,
 } from "@/lib/import/migration-row-builders";
 import { RECORD_TYPE_LABELS, type RecordType } from "@/lib/import";
 
@@ -294,7 +296,10 @@ async function persistRow(params: {
   }
 
   if (row.recordType === "donorCar") {
-    return { created: false, updated: false };
+    const donorInput = buildDonorInputFromMigrationRow(row.values, companyId, uid, row.id);
+    if (!donorInput) return { created: false, updated: false };
+    await createDonorRepository().create(donorInput);
+    return { created: true, updated: false };
   }
 
   const inventoryInput = buildInventoryInputFromMigrationRow(

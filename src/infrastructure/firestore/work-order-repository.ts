@@ -23,6 +23,7 @@ import { createActivityLogRepository } from "@/infrastructure/firestore/activity
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { formatWorkOrderActivityName } from "@/lib/work-order/work-order-display";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { runSideEffect } from "@/lib/side-effects/run-side-effect";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { stripUndefinedDeep } from "@/lib/firestore/strip-undefined";
@@ -193,17 +194,18 @@ export function createWorkOrderRepository() {
         updatedAt: serverTimestamp(),
         ...(timestampField ? { [timestampField]: serverTimestamp() } : {}),
       });
-      try {
-        await activity.append(companyId, {
-          actor: actorUserId,
-          action: `work_order.status.${status}`,
-          module: "work_orders",
-          target: `workOrder:${workOrderId}`,
-          targetId: workOrderId,
-        });
-      } catch (activityError) {
-        console.warn("Activity log skipped for work order status change:", activityError);
-      }
+      await runSideEffect(
+        "work-order-status-activity",
+        () =>
+          activity.append(companyId, {
+            actor: actorUserId,
+            action: `work_order.status.${status}`,
+            module: "work_orders",
+            target: `workOrder:${workOrderId}`,
+            targetId: workOrderId,
+          }),
+        { companyId, workOrderId, status },
+      );
     },
 
     docRef: workOrderRef,

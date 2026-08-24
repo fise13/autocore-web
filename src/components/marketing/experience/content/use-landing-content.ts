@@ -36,13 +36,17 @@ export function useLandingContent() {
   return {
     hero: {
       ariaLabel: t("hero.ariaLabel"),
+      kicker: t("hero.kicker"),
       title: t("hero.title"),
       subtitle: t("hero.subtitle"),
       ctaPrimary: t("hero.ctaPrimary"),
       ctaSecondary: t("hero.ctaSecondary"),
+      ctaPricing: t("hero.ctaPricing"),
+      priceTeaser: t("hero.priceTeaser"),
       ctaSecondaryHref: "#operating-loop",
       trust: t("hero.trust"),
       visualCaption: t("hero.visualCaption"),
+      proof: t.raw("hero.proof") as string[],
     },
     chaos: {
       eyebrow: t("chaos.eyebrow"),
@@ -97,6 +101,7 @@ export function useLandingContent() {
       yearlyLabel: t("pricing.yearlyLabel"),
       intervalAria: t("pricing.intervalAria"),
       note: t("pricing.note"),
+      yearlySave: t("pricing.yearlySave"),
       included: t.raw("pricing.included") as string[],
       risk: t("pricing.risk"),
       trial: t("pricing.trial"),

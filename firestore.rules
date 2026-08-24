@@ -581,6 +581,8 @@ service cloud.firestore {
      * user record.
      */
     function motorCompanyLinkIsLegacy(data) {
+      // Kill-by 2026-09-30: drop this hatch after leftover unscoped motors
+      // (missing / "" / "default" companyId) are audited and backfilled.
       return !('companyId' in data)
         || data.companyId == null
         || data.companyId == ''
@@ -1099,6 +1101,40 @@ service cloud.firestore {
         allow update: if canWorkOrdersWrite(companyId)
           && request.resource.data.companyId == companyId
           && resource.data.companyId == companyId;
+        allow delete: if false;
+      }
+
+      match /donors/{donorId} {
+        allow read: if canInventoryRead(companyId);
+        allow create: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if canInventoryDelete(companyId);
+      }
+
+      match /usedParts/{partId} {
+        allow read: if canInventoryRead(companyId);
+        allow create: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow update: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId
+          && resource.data.companyId == companyId;
+        allow delete: if canInventoryDelete(companyId);
+      }
+
+      match /marketplaceListings/{listingId} {
+        allow read: if canInventoryRead(companyId);
+        allow create, update: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId;
+        allow delete: if canInventoryDelete(companyId);
+      }
+
+      match /stocktakeSessions/{sessionId} {
+        allow read: if canInventoryRead(companyId);
+        allow create, update: if canInventoryWrite(companyId)
+          && request.resource.data.companyId == companyId;
         allow delete: if false;
       }
 

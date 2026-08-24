@@ -4,10 +4,8 @@ import {
   addFileToImportBatchAdmin,
   ensureOpenImportBatchAdmin,
 } from "@/infrastructure/firestore/admin/import-batch-admin";
-import { createDocumentImportJob } from "@/infrastructure/firestore/admin/document-import-admin";
 import { MobileAccessError, verifyMobileAccess } from "@/lib/auth/verify-mobile-access.server";
 import { kickImportBatchProcessing } from "@/lib/import-batch/kick-import-batch.server";
-import { extractDocumentImportJob } from "@/lib/document-import/extract-document-import.server";
 import { emitNotificationEvent } from "@/lib/notifications/engine.server";
 
 export const runtime = "nodejs";
@@ -83,33 +81,12 @@ export async function POST(request: NextRequest) {
       fileId: result.file.id,
     }).catch((error) => console.warn("[mobile/imports] kick failed", error));
 
-    // Dual-write image to legacy inbox so /imports/[id] viewer + toast keep working.
-    let legacyId = result.file.id;
-    if (mimeType.startsWith("image/")) {
-      try {
-        const legacy = await createDocumentImportJob({
-          companyId: access.companyId,
-          createdBy: access.uid,
-          buffer,
-          contentType: mimeType,
-          fileName: file.name || undefined,
-        });
-        legacyId = legacy.id;
-        void extractDocumentImportJob({
-          companyId: access.companyId,
-          jobId: legacy.id,
-        }).catch((error) => console.warn("[mobile/imports] extract failed", error));
-      } catch (error) {
-        console.warn("[mobile/imports] legacy documentImport failed", error);
-      }
-    }
-
     void emitNotificationEvent({
       companyId: access.companyId,
       eventType: "document_import.created",
       actorUserId: access.uid,
       aggregateType: "document_import",
-      aggregateId: legacyId,
+      aggregateId: batch.id,
       payload: {
         fileName: result.file.fileName ?? "import",
         batchId: batch.id,
@@ -117,8 +94,9 @@ export async function POST(request: NextRequest) {
     }).catch((error) => console.warn("[mobile/imports] notification failed", error));
 
     return NextResponse.json({
-      id: legacyId,
+      id: batch.id,
       batchId: batch.id,
+      fileId: result.file.id,
       status: result.file.status,
       previewDownloadUrl: result.file.previewDownloadUrl,
       originalDownloadUrl: result.file.downloadUrl,

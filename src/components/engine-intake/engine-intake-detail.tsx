@@ -670,7 +670,7 @@ export function EngineIntakeDetail({
           onClose={() =>
             void run(
               managedCommand({ type: "close_job", payload: { jobId: job.id } }),
-              "Intake chapter closed",
+              userCopy.engineIntake.workspace.chapterClosed,
             )
           }
         />
@@ -686,34 +686,34 @@ export function EngineIntakeDetail({
           <DialogHeader>
             <DialogTitle>
               {dialog?.kind === "approve"
-                ? "Release to Motors Grid"
+                ? userCopy.engineIntake.workspace.releaseToGrid
                 : dialog?.kind === "rework"
-                  ? `Request ${dialog.requirement.label} retake`
+                  ? userCopy.engineIntake.workspace.requestRetake(dialog.requirement.label)
                   : dialog?.kind === "quarantine"
-                    ? "Quarantine engine"
+                    ? userCopy.engineIntake.workspace.quarantineEngine
                     : dialog?.kind === "reject"
-                      ? "Reject engine"
+                      ? userCopy.engineIntake.workspace.rejectEngine
                       : dialog?.kind === "identity"
-                        ? "Edit expected identity"
-                        : "Cancel Warehouse draft"}
+                        ? userCopy.engineIntake.workspace.editIdentity
+                        : userCopy.engineIntake.workspace.cancelDraft}
             </DialogTitle>
             <DialogDescription>
               {dialog?.kind === "approve"
                 ? releaseNeedsOverride
-                  ? `Sale checklist still open${summary.whisper ? ` — ${summary.whisper}` : ""}. Add a manager override note to release anyway.`
-                  : "Sale checklist is ready. Confirm serial identity and release into Motors Grid."
+                  ? userCopy.engineIntake.workspace.overrideNote(summary.whisper ?? "")
+                  : userCopy.engineIntake.workspace.checklistReady
                 : dialog?.kind === "rework"
-                  ? "Ask the worker for more photos — suggestions, not a rigid checklist."
+                  ? userCopy.engineIntake.workspace.reworkHint
                   : dialog?.kind === "identity"
-                    ? "Changing identity is recorded in the timeline."
-                    : "Record a clear operational reason in the immutable timeline."}
+                    ? userCopy.engineIntake.workspace.identityHint
+                    : userCopy.engineIntake.workspace.reasonHint}
             </DialogDescription>
           </DialogHeader>
 
           {dialog?.kind === "approve" || dialog?.kind === "identity" ? (
             <FieldGroup>
               <Field>
-                <FieldLabel>Brand</FieldLabel>
+                <FieldLabel>{userCopy.engineIntake.workspace.brand}</FieldLabel>
                 <DatalistInput
                   value={brandName}
                   onValueChange={setBrandName}
@@ -725,7 +725,7 @@ export function EngineIntakeDetail({
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field>
-                  <FieldLabel>Engine code</FieldLabel>
+                  <FieldLabel>{userCopy.engineIntake.workspace.engineCode}</FieldLabel>
                   <DatalistInput
                     value={engineCode}
                     onValueChange={setEngineCode}
@@ -741,7 +741,7 @@ export function EngineIntakeDetail({
                   />
                 </Field>
                 <Field>
-                  <FieldLabel>Serial number</FieldLabel>
+                  <FieldLabel>{userCopy.engineIntake.workspace.serialNumber}</FieldLabel>
                   <DatalistInput
                     value={serialCode}
                     onValueChange={setSerialCode}

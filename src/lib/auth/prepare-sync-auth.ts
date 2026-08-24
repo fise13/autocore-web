@@ -21,11 +21,7 @@ export async function prepareSyncAuth(uid: string, options?: { force?: boolean }
   if (!user || user.uid !== uid) return;
 
   if (!bootstrappedUids.has(uid)) {
-    try {
-      await ensureRbacBootstrap(uid);
-    } catch (error) {
-      console.warn("RBAC bootstrap failed during sync:", error);
-    }
+    await ensureRbacBootstrap(uid);
     bootstrappedUids.add(uid);
   }
 

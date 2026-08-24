@@ -62,6 +62,8 @@ export const createFinancialOperationSchema = z.object({
   relatedMovementId: z.string().trim().nullable().optional(),
   relatedWarehouseId: z.string().trim().nullable().optional(),
   relatedWorkOrderId: z.string().trim().nullable().optional(),
+  relatedDonorId: z.string().trim().nullable().optional(),
+  relatedUsedPartId: z.string().trim().nullable().optional(),
   costBasis: z.number().nonnegative().nullable().optional(),
   comment: z.string().trim().nullable().optional(),
   category: z.string().trim().nullable().optional(),
@@ -102,6 +104,7 @@ export const upsertMotorSchema = z.object({
   intakeStatus: z.string().trim().nullable().optional(),
   reservedForWorkOrderId: z.string().nullable().optional(),
   installedOnVehicleId: z.string().nullable().optional(),
+  donorId: z.string().trim().nullable().optional(),
 });
 
 export const inventoryItemTypeSchema = z.enum(INVENTORY_ITEM_TYPES);

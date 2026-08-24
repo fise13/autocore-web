@@ -78,6 +78,21 @@ const DocumentsWorkspace = lazyPanel(() =>
     default: m.DocumentsWorkspace,
   })),
 );
+const DonorsWorkspace = lazyPanel(() =>
+  import("@/components/donors/donors-workspace").then((m) => ({
+    default: m.DonorsWorkspace,
+  })),
+);
+const UsedPartsWorkspace = lazyPanel(() =>
+  import("@/components/used-parts/used-parts-workspace").then((m) => ({
+    default: m.UsedPartsWorkspace,
+  })),
+);
+const StocktakeWorkspace = lazyPanel(() =>
+  import("@/components/stocktake/stocktake-workspace").then((m) => ({
+    default: m.StocktakeWorkspace,
+  })),
+);
 
 /** Routes that stay mounted in the background when you navigate away (Safari-style, no tab UI). */
 export function resolveRouteCacheKey(pathname: string): string | null {
@@ -93,6 +108,9 @@ export function resolveRouteCacheKey(pathname: string): string | null {
   if (pathname === "/team" || pathname.startsWith("/team/")) return "/team";
   if (pathname === "/activity" || pathname.startsWith("/activity/")) return "/activity";
   if (pathname === "/documents" || pathname.startsWith("/documents/")) return "/documents";
+  if (pathname === "/donors" || pathname.startsWith("/donors/")) return "/donors";
+  if (pathname === "/used-parts" || pathname.startsWith("/used-parts/")) return "/used-parts";
+  if (pathname === "/stocktake" || pathname.startsWith("/stocktake/")) return "/stocktake";
   if (pathname.startsWith("/specific/")) return "/motors";
   return null;
 }
@@ -100,7 +118,14 @@ export function resolveRouteCacheKey(pathname: string): string | null {
 function renderCachedRoute(cacheKey: string): ReactNode {
   switch (cacheKey) {
     case "/":
+    case "/home":
       return <OverviewShell />;
+    case "/used-parts":
+      return (
+        <Suspense fallback={null}>
+          <UsedPartsWorkspace />
+        </Suspense>
+      );
     case "/work-orders":
       return <WorkOrdersWorkspace />;
     case "/accounting":
@@ -139,6 +164,10 @@ function renderCachedRoute(cacheKey: string): ReactNode {
           <DocumentsWorkspace />
         </Suspense>
       );
+    case "/donors":
+      return <DonorsWorkspace />;
+    case "/stocktake":
+      return <StocktakeWorkspace />;
     default:
       return null;
   }

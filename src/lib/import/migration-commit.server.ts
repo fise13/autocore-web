@@ -6,6 +6,7 @@ import type { UpsertInventoryItemInput } from "@/domain/inventory";
 import type { MotorEntity } from "@/domain/motor";
 import { upsertInventoryItemSchema, upsertMotorSchema } from "@/domain/schemas";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { persistDonorAdmin } from "@/infrastructure/firestore/admin/donor-admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { ensureDefaultWarehouseAdmin } from "@/lib/warehouse/ensure-default-warehouse.server";
 import { normalizeInventoryTaxonomyInput } from "@/lib/warehouse/inventory-taxonomy-normalize";
@@ -16,6 +17,7 @@ import { stockLevelDocumentId } from "@/lib/warehouse/warehouse-sync-ids";
 import {
   buildInventoryInputFromMigrationRow,
   buildMotorInputFromMigrationRow,
+  buildDonorInputFromMigrationRow,
   isMigrationCatalogRecordType,
 } from "./migration-row-builders";
 import {
@@ -354,7 +356,10 @@ async function persistMigrationRowAdmin(params: {
   }
 
   if (row.recordType === "donorCar") {
-    return { created: false, updated: false, motorAdded: false };
+    const donorInput = buildDonorInputFromMigrationRow(row.values, companyId, uid, row.id);
+    if (!donorInput) return { created: false, updated: false, motorAdded: false };
+    await persistDonorAdmin(donorInput);
+    return { created: true, updated: false, motorAdded: false };
   }
 
   if (isMigrationCatalogRecordType(row.recordType)) {

@@ -63,6 +63,7 @@ export async function sellMotorWithFinancialOperationUseCase(
     cashReceived: params.cashReceived ?? null,
     relatedMotorID: Number.isFinite(relatedMotorID) ? relatedMotorID : null,
     relatedMotorId: params.motor.id,
+    relatedDonorId: params.motor.donorId ?? null,
     relatedWarrantyId: params.relatedWarrantyId ?? null,
     relatedClientId: params.relatedClientId ?? null,
     category: MOTOR_SALE_CATEGORY,
