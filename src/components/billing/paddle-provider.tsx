@@ -185,7 +185,7 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (companyId) {
-        options.customData = { company_id: companyId };
+        options.customData = { company_id: companyId, companyId };
       }
 
       if (customerEmail?.trim()) {

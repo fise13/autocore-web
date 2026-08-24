@@ -55,7 +55,14 @@ export async function POST(request: NextRequest) {
     const paddle = getPaddleInstance();
     const transaction = await paddle.transactions.create({
       items: [{ priceId: paddlePriceIdForInterval(interval), quantity: 1 }],
-      ...(companyId ? { customData: { company_id: companyId } } : {}),
+      ...(companyId
+        ? {
+            customData: {
+              company_id: companyId,
+              companyId,
+            },
+          }
+        : {}),
       ...(customerEmail ? { customer: { email: customerEmail } } : {}),
     });
 
