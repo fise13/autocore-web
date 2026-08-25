@@ -12,18 +12,12 @@ import { cn } from "@/lib/utils";
 import type { DomainCategory } from "@/lib/domain/types";
 import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
 
-import { DetectedFieldsPanel } from "./detected-fields-panel";
-import { DuplicatesPanel } from "./duplicates-panel";
-import { MigrationCompleteView } from "./migration-complete";
+import { ImportCompleteView } from "./import-complete";
 import { MigrationDropzone } from "./migration-dropzone";
-import { MigrationProgressView } from "./migration-progress";
 import { MigrationSupportDialog } from "./migration-support-dialog";
-import type { MigrationCommitPort, MigrationLearnFn } from "./migration-types";
-import { PhotosStrip } from "./photos-strip";
-import { RecognitionSummaryView } from "./recognition-summary";
-import { ReviewGrid } from "./review-grid";
-import { createSimulatedCommitPort } from "./simulated-commit-port";
-import { useBusinessMigration } from "./use-business-migration";
+import type { MigrationLearnFn } from "./migration-types";
+import { PlanPreview } from "./plan-preview";
+import { PHASE_MESSAGES, useBusinessImport } from "./use-business-import";
 
 export type BusinessMigrationProps = {
   /** Standalone `/migration` route vs full-screen onboarding step. */
@@ -33,7 +27,6 @@ export type BusinessMigrationProps = {
   userEmail?: string;
   getCompanyDictionary?: (category: DomainCategory) => DomainDictionary | null;
   onLearn?: MigrationLearnFn;
-  commitPort?: MigrationCommitPort;
   onOpenMotors?: () => void;
   onOpenWarehouse?: () => void;
   /** Skip import and enter the app manually (onboarding only). */
@@ -53,55 +46,36 @@ export function BusinessMigration(props: BusinessMigrationProps) {
   const { toast } = useToast();
   const [supportOpen, setSupportOpen] = useState(false);
   const isOnboarding = props.variant === "onboarding";
-  const reviewMaxWidth = isOnboarding ? "max-w-[min(100%,90rem)]" : "max-w-6xl";
+  const reviewMaxWidth = isOnboarding ? "max-w-[min(100%,90rem)]" : "max-w-4xl";
 
-  const fallbackPort = useMemo(() => createSimulatedCommitPort(), []);
-  const commitPort = props.commitPort ?? fallbackPort;
-
-  const m = useBusinessMigration({
-    commitPort,
-    companyId: props.companyId,
-    getCompanyDictionary: props.getCompanyDictionary,
-    onLearn: props.onLearn,
-  });
-
-  const attachedPaths = useMemo(
-    () => new Set(m.rows.filter((row) => row.photo).map((row) => row.photo!.path)),
-    [m.rows],
-  );
+  const m = useBusinessImport({ companyId: props.companyId });
 
   // "Start over" only mid-flow; exit to the app only when nothing is in progress
   // (the brief: never bounce the user back to Motors until migration finishes).
-  const canStartOver = m.phase === "recognition" || m.phase === "review" || m.phase === "error";
+  const canStartOver = m.phase === "ready" || m.phase === "error";
   const canExit =
-    !isOnboarding && (m.phase === "idle" || m.phase === "completed" || m.phase === "error");
+    !isOnboarding &&
+    (m.phase === "idle" || m.phase === "completed" || m.phase === "partial" || m.phase === "error");
   const canManualSkip =
     isOnboarding &&
     props.onManualSetup &&
-    (m.phase === "idle" || m.phase === "recognition" || m.phase === "error");
+    (m.phase === "idle" || m.phase === "ready" || m.phase === "error");
   const mCopy = userCopy.migration;
   const shellTitle = isOnboarding ? mCopy.shellTitleOnboarding : mCopy.shellTitleStandalone;
   const shellSubtitle = isOnboarding
     ? mCopy.shellSubtitleOnboarding
     : mCopy.shellSubtitleStandalone;
 
-  const handleAttachPhotoPath = (rowId: string, path: string) => {
-    const image = m.images.find((item) => item.path === path);
-    if (image) m.attachPhoto(rowId, image);
-  };
-
-  const saveProfile = () => {
-    if (typeof window !== "undefined" && props.companyId) {
-      window.localStorage.setItem(
-        `autocore:import-profile:${props.companyId}`,
-        JSON.stringify({ mappings: m.mappings, savedAt: Date.now() }),
-      );
+  const handleImport = () => {
+    if (m.unansweredMerges.length > 0) {
+      toast({
+        title: "Есть неразрешённые объединения",
+        description: "Объединение записей необратимо — подтвердите или оставьте их раздельно.",
+        variant: "default",
+      });
+      return;
     }
-    toast({
-      title: mCopy.profileSavedTitle,
-      description: mCopy.profileSavedDescription,
-      variant: "success",
-    });
+    void m.startImport();
   };
 
   return (
@@ -196,79 +170,43 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               </motion.div>
             )}
 
-            {m.phase === "analyzing" && (
+            {(m.phase === "parsing" || m.phase === "analyzing") && (
               <motion.div key="analyzing" {...fade}>
-                <AnalyzingState fileNames={m.fileNames} />
+                <AnalyzingState phase={m.phase} fileNames={m.fileNames} />
               </motion.div>
             )}
 
-            {m.phase === "recognition" && m.recognition && (
-              <motion.div key="recognition" {...fade}>
-                <RecognitionSummaryView
-                  summary={m.recognition}
-                  fileNames={m.fileNames}
-                  onContinue={m.continueToReview}
+            {m.phase === "ready" && m.presentation && (
+              <motion.div
+                key="ready"
+                {...fade}
+                className={cn("mx-auto flex w-full flex-col gap-4 px-4 py-6 md:px-6", reviewMaxWidth)}
+              >
+                <PlanPreview
+                  plan={m.presentation}
+                  onImport={handleImport}
+                  mergeDecisions={m.mergeDecisions}
+                  onDecideMerge={m.decideMerge}
+                  blockedByMerges={m.unansweredMerges.length}
                 />
               </motion.div>
             )}
 
-            {m.phase === "review" && (
-              <motion.div key="review" {...fade} className={cn("mx-auto flex w-full flex-col gap-4 px-4 py-6 md:px-6", reviewMaxWidth)}>
-                <div className="flex flex-col gap-1">
-                  <h2 className="font-heading text-xl font-semibold tracking-tight">
-                    {mCopy.reviewTitle}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">{mCopy.reviewHint}</p>
-                </div>
-
-                <DetectedFieldsPanel mappings={m.mappings} />
-                <DuplicatesPanel duplicates={m.duplicates} onSetResolution={m.setDuplicateResolution} />
-                <PhotosStrip images={m.images} attachedPaths={attachedPaths} />
-
-                <ReviewGrid
-                  rows={m.rows}
-                  selection={m.selection}
-                  onToggleSelect={m.toggleSelect}
-                  onSelectAll={m.selectAll}
-                  onClearSelection={m.clearSelection}
-                  onSetRowType={m.setRowType}
-                  onApplySuggestion={m.applySuggestion}
-                  onSetRowValue={m.setRowValue}
-                  onAttachPhotoPath={handleAttachPhotoPath}
-                  onSkip={m.skipRows}
-                  onRestore={m.restoreRows}
-                  onDelete={m.deleteRows}
-                  onAcceptAllSuggestions={m.acceptAllSuggestions}
-                />
-
-                <div className="sticky bottom-0 -mx-4 flex items-center justify-between gap-3 border-t bg-background/90 px-4 py-3 backdrop-blur-sm">
-                  <span className="text-sm text-muted-foreground">
-                    {mCopy.pendingLabel(m.pendingCount)}
-                  </span>
-                  <Button size="lg" onClick={m.startMigration} disabled={m.pendingCount === 0}>
-                    {mCopy.migrateCta}
-                    <ArrowRight data-icon="inline-end" />
-                  </Button>
-                </div>
+            {m.phase === "committing" && (
+              <motion.div key="committing" {...fade}>
+                <CommittingState progress={m.progress} />
               </motion.div>
             )}
 
-            {m.phase === "migrating" && (
-              <motion.div key="migrating" {...fade}>
-                <MigrationProgressView progress={m.progress} onCancel={m.cancelMigration} />
-              </motion.div>
-            )}
-
-            {m.phase === "completed" && m.result && (
+            {(m.phase === "completed" || m.phase === "partial") && m.commitResult && (
               <motion.div key="completed" {...fade}>
-                <MigrationCompleteView
-                  result={m.result}
-                  canUndo={m.canUndo}
-                  variant={isOnboarding ? "onboarding" : "standalone"}
-                  onUndo={() => void m.undo()}
+                <ImportCompleteView
+                  result={m.commitResult.result}
+                  status={m.commitResult.status}
+                  deferred={m.commitResult.deferred}
+                  onResume={() => void m.resumeImport()}
                   onOpenMotors={props.onOpenMotors ?? (() => {})}
                   onOpenWarehouse={props.onOpenWarehouse ?? (() => {})}
-                  onSaveProfile={saveProfile}
                   onReset={m.reset}
                 />
               </motion.div>
@@ -307,7 +245,13 @@ export function BusinessMigration(props: BusinessMigrationProps) {
   );
 }
 
-function AnalyzingState({ fileNames }: { fileNames: string[] }) {
+function AnalyzingState({
+  phase,
+  fileNames,
+}: {
+  phase: "parsing" | "analyzing";
+  fileNames: string[];
+}) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
@@ -317,9 +261,43 @@ function AnalyzingState({ fileNames }: { fileNames: string[] }) {
         <h2 className="font-heading text-xl font-semibold tracking-tight">
           {userCopy.migration.analyzingTitle}
         </h2>
-        <p className="text-sm text-muted-foreground">
-          {userCopy.migration.analyzingHint(fileNames[0] ?? "")}
-        </p>
+        {/* Names the actual stage: understanding a business takes longer than
+            reading a file, and silence for that long reads as a hang. */}
+        <p className="text-sm text-muted-foreground">{PHASE_MESSAGES[phase]}</p>
+        {fileNames[0] ? (
+          <p className="text-xs text-muted-foreground">{fileNames.join(", ")}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function CommittingState({ progress }: { progress: { done: number; total: number } | null }) {
+  const total = progress?.total ?? 0;
+  const done = progress?.done ?? 0;
+  const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+        <Loader2 className="size-7 animate-spin" />
+      </div>
+      <div className="flex w-full flex-col gap-2">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          {PHASE_MESSAGES.committing}
+        </h2>
+        {total > 0 ? (
+          <>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-emerald-600 transition-[width] duration-300"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground tabular-nums">
+              {done} / {total}
+            </p>
+          </>
+        ) : null}
       </div>
     </div>
   );

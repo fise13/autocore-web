@@ -24,10 +24,18 @@ export function PlanPreview({
   plan,
   onImport,
   busy,
+  mergeDecisions,
+  onDecideMerge,
+  blockedByMerges,
 }: {
   plan: PlanPresentation;
   onImport: () => void;
   busy?: boolean;
+  /** The person's answers to proposed merges, by entity id. */
+  mergeDecisions?: Record<string, "accept" | "reject">;
+  onDecideMerge?: (entityId: string, answer: "accept" | "reject" | "clear") => void;
+  /** Merges still unanswered. An unanswered merge is never performed. */
+  blockedByMerges?: number;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -123,6 +131,14 @@ export function PlanPreview({
               {item.sources.length > 0 ? (
                 <p className="text-xs text-muted-foreground">{item.sources.join(" · ")}</p>
               ) : null}
+              {item.reasons.some((reason) => reason.code === "destructive-merge") &&
+              onDecideMerge ? (
+                <MergeChoice
+                  entityId={item.entityId}
+                  answer={mergeDecisions?.[item.entityId]}
+                  onDecide={onDecideMerge}
+                />
+              ) : null}
             </div>
           ))}
         </section>
@@ -132,6 +148,14 @@ export function PlanPreview({
           Неоднозначных записей нет — можно импортировать
         </p>
       )}
+
+      {blockedByMerges && blockedByMerges > 0 ? (
+        <p className="text-sm text-amber-600 dark:text-amber-500">
+          Ответьте на {blockedByMerges}{" "}
+          {blockedByMerges === 1 ? "предложение об объединении" : "предложения об объединении"} —
+          объединение необратимо, поэтому без ответа оно не выполняется.
+        </p>
+      ) : null}
 
       <button
         type="button"
@@ -147,6 +171,48 @@ export function PlanPreview({
           ? "Импортируем…"
           : `Импортировать — ${plan.createTotal} новых, ${plan.updateTotal} обновится`}
       </button>
+    </div>
+  );
+}
+
+/**
+ * The three answers to a proposed merge.
+ *
+ * "Оставить раздельно" is a real answer, not a way of postponing: it says the
+ * records are genuinely different and both should exist. Leaving the question
+ * alone is different again — nothing is merged, and the import says so rather
+ * than quietly choosing for them.
+ */
+function MergeChoice({
+  entityId,
+  answer,
+  onDecide,
+}: {
+  entityId: string;
+  answer?: "accept" | "reject";
+  onDecide: (entityId: string, answer: "accept" | "reject" | "clear") => void;
+}) {
+  const options: Array<{ value: "accept" | "reject"; label: string }> = [
+    { value: "accept", label: "Объединить" },
+    { value: "reject", label: "Оставить раздельно" },
+  ];
+  return (
+    <div className="mt-1 flex items-center gap-0.5 self-start rounded-lg bg-muted p-0.5">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onDecide(entityId, answer === option.value ? "clear" : option.value)}
+          className={cn(
+            "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            answer === option.value
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
