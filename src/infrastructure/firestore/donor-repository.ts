@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   limit,
@@ -11,7 +12,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { CreateDonorInput, DonorStatus, DonorVehicle } from "@/domain/donor";
+import { CreateDonorInput, DonorStatus, DonorVehicle, UpdateDonorInput } from "@/domain/donor";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
@@ -50,6 +51,36 @@ function mapDonor(id: string, data: Record<string, unknown>): DonorVehicle {
   };
 }
 
+/** Empty text is stored as null so the field reads as "not set", not as "". */
+function optionalText(value: string | undefined): string | null {
+  return value?.trim() || null;
+}
+
+/**
+ * Only the fields a donor edit may touch, normalized the same way `create`
+ * normalizes them. Identity (`companyId`, `createdByUserId`, `id`) is dropped:
+ * rewriting it would either break the ownership check in the security rules or
+ * silently reassign the record. `undefined` keys are dropped too — Firestore
+ * rejects them outright.
+ */
+function donorUpdatePayload(patch: UpdateDonorInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (patch.vin !== undefined) payload.vin = patch.vin.trim().toUpperCase();
+  if (patch.make !== undefined) payload.make = patch.make.trim();
+  if (patch.model !== undefined) payload.model = patch.model.trim();
+  if (patch.year !== undefined) payload.year = patch.year ?? null;
+  if (patch.body !== undefined) payload.body = optionalText(patch.body);
+  if (patch.purchasePrice !== undefined) payload.purchasePrice = patch.purchasePrice ?? 0;
+  if (patch.currency !== undefined) payload.currency = patch.currency ?? "KZT";
+  if (patch.source !== undefined) payload.source = optionalText(patch.source);
+  if (patch.status !== undefined) payload.status = patch.status;
+  if (patch.yardLocation !== undefined) payload.yardLocation = optionalText(patch.yardLocation);
+  if (patch.photoUrls !== undefined) payload.photoUrls = patch.photoUrls ?? [];
+  if (patch.notes !== undefined) payload.notes = optionalText(patch.notes);
+  if (patch.purchasedAt !== undefined) payload.purchasedAt = patch.purchasedAt ?? null;
+  return payload;
+}
+
 export type DonorRepository = ReturnType<typeof createDonorRepository>;
 
 export function createDonorRepository() {
@@ -75,21 +106,23 @@ export function createDonorRepository() {
     },
 
     async create(input: CreateDonorInput): Promise<DonorVehicle> {
+      const make = input.make.trim();
+      if (!make) throw new Error("Donor make is required");
       const ref = input.id ? donorRef(input.companyId, input.id) : doc(donorsRef(input.companyId));
       const payload: Record<string, unknown> = {
         companyId: normalizeCompanyId(input.companyId),
         vin: (input.vin ?? "").trim().toUpperCase(),
-        make: input.make.trim(),
+        make,
         model: input.model.trim(),
         year: input.year ?? null,
-        body: input.body?.trim() || null,
+        body: optionalText(input.body),
         purchasePrice: input.purchasePrice ?? 0,
         currency: input.currency ?? "KZT",
-        source: input.source?.trim() || null,
+        source: optionalText(input.source),
         status: input.status ?? "intake",
-        yardLocation: input.yardLocation?.trim() || null,
+        yardLocation: optionalText(input.yardLocation),
         photoUrls: input.photoUrls ?? [],
-        notes: input.notes?.trim() || null,
+        notes: optionalText(input.notes),
         purchasedAt: input.purchasedAt ?? serverTimestamp(),
         createdByUserId: input.createdByUserId,
         createdAt: serverTimestamp(),
@@ -100,11 +133,23 @@ export function createDonorRepository() {
       return mapDonor(snap.id, snap.data() as Record<string, unknown>);
     },
 
-    async update(companyId: string, donorId: string, patch: Partial<CreateDonorInput>) {
+    async update(companyId: string, donorId: string, patch: UpdateDonorInput) {
+      const payload = donorUpdatePayload(patch);
+      if (Object.keys(payload).length === 0) return;
+      if (payload.make !== undefined && !payload.make) throw new Error("Donor make is required");
       await updateDoc(donorRef(companyId, donorId), {
-        ...patch,
+        ...payload,
         updatedAt: serverTimestamp(),
       });
+    },
+
+    /**
+     * Hard delete. Callers must check first that no used part or motor still
+     * points at the donor — Firestore has no cascade, and an orphaned part
+     * loses its fitment and its payback line for good.
+     */
+    async remove(companyId: string, donorId: string) {
+      await deleteDoc(donorRef(companyId, donorId));
     },
   };
 }

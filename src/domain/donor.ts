@@ -42,6 +42,21 @@ export type CreateDonorInput = {
   id?: string;
 };
 
+/**
+ * Fields an edit may change. Identity is excluded on purpose: reassigning a
+ * donor to another company or another author is never an edit.
+ *
+ * The two optional values a user can take back once entered accept `null`,
+ * which clears them. `undefined` means "leave this field alone", so without
+ * the distinction a year or a purchase date could be set but never unset.
+ */
+export type UpdateDonorInput = Partial<
+  Omit<CreateDonorInput, "companyId" | "createdByUserId" | "id" | "year" | "purchasedAt">
+> & {
+  year?: number | null;
+  purchasedAt?: Date | null;
+};
+
 export function donorLabel(donor: Pick<DonorVehicle, "make" | "model" | "year" | "vin">): string {
   const year = donor.year ? String(donor.year) : "";
   const name = [year, donor.make, donor.model].filter(Boolean).join(" ").trim();

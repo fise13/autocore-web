@@ -4233,6 +4233,29 @@ export const userCopyRu = {
     linkEngine: "Привязать мотор",
     pickEngine: "Двигатель",
     open: "Открыть",
+    edit: "Изменить",
+    editTitle: "Изменить донора",
+    remove: "Удалить",
+    removeTitle: "Удалить донора?",
+    removeConfirm: "Донор будет удалён безвозвратно. Отменить нельзя.",
+    removeBlocked: (parts: number, engines: number) =>
+      `Сначала отвяжите то, что снято с машины: деталей — ${parts}, моторов — ${engines}.`,
+    removing: "Удаляем…",
+    removeFailed: "Не удалось удалить донора",
+    unlinkEngine: "Отвязать",
+    linkedEngines: "Привязанные моторы",
+    noLinkedEngines: "Пока нет привязанных моторов",
+    purchasedAt: "Дата покупки",
+    makeRequired: "Укажите марку",
+    enginesSold: (count: number) => `продано: ${count}`,
+    revenueBreakdown: (parts: string, engines: string, car: string) =>
+      `Детали: ${parts} · Моторы: ${engines} · Машина целиком: ${car}`,
+    unvaluedMotors: (count: number) =>
+      count === 1
+        ? "У 1 проданного мотора не найдена сумма продажи — выручка занижена."
+        : `У ${count} проданных моторов не найдена сумма продажи — выручка занижена.`,
+    financeHidden: "Без доступа к финансам выручка считается только по деталям.",
+    close: "Закрыть",
   },
   usedParts: {
     title: "Б/у детали",
