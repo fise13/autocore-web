@@ -41,6 +41,7 @@ import {
   type RecordType,
   type RowIssue,
 } from "./types";
+import { isUnreadableDate } from "./date-value";
 import { detectCurrency, parseNumericValue, parseYear } from "./value-detectors";
 
 export type AnalyzeOptions = ClassifyOptions & {
@@ -94,6 +95,12 @@ function validateField(field: CanonicalField, value: string): string | null {
   switch (field) {
     case "year":
       return parseYear(value) === null ? "Некорректный год" : null;
+    case "arrivalDate":
+    case "saleDate":
+      // A cell that is plainly meant to be a date and cannot be read — the
+      // sheet's own «28.09.20245». Left empty rather than guessed at, and the
+      // row says so instead of quietly losing somebody's sale.
+      return isUnreadableDate(value) ? "Дата не распознана" : null;
     case "price":
       return parseNumericValue(value) === null ? "Цена не распознана" : null;
     case "quantity":

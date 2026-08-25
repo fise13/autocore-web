@@ -93,6 +93,7 @@ export async function createAdminPlanWriters(
   async function writeMotor(
     values: Record<string, string | undefined>,
     localId: number,
+    options: { existing?: boolean } = {},
   ): Promise<string> {
     const input = buildMotorInputFromMigrationRow(values, companyId);
     if (!input) throw new Error("Двигатель без опознавательных данных");
@@ -100,27 +101,41 @@ export async function createAdminPlanWriters(
       ...input,
       companyId,
     });
+
+    const payload: Record<string, unknown> = {
+      companyId,
+      localId,
+      serialCode: validated.serialCode,
+      configuration: validated.configuration ?? "",
+      notes: validated.notes ?? "",
+      quantity: validated.quantity ?? 1,
+      transmission: validated.transmission ?? "",
+      brandName: validated.brandName ?? "Не указан",
+      engineCode: validated.engineCode ?? "—",
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    // Written only when the sheet actually carried the date. A merge with
+    // `null` would erase a date the record already has, and a second import of
+    // a partly-filled file would quietly strip the first one.
+    if (validated.arrivalDate) payload.arrivalDate = validated.arrivalDate;
+    if (validated.soldDate) payload.soldDate = validated.soldDate;
+
+    if (validated.status === "sold") {
+      payload.status = "sold";
+    } else if (!options.existing) {
+      // Only a new record gets its status from the import. Re-importing a book
+      // that no longer lists a motor as sold must not put it back on the shelf
+      // — the warehouse knows more about that record than the spreadsheet.
+      payload.status = "available";
+    }
+
     await db
       .collection("users")
       .doc(context.uid)
       .collection("motors")
       .doc(String(localId))
-      .set(
-        {
-          companyId,
-          localId,
-          serialCode: validated.serialCode,
-          configuration: validated.configuration ?? "",
-          notes: validated.notes ?? "",
-          quantity: validated.quantity ?? 1,
-          transmission: validated.transmission ?? "",
-          brandName: validated.brandName ?? "Не указан",
-          engineCode: validated.engineCode ?? "—",
-          status: "available",
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+      .set(payload, { merge: true });
     return String(localId);
   }
 
@@ -203,7 +218,7 @@ export async function createAdminPlanWriters(
     createEngine: async (input) => writeMotor(input.values, nextLocalId(usedLocalIds)),
 
     updateEngine: async (existingId, input) => {
-      await writeMotor(input.values, Number(existingId));
+      await writeMotor(input.values, Number(existingId), { existing: true });
     },
 
     createInventoryItem: async (input) =>

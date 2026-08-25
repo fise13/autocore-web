@@ -31,6 +31,8 @@ export const CANONICAL_FIELDS = [
   "category",
   "subcategory",
   "condition",
+  "arrivalDate",
+  "saleDate",
   "comment",
   "photo",
   "warehouse",

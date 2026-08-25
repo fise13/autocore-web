@@ -53,6 +53,8 @@ const ENGINE_FIELD_TO_CANONICAL: Partial<Record<EngineFieldMapping, CanonicalFie
   quantity: "quantity",
   brandName: "brand",
   engineCode: "model",
+  arrivalDate: "arrivalDate",
+  soldDate: "saleDate",
 };
 
 const ENGINE_SERIAL_HEADER = /номер\s*двигател|engine\s*number|serial/i;
@@ -157,7 +159,9 @@ export function buildMotorInventoryMapping(
     const engineField = detectEngineField(header);
     const canonical = engineField ? ENGINE_FIELD_TO_CANONICAL[engineField] ?? null : null;
 
-    if (engineField === "transmission" || engineField === "arrivalDate" || engineField === "soldDate") {
+    // «КОРОБКА» is read by `enrichMotorInventoryValues` from the raw row, not
+    // through a canonical field, so it stays unmapped here.
+    if (engineField === "transmission") {
       return {
         header,
         field: null,

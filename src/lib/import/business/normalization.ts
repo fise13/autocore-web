@@ -1,6 +1,7 @@
 import { resolveBrandDisplayName } from "@/lib/motors/import-normalization";
 import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
 
+import { parseImportDate } from "../date-value";
 import { detectCurrency, parseNumericValue, parseYear } from "../value-detectors";
 import type { CanonicalField } from "../types";
 import { SUPPORTED_CURRENCIES } from "./ontology";
@@ -40,6 +41,8 @@ export const NORMALIZABLE_FIELDS: CanonicalField[] = [
   "quantity",
   "serial",
   "vin",
+  "arrivalDate",
+  "saleDate",
 ];
 
 function outcome(
@@ -109,6 +112,15 @@ export function normalizeDeterministically(
       return null;
     }
 
+    case "arrivalDate":
+    case "saleDate": {
+      // The header already decided which date this is, so a bare Excel serial
+      // in the column is a date rather than an odometer reading.
+      const parsed = parseImportDate(trimmed, { allowSerial: true });
+      if (!parsed) return null;
+      return outcome(raw, parsed.iso, parsed.confidence, parsed.reason);
+    }
+
     case "price":
     case "quantity": {
       const parsed = parseNumericValue(trimmed);
@@ -126,6 +138,15 @@ export function normalizeDeterministically(
       return null;
   }
 }
+
+/**
+ * Fields the model is never asked to normalize.
+ *
+ * Normalization is for spellings — "тойота" and "Toyota" are the same brand.
+ * A date is not a spelling: an unreadable one is missing, and the only honest
+ * answer is to leave it missing.
+ */
+const AI_MUST_NOT_GUESS = new Set<CanonicalField>(["arrivalDate", "saleDate"]);
 
 /** One value the deterministic pass could not settle. */
 export type PendingNormalization = {
@@ -161,6 +182,10 @@ export function collectPendingNormalizations(
     const raw = value.raw.trim();
     if (!raw) continue;
     if (normalizeDeterministically(value.field, raw)) continue;
+    // A date the rules could not read is not a judgement call. "???" has no
+    // canonical spelling, and a model asked for one would invent a day the
+    // sheet never claimed — in a field the business reads as fact.
+    if (AI_MUST_NOT_GUESS.has(value.field)) continue;
     // One question per distinct spelling — asking twice costs twice.
     const dedupeKey = `${value.field}:${raw.toLowerCase()}`;
     if (seen.has(dedupeKey)) continue;

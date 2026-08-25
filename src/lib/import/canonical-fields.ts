@@ -14,6 +14,7 @@
 import { fold } from "@/lib/domain/normalize";
 
 import type { CanonicalField } from "./types";
+import { looksLikeImportDate } from "./date-value";
 import {
   detectCurrency,
   isVin,
@@ -38,6 +39,15 @@ export type FieldSignature = {
    * near-certain (1); a generic alphanumeric code is weak (~0.45).
    */
   valueWeight?: number;
+  /**
+   * Header phrases that rule this field *out*, even when an alias matches.
+   *
+   * "ДАТА ВЫХОДА" on a repair sheet contains "дата" and would otherwise be
+   * read as an arrival — recording the day an engine left the workshop as the
+   * day it arrived in the warehouse. A field this specific needs to be able to
+   * say what it is not.
+   */
+  excludes?: string[];
   /** Whether the field is required for a usable record. */
   required?: boolean;
   /** Detection weight — distinctive fields (VIN) outrank generic ones (name). */
@@ -237,6 +247,44 @@ export const FIELD_SIGNATURES: FieldSignature[] = [
     valueWeight: 0.65,
   },
   {
+    field: "arrivalDate",
+    label: "Дата прихода",
+    weight: 1.2,
+    aliases: [
+      "дата прихода",
+      "дата поступления",
+      "приход",
+      "поступление",
+      "дата",
+      "arrival date",
+      "arrival",
+      "date in",
+      "received",
+    ],
+    // A bare "ДАТА" is an arrival — but only where nothing else claims it.
+    excludes: ["продаж", "выход", "ремонт", "оплат", "рожден", "sold", "sale"],
+    valueDetector: (value) => looksLikeImportDate(value),
+    valueWeight: 0.5,
+  },
+  {
+    field: "saleDate",
+    label: "Дата продажи",
+    weight: 1.3,
+    aliases: [
+      "дата продажи",
+      "продажа",
+      "продан",
+      "дата реализации",
+      "sale date",
+      "sold date",
+      "sold",
+      "date out",
+    ],
+    excludes: ["приход", "поступлен", "выход", "ремонт"],
+    valueDetector: (value) => looksLikeImportDate(value),
+    valueWeight: 0.5,
+  },
+  {
     field: "comment",
     label: "Комментарий",
     weight: 0.6,
@@ -306,6 +354,20 @@ const FOLDED_ALIASES: Array<{ field: CanonicalField; alias: string; weight: numb
     })),
   );
 
+/** Folded exclusions, by field. See `FieldSignature.excludes`. */
+const FOLDED_EXCLUSIONS = new Map<CanonicalField, string[]>(
+  FIELD_SIGNATURES.filter((signature) => signature.excludes?.length).map((signature) => [
+    signature.field,
+    signature.excludes!.map((phrase) => fold(phrase)),
+  ]),
+);
+
+function isExcluded(field: CanonicalField, foldedHeader: string): boolean {
+  const phrases = FOLDED_EXCLUSIONS.get(field);
+  if (!phrases) return false;
+  return phrases.some((phrase) => phrase && foldedHeader.includes(phrase));
+}
+
 export type HeaderMatch = {
   field: CanonicalField;
   /** 0–1 header match strength. */
@@ -326,6 +388,7 @@ export function matchHeaderToFields(header: string): HeaderMatch[] {
 
   for (const { field, alias, weight } of FOLDED_ALIASES) {
     if (!alias) continue;
+    if (isExcluded(field, folded)) continue;
     let kind: HeaderMatch["kind"] | null = null;
     let base = 0;
 

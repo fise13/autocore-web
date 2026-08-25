@@ -113,11 +113,61 @@ function toImportValues(
 }
 
 /**
+ * Two dates for one motor is a chronology, not a contradiction.
+ *
+ * The same engine sits on several sheets of a real book: the model's own sheet
+ * says when it arrived, «ПРОДАННЫЕ» says when it was sold, and a returned unit
+ * carries a second arrival and a second sale. Treating that as a conflict sent
+ * 177 engines from one file to manual review over dates alone — a person
+ * clicking through them to import stock they already know about.
+ *
+ * So the two dates reconcile instead of arguing: the earliest arrival is when
+ * the unit first came in, and the latest sale is the one that still stands.
+ * The choice is recorded on the value, so the audit trail says which sheet won
+ * and why, and both original spellings survive on their rows.
+ */
+const DATE_MERGE: Partial<Record<CanonicalField, "earliest" | "latest">> = {
+  arrivalDate: "earliest",
+  saleDate: "latest",
+};
+
+function reconcileDates(
+  field: CanonicalField,
+  existing: ImportValue,
+  incoming: ImportValue,
+): ImportValue | null {
+  const rule = DATE_MERGE[field];
+  if (!rule) return null;
+
+  const a = existing.normalized.trim();
+  const b = incoming.normalized.trim();
+  // ISO days compare as strings. Anything else is not a date this can rank.
+  const isDay = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isDay(a)) return isDay(b) ? incoming : null;
+  if (!isDay(b)) return existing;
+
+  const keepIncoming = rule === "earliest" ? b < a : b > a;
+  const winner = keepIncoming ? incoming : existing;
+  const loser = keepIncoming ? existing : incoming;
+  const label = rule === "earliest" ? "самая ранняя" : "самая поздняя";
+
+  return {
+    ...winner,
+    decision: {
+      ...winner.decision,
+      reason: `${winner.decision.reason}; из «${loser.normalized}» и «${winner.normalized}» взята ${label}`,
+    },
+  };
+}
+
+/**
  * Fold a second row's values into an entity.
  *
  * A field already set is not overwritten: the first sighting wins and the
  * disagreement is reported. Quietly preferring the later value is how an
- * import rewrites a price nobody asked it to touch.
+ * import rewrites a price nobody asked it to touch. Dates are the exception
+ * above, because for them the second sighting is usually the rest of the
+ * story rather than a different answer.
  */
 function mergeValues(
   target: EntityDraft,
@@ -131,6 +181,13 @@ function mergeValues(
       continue;
     }
     if (foldKey(existing.normalized) === foldKey(value.normalized)) continue;
+
+    const reconciled = reconcileDates(field, existing, value);
+    if (reconciled) {
+      target.values[field] = reconciled;
+      continue;
+    }
+
     conflicts.push({
       code: "conflicting-values",
       field,

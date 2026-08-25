@@ -5,6 +5,7 @@ import { INVENTORY_TAXONOMY, subcategoryLabel } from "@/domain/inventory-taxonom
 import type { UpsertMotorInput } from "@/domain/motor";
 import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
 
+import { importDateToDate } from "./date-value";
 import { enrichMigrationValuesWithBrand, resolveMigrationBrandName } from "./migration-brand-resolve";
 import type { CanonicalField, RecordType } from "./types";
 
@@ -123,6 +124,11 @@ export function buildMotorInputFromMigrationRow(
     .filter(Boolean)
     .join(" ");
 
+  // Both dates arrive already normalized to `YYYY-MM-DD`; anything the parser
+  // could not read never got that far and is simply absent.
+  const arrivalDate = importDateToDate(enriched.arrivalDate?.trim() ?? "");
+  const soldDate = importDateToDate(enriched.saleDate?.trim() ?? "");
+
   return {
     companyId,
     serialCode: serial,
@@ -132,6 +138,12 @@ export function buildMotorInputFromMigrationRow(
     notes: appendPhotoNote(enriched.comment?.trim() ?? "", photoPath),
     quantity: parseQuantity(enriched.quantity),
     transmission: "",
+    ...(arrivalDate ? { arrivalDate } : {}),
+    ...(soldDate ? { soldDate } : {}),
+    // A sale date is what makes a motor sold — `isMotorAvailableForSale` reads
+    // exactly this. Importing the date but leaving the status "available"
+    // would put engines somebody sold last year back on the shelf.
+    ...(soldDate ? { status: "sold" as const } : {}),
   };
 }
 
