@@ -12,12 +12,14 @@ import {
   type EngineFieldMapping,
 } from "@/lib/motors/excel-column-mapping";
 import { resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
+import { resolveBrandDisplayName } from "@/lib/motors/import-normalization";
 import {
   engineDisplayName,
   readEngineCode,
 } from "@/lib/motors/import/engine-code-shorthand";
 
 import { findEngineCodeColumn } from "./engine-column-sniff";
+import { transmissionSignalFrom } from "./transmission-unit";
 
 import { makeConfidence } from "./confidence";
 import { RECORD_TYPE_TARGET, type CanonicalField, type ColumnMapping, type ParsedTable, type RecordType, type RowClassification } from "./types";
@@ -38,9 +40,15 @@ export type MotorInventoryContext = {
   engineCodeHeader?: string;
 };
 
+/**
+ * `configuration` used to land in `model` alongside `engineCode`, so
+ * «КОМПЛЕКТАЦИЯ» ("полная") displaced the engine code and engines ended up
+ * named "Subaru ПОЛНАЯ". They are different facts and now have different
+ * fields.
+ */
 const ENGINE_FIELD_TO_CANONICAL: Partial<Record<EngineFieldMapping, CanonicalField>> = {
   serialCode: "serial",
-  configuration: "model",
+  configuration: "configuration",
   notes: "comment",
   quantity: "quantity",
   brandName: "brand",
@@ -197,29 +205,16 @@ export function enrichMotorInventoryValues(
   const serial = (next.serial ?? "").trim();
 
   let brand = (next.brand ?? context.brandName).trim();
-  let variant: string | null = null;
 
-  // `model` is a loose bucket: the catalog mapping funnels both «КОМПЛЕКТАЦИЯ»
-  // and the engine-code column into it, so it can just as easily hold "полная"
-  // as "EJ253". Only take it as a code if it reads as one, and let the serial —
-  // which is where the code actually lives — win when it does.
-  const declaredModel = (next.model ?? "").trim();
-  const modelReading = readEngineCode(declaredModel);
-  const configuration = modelReading ? "" : declaredModel;
-
-  const reading = readEngineCode(serial) ?? modelReading;
+  // The code lives in the serial cell (`EJ251- C085834`, or the shorthand
+  // `253AVCS`); `model` only carries it on sheets that spell it out.
+  const reading = readEngineCode(serial) ?? readEngineCode(next.model);
   let engineCode = reading?.code ?? context.engineCode.trim();
+  const variant = reading?.variant ?? null;
   if (reading?.brand && !brand) brand = reading.brand;
-  variant = reading?.variant ?? null;
 
   if (!engineCode && serial) {
     engineCode = inferEngineCodeFromSerial(serial);
-  }
-
-  // Displaced configuration is still real information about the unit.
-  if (configuration && configuration !== "N/A" && configuration !== "—" && configuration !== "-") {
-    const note = `Комплектация: ${configuration}`;
-    next.comment = next.comment ? `${next.comment}; ${note}` : note;
   }
 
   if (!brand && engineCode) {
@@ -231,6 +226,11 @@ export function enrichMotorInventoryValues(
   // sheet-name path can yield `ej251`, and two spellings of one code would
   // read as two different products.
   if (engineCode) engineCode = engineCode.toUpperCase();
+
+  // One spelling per manufacturer, from here on. A «МАРКА» column that shouts
+  // SUBARU otherwise carries that spelling into the row name and the brand
+  // list, where it sits beside the title-cased Subaru as a second make.
+  if (brand) brand = resolveBrandDisplayName(brand).trim() || brand;
 
   if (brand) next.brand = brand;
   if (engineCode) next.model = engineCode;
@@ -281,6 +281,23 @@ export function classifyMotorInventoryRecord(
   }
 
   if (!serial && !name) return null;
+
+  // An engine catalog is not purely engines: the odd `AKPP- TZ1A4` line rides
+  // along, and treating the whole sheet as engines put gearboxes in the
+  // Engines grid.
+  const gearbox = transmissionSignalFrom([serial, name, values.model]);
+  if (gearbox) {
+    return {
+      recordType: "transmission",
+      target: RECORD_TYPE_TARGET.transmission,
+      confidence: {
+        score: 0.9,
+        tier: "high",
+        reason: `Коробка передач в каталоге моторов — «${gearbox}»`,
+        source: "rules",
+      },
+    };
+  }
 
   return {
     recordType: "engine",

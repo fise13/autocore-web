@@ -19,6 +19,7 @@ import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
 import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
 
 import { fromDictionaryScore, makeConfidence } from "./confidence";
+import { transmissionSignalFrom } from "./transmission-unit";
 import { isVin, looksLikeMileage, parseYear } from "./value-detectors";
 import {
   RECORD_TYPE_TARGET,
@@ -222,6 +223,15 @@ export function classifyRecord(
   //    only `EJ251- C085834` has nothing for the dictionary to match on — no
   //    name column, no category — and used to fall all the way through to
   //    `unknown`. The code itself is the strongest signal such a row has.
+  const gearbox = transmissionSignalFrom([values.serial, values.name, values.model]);
+  if (gearbox) {
+    return {
+      recordType: "transmission",
+      target: RECORD_TYPE_TARGET.transmission,
+      confidence: makeConfidence(0.9, `Коробка передач — «${gearbox}»`, "rules"),
+    };
+  }
+
   const codeReading = readEngineCode(values.serial) ?? readEngineCode(values.name);
   if (codeReading) {
     return {

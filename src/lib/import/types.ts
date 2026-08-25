@@ -22,6 +22,7 @@ export const CANONICAL_FIELDS = [
   "vin",
   "brand",
   "model",
+  "configuration",
   "year",
   "price",
   "currency",

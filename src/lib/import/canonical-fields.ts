@@ -112,6 +112,20 @@ export const FIELD_SIGNATURES: FieldSignature[] = [
     valueWeight: 0.5,
   },
   {
+    field: "configuration",
+    label: "Комплектация",
+    weight: 0.7,
+    aliases: [
+      "комплектация",
+      "комплект",
+      "состояние комплектации",
+      "configuration",
+      "complectation",
+      "trim",
+      "spec",
+    ],
+  },
+  {
     field: "vin",
     label: "VIN",
     weight: 1.4,
