@@ -57,6 +57,7 @@ const ENGINE_FIELD_TO_CANONICAL: Partial<Record<EngineFieldMapping, CanonicalFie
 
 const ENGINE_SERIAL_HEADER = /номер\s*двигател|engine\s*number|serial/i;
 const GEARBOX_SHEET = /короб|кпп|gearbox|transmission/i;
+const VIN_HEADER = /^(vin|вин|номер кузова|frame)$/i;
 
 function headerUsesEngineLayout(headers: string[]): boolean {
   return headers.some((header) => ENGINE_SERIAL_HEADER.test(fold(header)));
@@ -137,6 +138,18 @@ export function buildMotorInventoryMapping(
           `Каталог моторов: «${header}» содержит коды двигателей`,
           "rules",
         ),
+        alternatives: [],
+      };
+    }
+
+    // A VIN column on an engine sheet is the donor the unit came out of.
+    // The catalog mapping had no slot for it, so the link between an engine
+    // and its car was dropped before anything could use it.
+    if (VIN_HEADER.test(fold(header))) {
+      return {
+        header,
+        field: "vin" as const,
+        confidence: makeConfidence(0.95, `Каталог моторов: «${header}» → VIN донора`, "rules"),
         alternatives: [],
       };
     }

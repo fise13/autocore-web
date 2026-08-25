@@ -62,6 +62,7 @@ export type AiDomainContext = {
 
 export type AiDiscoveryRequest = {
   companyId?: string;
+  domain: AiDomainContext;
   table: string;
   headers: readonly string[];
   /** A sample, not the whole sheet — see the note on hierarchy below. */
@@ -72,6 +73,10 @@ export type AiDiscoveryResult = {
   rowRoles: Array<{ rowId: string; role: RowRole; confidence: number; reason: string }>;
   /** What the model thinks this sheet is about, in one sentence. */
   sheetSummary?: string;
+  /** The entity most of the sheet's rows describe. */
+  primaryEntity?: ImportEntityKind;
+  secondaryEntities?: ImportEntityKind[];
+  relationshipHints?: Array<{ kind: RelationshipKind; reason: string }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -111,6 +116,7 @@ export type AiOntologyResult = {
 
 export type AiResolutionRequest = {
   companyId?: string;
+  domain: AiDomainContext;
   /** Entities that carry no exact key, so no deterministic match was possible. */
   candidates: Array<{
     entityId: string;
@@ -125,7 +131,13 @@ export type AiResolutionResult = {
    * `buildImportPlan` turns them into a review, never into a merge, because
    * folding two records into one cannot be undone.
    */
-  groups: Array<{ entityIds: string[]; confidence: number; reason: string }>;
+  groups: Array<{
+    entityIds: string[];
+    confidence: number;
+    reason: string;
+    /** The facts that agreed, so a person can judge the proposal. */
+    evidence?: string[];
+  }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -134,7 +146,40 @@ export type AiResolutionResult = {
 
 export type AiRelationshipRequest = {
   companyId?: string;
-  entities: Array<{ entityId: string; kind: ImportEntityKind; summary: string }>;
+  domain: AiDomainContext;
+  entities: Array<{
+    entityId: string;
+    kind: ImportEntityKind;
+    summary: string;
+    table?: string;
+    section?: string | null;
+  }>;
+};
+
+/** Values a deterministic pass could not settle on its own. */
+export type AiNormalizationRequest = {
+  companyId?: string;
+  domain: AiDomainContext;
+  values: Array<{
+    valueId: string;
+    field: string;
+    raw: string;
+    /** Other spellings seen in the same file, for context. */
+    peers: string[];
+  }>;
+};
+
+export type AiNormalizationResult = {
+  values: Array<{ valueId: string; normalized: string; confidence: number; reason: string }>;
+};
+
+/** Recorded on every answer so an import can be explained months later. */
+export type AiCallMetadata = {
+  provider: string;
+  model: string;
+  promptVersion: string;
+  schemaVersion: string;
+  timestamp: string;
 };
 
 export type AiRelationshipResult = {
@@ -158,8 +203,11 @@ export type AiRelationshipResult = {
  */
 export type BusinessImportAI = {
   readonly name: string;
+  /** Identifies the model and prompt behind every answer, for the audit trail. */
+  metadata?: () => AiCallMetadata;
   discover?: (input: AiDiscoveryRequest) => Promise<AiDiscoveryResult>;
   ontology?: (input: AiOntologyRequest) => Promise<AiOntologyResult>;
+  normalize?: (input: AiNormalizationRequest) => Promise<AiNormalizationResult>;
   resolve?: (input: AiResolutionRequest) => Promise<AiResolutionResult>;
   relate?: (input: AiRelationshipRequest) => Promise<AiRelationshipResult>;
 };

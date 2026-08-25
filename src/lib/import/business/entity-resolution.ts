@@ -35,12 +35,27 @@ import {
  * Pure — no I/O — so the whole graph is testable without a database.
  */
 
+/** What a normalization pass decided about one field of one row. */
+export type NormalizedField = {
+  raw: string;
+  normalized: string;
+  confidence: number;
+  reason: string;
+  source: "rules" | "ai";
+};
+
 export type ResolutionInput = {
   /** Rows in source order, with the sheet they came from. */
   rows: Array<{
     row: ClassifiedRow;
     table: string;
     section?: string | null;
+    /**
+     * Normalizations applied to this row, keyed by field. Supplied separately
+     * so the entity keeps the original text: rewriting `row.values` in place
+     * would leave nothing to fall back to when a normalization turns out wrong.
+     */
+    normalized?: Partial<Record<CanonicalField, NormalizedField>>;
   }>;
 };
 
@@ -80,11 +95,19 @@ export function entityKeysFor(
 function toImportValues(
   values: Partial<Record<CanonicalField, string>>,
   source: Decision,
+  normalized?: Partial<Record<CanonicalField, NormalizedField>>,
 ): Partial<Record<CanonicalField, ImportValue>> {
   const out: Partial<Record<CanonicalField, ImportValue>> = {};
-  for (const [field, raw] of Object.entries(values) as Array<[CanonicalField, string]>) {
-    if (!raw?.trim()) continue;
-    out[field] = { raw, normalized: raw.trim(), decision: source };
+  for (const [field, value] of Object.entries(values) as Array<[CanonicalField, string]>) {
+    if (!value?.trim()) continue;
+    const applied = normalized?.[field];
+    out[field] = applied
+      ? {
+          raw: applied.raw,
+          normalized: applied.normalized,
+          decision: decision("normalization", applied.confidence, applied.reason, applied.source),
+        }
+      : { raw: value, normalized: value.trim(), decision: source };
   }
   return out;
 }
@@ -129,8 +152,13 @@ export function resolveEntities(input: ResolutionInput): ResolutionResult {
   const byKey = new Map<string, EntityDraft>();
   let counter = 0;
 
-  for (const { row, table, section } of input.rows) {
-    const kind: ImportEntityKind = ENTITY_KIND_BY_RECORD_TYPE[row.classification.recordType];
+  for (const { row, table, section, normalized } of input.rows) {
+    // The reasoning pass may have read a row as something the flat record
+    // types cannot express — a sale, a customer — and that reading wins when
+    // it is present, because it is strictly more specific.
+    const kind: ImportEntityKind =
+      (row.aiEntityKind as ImportEntityKind | undefined) ??
+      ENTITY_KIND_BY_RECORD_TYPE[row.classification.recordType];
     const keys = entityKeysFor(row.values, kind);
     const source: SourceRef = { table, index: row.index, section: section ?? null };
     const rowDecision = decision(
@@ -147,7 +175,7 @@ export function resolveEntities(input: ResolutionInput): ResolutionResult {
 
     if (existing) {
       existing.sources.push(source);
-      const conflicts = mergeValues(existing, toImportValues(row.values, rowDecision));
+      const conflicts = mergeValues(existing, toImportValues(row.values, rowDecision, normalized));
       existing.review.push(...conflicts);
       for (const key of lookup) byKey.set(key, existing);
       continue;
@@ -157,7 +185,7 @@ export function resolveEntities(input: ResolutionInput): ResolutionResult {
     const draft: EntityDraft = {
       id: `e${counter}`,
       kind,
-      values: toImportValues(row.values, rowDecision),
+      values: toImportValues(row.values, rowDecision, normalized),
       sources: [source],
       keys,
       decision: rowDecision,

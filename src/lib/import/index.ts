@@ -37,7 +37,27 @@ export {
   NULL_BUSINESS_IMPORT_AI,
   type BusinessImportAI,
 } from "./business/ai-port";
-export { runBusinessImport, type ImportRunResult, type RunImportOptions } from "./business/pipeline";
+export {
+  runBusinessImport,
+  type AiStatus,
+  type ImportRunResult,
+  type RunImportOptions,
+} from "./business/pipeline";
+export {
+  commitImportPlan,
+  inMemoryLedger,
+  type CommitLedger,
+  type CommitPlanResult,
+  type PlanWriters,
+} from "./business/commit-plan";
+export { presentPlan, type PlanPresentation, type ReviewItem } from "./business/plan-summary";
+export { ImportAuditTrail, type AuditEntry } from "./business/audit";
+export { autocoreDomainContext } from "./business/ontology";
+export { reconcile } from "./business/reconciliation";
+export {
+  normalizeDeterministically,
+  NORMALIZABLE_FIELDS,
+} from "./business/normalization";
 export {
   FIELD_SIGNATURES,
   FIELD_SIGNATURE_BY_FIELD,

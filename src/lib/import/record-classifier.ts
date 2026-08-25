@@ -161,12 +161,15 @@ function refineBodyType(folded: string): RecordType {
  * year says nothing about which of the two this is.
  */
 function describesStockItem(values: Partial<Record<CanonicalField, string>>): boolean {
-  const text = [values.name, values.category, values.subcategory].filter(Boolean).join(" ").trim();
-  if (!text) return false;
+  // The identity checks come first: an engine row on a catalog sheet often has
+  // no name column at all, only `VIN | J35Y-4410021 | полная`. Guarding on the
+  // text first made that row fall through to the VIN and become a second car.
   if (transmissionSignalFrom([values.name, values.serial])) return true;
   if (readEngineCode(values.serial) ?? readEngineCode(values.name)) return true;
-  const keyword = keywordMatch(fold(text));
-  if (keyword) return true;
+
+  const text = [values.name, values.category, values.subcategory].filter(Boolean).join(" ").trim();
+  if (!text) return false;
+  if (keywordMatch(fold(text))) return true;
   const hit = lookupDictionary(text, {});
   return Boolean(hit && hit.score >= 0.6);
 }
