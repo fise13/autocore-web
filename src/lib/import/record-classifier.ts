@@ -155,6 +155,22 @@ function refineBodyType(folded: string): RecordType {
   return "body";
 }
 
+/**
+ * Whether the row names an item — a part, an engine, a gearbox — rather than
+ * describing a vehicle. Checked against the row's own words only: a VIN or a
+ * year says nothing about which of the two this is.
+ */
+function describesStockItem(values: Partial<Record<CanonicalField, string>>): boolean {
+  const text = [values.name, values.category, values.subcategory].filter(Boolean).join(" ").trim();
+  if (!text) return false;
+  if (transmissionSignalFrom([values.name, values.serial])) return true;
+  if (readEngineCode(values.serial) ?? readEngineCode(values.name)) return true;
+  const keyword = keywordMatch(fold(text));
+  if (keyword) return true;
+  const hit = lookupDictionary(text, {});
+  return Boolean(hit && hit.score >= 0.6);
+}
+
 function donorSignal(values: Partial<Record<CanonicalField, string>>): boolean {
   if (values.vin && isVin(values.vin)) return true;
   if (values.mileage && looksLikeMileage(values.mileage)) return true;
@@ -169,8 +185,14 @@ export function classifyRecord(
   const query = buildQuery(values);
   const folded = fold([query, values.brand, values.model].filter(Boolean).join(" "));
 
-  // Donor vehicles are recognised structurally (VIN / mileage / year + model).
-  if (donorSignal(values)) {
+  // Donor vehicles are recognised structurally (VIN / mileage / year + model)
+  // — but only when the row does not already name a thing.
+  //
+  // In a dismantling book the donor's VIN is written on every part pulled off
+  // that car; that is the whole point of the column. Firing on the VIN alone
+  // turned "Бампер передний · VIN JH4…" into a second Acura TLX, so a car with
+  // eleven parts became twelve cars and no part was ever linked to anything.
+  if (donorSignal(values) && !describesStockItem(values)) {
     return {
       recordType: "donorCar",
       target: RECORD_TYPE_TARGET.donorCar,
