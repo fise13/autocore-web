@@ -38,6 +38,7 @@
     "expo-haptics": "^56.0.3",
     "expo-hardware-buttons": "^1.0.1",
     "expo-image": "~56.0.0",
+    "expo-image-manipulator": "^57.0.13",
     "expo-image-picker": "~56.0.19",
     "expo-linear-gradient": "^56.0.4",
     "expo-linking": "~56.0.14",
@@ -96,7 +97,9 @@
   "private": true,
   "expo": {
     "install": {
-      "exclude": ["@shopify/react-native-skia"]
+      "exclude": [
+        "@shopify/react-native-skia"
+      ]
     }
   }
 }

@@ -12,6 +12,14 @@ import {
   type EngineFieldMapping,
 } from "@/lib/motors/excel-column-mapping";
 import { resolveSheetBrandAndEngine } from "@/lib/motors/import/brand-engine-intelligence";
+import { resolveBrandDisplayName } from "@/lib/motors/import-normalization";
+import {
+  engineDisplayName,
+  readEngineCode,
+} from "@/lib/motors/import/engine-code-shorthand";
+
+import { findEngineCodeColumn } from "./engine-column-sniff";
+import { transmissionSignalFrom } from "./transmission-unit";
 
 import { makeConfidence } from "./confidence";
 import { RECORD_TYPE_TARGET, type CanonicalField, type ColumnMapping, type ParsedTable, type RecordType, type RowClassification } from "./types";
@@ -24,11 +32,23 @@ export type MotorInventoryContext = {
   sheetName: string;
   brandName: string;
   engineCode: string;
+  /**
+   * Column the engine code lives in, when the sheet was recognised by its
+   * values rather than its headers. Empty on sheets named after an engine
+   * family, where the code comes from the sheet name instead.
+   */
+  engineCodeHeader?: string;
 };
 
+/**
+ * `configuration` used to land in `model` alongside `engineCode`, so
+ * «КОМПЛЕКТАЦИЯ» ("полная") displaced the engine code and engines ended up
+ * named "Subaru ПОЛНАЯ". They are different facts and now have different
+ * fields.
+ */
 const ENGINE_FIELD_TO_CANONICAL: Partial<Record<EngineFieldMapping, CanonicalField>> = {
   serialCode: "serial",
-  configuration: "model",
+  configuration: "configuration",
   notes: "comment",
   quantity: "quantity",
   brandName: "brand",
@@ -37,6 +57,7 @@ const ENGINE_FIELD_TO_CANONICAL: Partial<Record<EngineFieldMapping, CanonicalFie
 
 const ENGINE_SERIAL_HEADER = /номер\s*двигател|engine\s*number|serial/i;
 const GEARBOX_SHEET = /короб|кпп|gearbox|transmission/i;
+const VIN_HEADER = /^(vin|вин|номер кузова|frame)$/i;
 
 function headerUsesEngineLayout(headers: string[]): boolean {
   return headers.some((header) => ENGINE_SERIAL_HEADER.test(fold(header)));
@@ -54,8 +75,14 @@ export function detectMotorInventoryContext(table: ParsedTable): MotorInventoryC
   const sheetName = table.name.trim();
   if (table.headers.length === 0 || table.rows.length === 0) return null;
 
-  const engineLayout = headerUsesEngineLayout(table.headers);
   const gearboxSheet = GEARBOX_SHEET.test(sheetName) && headerHasGearboxNumber(table.headers);
+  const headerLayout = headerUsesEngineLayout(table.headers);
+
+  // A header alone is not enough evidence. Books organised by branch call the
+  // sheet after the yard («СВЕРДЛОВА») and the column simply «НОМЕР», so the
+  // values decide when the wording does not.
+  const codeColumn = headerLayout ? null : findEngineCodeColumn(table.headers, table.rows);
+  const engineLayout = headerLayout || codeColumn != null;
 
   if (gearboxSheet && !engineLayout) {
     return { kind: "transmission", sheetName, brandName: "", engineCode: "" };
@@ -64,7 +91,13 @@ export function detectMotorInventoryContext(table: ParsedTable): MotorInventoryC
   if (!engineLayout) return null;
 
   const { brandName, engineCode } = resolveSheetBrandAndEngine(sheetName);
-  return { kind: "engine", sheetName, brandName, engineCode };
+  return {
+    kind: "engine",
+    sheetName,
+    brandName,
+    engineCode,
+    ...(codeColumn ? { engineCodeHeader: codeColumn.header } : {}),
+  };
 }
 
 function labelForEngineField(field: EngineFieldMapping): string {
@@ -94,6 +127,33 @@ export function buildMotorInventoryMapping(
   context: MotorInventoryContext,
 ): ColumnMapping {
   const columns: DetectedColumn[] = table.headers.map((header) => {
+    // A column recognised by its values wins over the header dictionary: it is
+    // the one actually holding `EJ251- C085834`, whatever it is titled.
+    if (context.engineCodeHeader && header === context.engineCodeHeader) {
+      return {
+        header,
+        field: "serial" as const,
+        confidence: makeConfidence(
+          0.94,
+          `Каталог моторов: «${header}» содержит коды двигателей`,
+          "rules",
+        ),
+        alternatives: [],
+      };
+    }
+
+    // A VIN column on an engine sheet is the donor the unit came out of.
+    // The catalog mapping had no slot for it, so the link between an engine
+    // and its car was dropped before anything could use it.
+    if (VIN_HEADER.test(fold(header))) {
+      return {
+        header,
+        field: "vin" as const,
+        confidence: makeConfidence(0.95, `Каталог моторов: «${header}» → VIN донора`, "rules"),
+        alternatives: [],
+      };
+    }
+
     const engineField = detectEngineField(header);
     const canonical = engineField ? ENGINE_FIELD_TO_CANONICAL[engineField] ?? null : null;
 
@@ -158,7 +218,13 @@ export function enrichMotorInventoryValues(
   const serial = (next.serial ?? "").trim();
 
   let brand = (next.brand ?? context.brandName).trim();
-  let engineCode = (next.model ?? context.engineCode).trim();
+
+  // The code lives in the serial cell (`EJ251- C085834`, or the shorthand
+  // `253AVCS`); `model` only carries it on sheets that spell it out.
+  const reading = readEngineCode(serial) ?? readEngineCode(next.model);
+  let engineCode = reading?.code ?? context.engineCode.trim();
+  const variant = reading?.variant ?? null;
+  if (reading?.brand && !brand) brand = reading.brand;
 
   if (!engineCode && serial) {
     engineCode = inferEngineCodeFromSerial(serial);
@@ -169,11 +235,31 @@ export function enrichMotorInventoryValues(
     if (brandName) brand = brandName;
   }
 
+  // Engine codes are upper case by convention (EJ253, 2JZ-GTE, 4G63). The
+  // sheet-name path can yield `ej251`, and two spellings of one code would
+  // read as two different products.
+  if (engineCode) engineCode = engineCode.toUpperCase();
+
+  // One spelling per manufacturer, from here on. A «МАРКА» column that shouts
+  // SUBARU otherwise carries that spelling into the row name and the brand
+  // list, where it sits beside the title-cased Subaru as a second make.
+  if (brand) brand = resolveBrandDisplayName(brand).trim() || brand;
+
   if (brand) next.brand = brand;
   if (engineCode) next.model = engineCode;
 
-  const nameParts = [brand, engineCode, serial].filter(Boolean);
-  const derivedName = nameParts.join(" · ");
+  // `Subaru EJ253 AVCS` reads like a catalogue entry; the old
+  // `brand · code · serial` put the unit number in the product name, so two
+  // identical engines never looked like the same product.
+  const derivedName =
+    engineCode || brand
+      ? engineDisplayName({
+          code: engineCode,
+          brand: brand || null,
+          variant,
+          source: reading?.source ?? "explicit",
+        })
+      : serial;
   if (derivedName && (!next.name || next.name === "N/A" || next.name === "—" || next.name === "-")) {
     next.name = derivedName;
   }
@@ -208,6 +294,23 @@ export function classifyMotorInventoryRecord(
   }
 
   if (!serial && !name) return null;
+
+  // An engine catalog is not purely engines: the odd `AKPP- TZ1A4` line rides
+  // along, and treating the whole sheet as engines put gearboxes in the
+  // Engines grid.
+  const gearbox = transmissionSignalFrom([serial, name, values.model]);
+  if (gearbox) {
+    return {
+      recordType: "transmission",
+      target: RECORD_TYPE_TARGET.transmission,
+      confidence: {
+        score: 0.9,
+        tier: "high",
+        reason: `Коробка передач в каталоге моторов — «${gearbox}»`,
+        source: "rules",
+      },
+    };
+  }
 
   return {
     recordType: "engine",

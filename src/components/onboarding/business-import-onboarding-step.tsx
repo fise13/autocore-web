@@ -4,7 +4,6 @@ import { useCallback, useContext, useMemo } from "react";
 
 import { DomainDictionaryContext } from "@/components/domain/domain-dictionary-provider";
 import { BusinessMigration } from "@/components/migration/business-migration";
-import { createApiCommitPort } from "@/components/migration/api-commit-port";
 import type { MigrationLearnFn } from "@/components/migration/migration-types";
 import { useAuth } from "@/components/providers/auth-provider";
 import { markBusinessImportCompleted } from "@/lib/onboarding/mark-business-import-completed";
@@ -23,7 +22,6 @@ type BusinessImportOnboardingStepProps = {
 export function BusinessImportOnboardingStep({ companyId, onDone }: BusinessImportOnboardingStepProps) {
   const { profile } = useAuth();
   const domain = useContext(DomainDictionaryContext);
-  const commitPort = useMemo(() => createApiCommitPort(), []);
 
   const getCompanyDictionary = useMemo(
     () => (domain ? (category: DomainCategory) => domain.getCompanyDictionary(category) : undefined),
@@ -50,7 +48,6 @@ export function BusinessImportOnboardingStep({ companyId, onDone }: BusinessImpo
       userEmail={profile?.email}
       getCompanyDictionary={getCompanyDictionary}
       onLearn={domain ? onLearn : undefined}
-      commitPort={commitPort}
       onManualSetup={finish}
       onOpenMotors={finish}
       onOpenWarehouse={finish}

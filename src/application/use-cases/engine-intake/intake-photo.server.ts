@@ -24,7 +24,9 @@ import {
   assertIntakePhotoUpload,
   finalizeIntakePhotoUpload,
   prepareIntakePhotoUpload,
+  readIntakePhotoStorageState,
 } from "@/lib/engine-intake/intake-photo-storage.server";
+import { resolvePhotoUploadResume } from "@/lib/engine-intake/resume-intake-photo-upload";
 import { EngineIntakeCommandError } from "@/application/use-cases/engine-intake/execute-engine-intake-command.server";
 
 type PhotoJobDocument = {
@@ -201,6 +203,8 @@ export async function prepareIntakePhoto(
         synced: existing.syncState === "synced" && typeof existing.url === "string",
         storagePath:
           typeof existing.storagePath === "string" ? existing.storagePath : null,
+        downloadToken:
+          typeof existing.downloadToken === "string" ? existing.downloadToken : null,
         url: typeof existing.url === "string" ? existing.url : null,
         contentType:
           typeof existing.contentType === "string"
@@ -406,6 +410,7 @@ export async function prepareIntakePhoto(
       exists: false,
       synced: false,
       storagePath: null,
+      downloadToken: null,
       url: null,
       contentType: validation.contentType,
     };
@@ -423,15 +428,36 @@ export async function prepareIntakePhoto(
     };
   }
 
+  // A previous attempt may already have put the bytes in the bucket and died
+  // before finalize — the PUT runs on the iOS background URLSession and
+  // outlives the app, finalize does not. Re-sending a file the bucket already
+  // holds costs the worker a second upload over cellular for nothing.
+  if (preparedState.storagePath && preparedState.downloadToken) {
+    const storage = await readIntakePhotoStorageState(
+      preparedState.storagePath,
+      preparedState.downloadToken,
+    );
+    const resume = resolvePhotoUploadResume({ storage, expectedBytes: input.sizeBytes });
+    if (resume.action === "finalize") {
+      return {
+        photoId,
+        uploadUrl: "",
+        storagePath: preparedState.storagePath,
+        downloadToken: preparedState.downloadToken,
+        url: preparedState.url ?? storage.url,
+        contentType: preparedState.contentType,
+        alreadyUploaded: true,
+      };
+    }
+  }
+
   const prepared = await prepareIntakePhotoUpload({
     companyId: access.companyId,
     jobId: input.jobId,
     photoId,
     contentType: validation.contentType,
     extension: validation.extension,
-    ...(preparedState.storagePath
-      ? { storagePath: preparedState.storagePath, preserveExisting: true }
-      : {}),
+    ...(preparedState.storagePath ? { storagePath: preparedState.storagePath } : {}),
   });
   await photoRef.set(
     {

@@ -1,10 +1,11 @@
 /**
  * Record-type classification.
  *
- * Order of precedence, per spec:
+ * Order of precedence:
  *   1. Domain Dictionary  (engines / transmissions / body parts / consumables …)
- *   2. Keyword rules      (refine coarse dictionary hits, cover gaps)
- *   3. AI fallback        (only when 1 & 2 cannot decide — handled by caller)
+ *   2. Engine code        (a stock book row that is only `EJ251- C085834`)
+ *   3. Keyword rules      (refine coarse dictionary hits, cover gaps)
+ *   4. AI fallback        (only when the rest cannot decide — handled by caller)
  *
  * The classifier itself never calls AI; it returns `needsAi: true` so the
  * orchestrator can batch the uncertain rows to an injected {@link ImportAiPort}.
@@ -15,7 +16,10 @@ import { searchDomain } from "@/lib/domain/domain-dictionary";
 import type { DomainCategory } from "@/lib/domain/types";
 import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
 
+import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
+
 import { fromDictionaryScore, makeConfidence } from "./confidence";
+import { transmissionSignalFrom } from "./transmission-unit";
 import { isVin, looksLikeMileage, parseYear } from "./value-detectors";
 import {
   RECORD_TYPE_TARGET,
@@ -151,6 +155,25 @@ function refineBodyType(folded: string): RecordType {
   return "body";
 }
 
+/**
+ * Whether the row names an item — a part, an engine, a gearbox — rather than
+ * describing a vehicle. Checked against the row's own words only: a VIN or a
+ * year says nothing about which of the two this is.
+ */
+function describesStockItem(values: Partial<Record<CanonicalField, string>>): boolean {
+  // The identity checks come first: an engine row on a catalog sheet often has
+  // no name column at all, only `VIN | J35Y-4410021 | полная`. Guarding on the
+  // text first made that row fall through to the VIN and become a second car.
+  if (transmissionSignalFrom([values.name, values.serial])) return true;
+  if (readEngineCode(values.serial) ?? readEngineCode(values.name)) return true;
+
+  const text = [values.name, values.category, values.subcategory].filter(Boolean).join(" ").trim();
+  if (!text) return false;
+  if (keywordMatch(fold(text))) return true;
+  const hit = lookupDictionary(text, {});
+  return Boolean(hit && hit.score >= 0.6);
+}
+
 function donorSignal(values: Partial<Record<CanonicalField, string>>): boolean {
   if (values.vin && isVin(values.vin)) return true;
   if (values.mileage && looksLikeMileage(values.mileage)) return true;
@@ -165,8 +188,14 @@ export function classifyRecord(
   const query = buildQuery(values);
   const folded = fold([query, values.brand, values.model].filter(Boolean).join(" "));
 
-  // Donor vehicles are recognised structurally (VIN / mileage / year + model).
-  if (donorSignal(values)) {
+  // Donor vehicles are recognised structurally (VIN / mileage / year + model)
+  // — but only when the row does not already name a thing.
+  //
+  // In a dismantling book the donor's VIN is written on every part pulled off
+  // that car; that is the whole point of the column. Firing on the VIN alone
+  // turned "Бампер передний · VIN JH4…" into a second Acura TLX, so a car with
+  // eleven parts became twelve cars and no part was ever linked to anything.
+  if (donorSignal(values) && !describesStockItem(values)) {
     return {
       recordType: "donorCar",
       target: RECORD_TYPE_TARGET.donorCar,
@@ -215,7 +244,35 @@ export function classifyRecord(
     };
   }
 
-  // 2) Keyword rules — cover gaps the dictionary does not.
+  // 2) An engine code in the serial or the name. A stock book that carries
+  //    only `EJ251- C085834` has nothing for the dictionary to match on — no
+  //    name column, no category — and used to fall all the way through to
+  //    `unknown`. The code itself is the strongest signal such a row has.
+  const gearbox = transmissionSignalFrom([values.serial, values.name, values.model]);
+  if (gearbox) {
+    return {
+      recordType: "transmission",
+      target: RECORD_TYPE_TARGET.transmission,
+      confidence: makeConfidence(0.9, `Коробка передач — «${gearbox}»`, "rules"),
+    };
+  }
+
+  const codeReading = readEngineCode(values.serial) ?? readEngineCode(values.name);
+  if (codeReading) {
+    return {
+      recordType: "engine",
+      target: RECORD_TYPE_TARGET.engine,
+      confidence: makeConfidence(
+        codeReading.brand ? 0.9 : 0.72,
+        codeReading.brand
+          ? `Код двигателя ${codeReading.code} — ${codeReading.brand}`
+          : `Похоже на код двигателя ${codeReading.code}`,
+        "rules",
+      ),
+    };
+  }
+
+  // 3) Keyword rules — cover gaps the dictionary does not.
   const keyword =
     keywordMatch(fold(values.name ?? "")) ??
     keywordMatch(fold([query, values.comment].filter(Boolean).join(" "))) ??
@@ -228,7 +285,7 @@ export function classifyRecord(
     };
   }
 
-  // 3) Weak dictionary hint, still better than nothing.
+  // 4) Weak dictionary hint, still better than nothing.
   if (bestDict && bestDict.score >= 0.36) {
     const recordType = bestDict.type === "body" ? refineBodyType(folded) : bestDict.type;
     return {

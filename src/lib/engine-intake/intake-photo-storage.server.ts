@@ -40,7 +40,6 @@ export async function prepareIntakePhotoUpload(input: {
   contentType: string;
   extension: string;
   storagePath?: string;
-  preserveExisting?: boolean;
 }): Promise<{
   uploadUrl: string;
   storagePath: string;
@@ -63,20 +62,21 @@ export async function prepareIntakePhotoUpload(input: {
   const bucket = await resolveAdminStorageBucket();
   const file = bucket.file(storagePath);
 
-  const [exists] = await file.exists();
-  if (!input.preserveExisting || !exists) {
-    await file.save(Buffer.alloc(0), {
-      contentType: input.contentType,
-      metadata: {
-        cacheControl: "private, max-age=86400",
-        metadata: {
-          firebaseStorageDownloadTokens: downloadToken,
-        },
-      },
-      resumable: false,
-    });
-  }
-
+  // No placeholder object is written here any more.
+  //
+  // This used to `exists()` and then `save(Buffer.alloc(0))` — two Storage
+  // round-trips inside the request the device is blocked on, purely to
+  // reserve a path that is already deterministic
+  // (`{companyId}/engine-intake/{jobId}/{photoId}.{ext}`). On a bay walk of a
+  // dozen photos that was two dozen round-trips the worker waited through
+  // before a single byte of image could start moving. A v4 signed URL is
+  // computed locally from the service-account key and needs no network and no
+  // pre-existing object, and the download token is applied to the real object
+  // by `finalizeIntakePhotoUpload` once the bytes are actually there.
+  //
+  // Nothing downstream depended on the placeholder: `finalize` requires a
+  // non-empty object, and `readIntakePhotoStorageState` treats "absent" and
+  // "0 bytes" alike — both mean "still needs uploading".
   const [uploadUrl] = await file.getSignedUrl({
     version: "v4",
     action: "write",
@@ -90,6 +90,33 @@ export async function prepareIntakePhotoUpload(input: {
     downloadToken,
     url: buildFirebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken),
   };
+}
+
+/**
+ * What is actually sitting at a prepared photo path.
+ *
+ * Used by `prepare` to tell a completed background PUT apart from the 0-byte
+ * placeholder it writes to reserve the path, so a retry after the app was
+ * killed does not re-send bytes the bucket already holds.
+ */
+export async function readIntakePhotoStorageState(
+  storagePath: string,
+  downloadToken: string,
+): Promise<{ exists: boolean; sizeBytes: number; url: string }> {
+  const bucket = await resolveAdminStorageBucket();
+  const url = buildFirebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken);
+  const file = bucket.file(storagePath);
+  const [exists] = await file.exists();
+  if (!exists) return { exists: false, sizeBytes: 0, url };
+  try {
+    const [metadata] = await file.getMetadata();
+    const sizeBytes = Number(metadata.size ?? 0);
+    return { exists: true, sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : 0, url };
+  } catch {
+    // Treat an unreadable object as absent — the caller then re-uploads, which
+    // is always safe.
+    return { exists: false, sizeBytes: 0, url };
+  }
 }
 
 export async function finalizeIntakePhotoUpload(input: {

@@ -22,6 +22,7 @@ export const CANONICAL_FIELDS = [
   "vin",
   "brand",
   "model",
+  "configuration",
   "year",
   "price",
   "currency",
@@ -140,6 +141,12 @@ export type ClassifiedRow = {
   issues: RowIssue[];
   /** True when the dictionary could not classify and AI is recommended. */
   needsAi: boolean;
+  /**
+   * Business entity the reasoning pass read this row as, when it saw something
+   * the flat `RecordType` cannot express — a sale, a customer, a supplier.
+   * Absent unless an AI ontology pass ran and disagreed.
+   */
+  aiEntityKind?: string;
 };
 
 export type RowIssueKind =

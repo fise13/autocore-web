@@ -4224,6 +4224,29 @@ export const userCopyEn = {
     linkEngine: "Link engine",
     pickEngine: "Engine",
     open: "Open",
+    edit: "Edit",
+    editTitle: "Edit donor",
+    remove: "Delete",
+    removeTitle: "Delete donor?",
+    removeConfirm: "The donor will be deleted for good. This cannot be undone.",
+    removeBlocked: (parts: number, engines: number) =>
+      `Unlink what was pulled from this car first: ${parts} part(s), ${engines} engine(s).`,
+    removing: "Deleting…",
+    removeFailed: "Could not delete the donor",
+    unlinkEngine: "Unlink",
+    linkedEngines: "Linked engines",
+    noLinkedEngines: "No engines linked yet",
+    purchasedAt: "Purchase date",
+    makeRequired: "Make is required",
+    enginesSold: (count: number) => `sold: ${count}`,
+    revenueBreakdown: (parts: string, engines: string, car: string) =>
+      `Parts: ${parts} · Engines: ${engines} · Whole car: ${car}`,
+    unvaluedMotors: (count: number) =>
+      count === 1
+        ? "1 sold engine has no sale amount on record — revenue is understated."
+        : `${count} sold engines have no sale amount on record — revenue is understated.`,
+    financeHidden: "Without finance access revenue is counted from parts only.",
+    close: "Close",
   },
   usedParts: {
     title: "Used parts",

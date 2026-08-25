@@ -8,7 +8,6 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { RECORD_TYPE_DOMAINS } from "@/lib/import";
 import type { DomainCategory } from "@/lib/domain/types";
 
-import { createApiCommitPort } from "./api-commit-port";
 import { BusinessMigration } from "./business-migration";
 import type { MigrationLearnFn } from "./migration-types";
 
@@ -21,7 +20,6 @@ export function MigrationWorkspace() {
   const { profile } = useAuth();
   const router = useRouter();
   const domain = useContext(DomainDictionaryContext);
-  const commitPort = useMemo(() => createApiCommitPort(), []);
 
   const getCompanyDictionary = useMemo(
     () => (domain ? (category: DomainCategory) => domain.getCompanyDictionary(category) : undefined),
@@ -43,7 +41,6 @@ export function MigrationWorkspace() {
       userEmail={profile?.email}
       getCompanyDictionary={getCompanyDictionary}
       onLearn={domain ? onLearn : undefined}
-      commitPort={commitPort}
       onOpenMotors={() => router.push("/motors")}
       onOpenWarehouse={() => router.push("/warehouse")}
       onExit={() => router.push("/motors")}

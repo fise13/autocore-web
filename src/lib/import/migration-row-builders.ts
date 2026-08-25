@@ -3,6 +3,7 @@ import type { UpsertInventoryItemInput } from "@/domain/inventory";
 import type { InventoryGroupId, InventorySubcategoryId } from "@/domain/inventory-taxonomy";
 import { INVENTORY_TAXONOMY, subcategoryLabel } from "@/domain/inventory-taxonomy";
 import type { UpsertMotorInput } from "@/domain/motor";
+import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
 
 import { enrichMigrationValuesWithBrand, resolveMigrationBrandName } from "./migration-brand-resolve";
 import type { CanonicalField, RecordType } from "./types";
@@ -104,13 +105,28 @@ export function buildMotorInputFromMigrationRow(
   if (!name) return null;
 
   const serial = enriched.serial?.trim() || enriched.sku?.trim() || name;
-  const configuration = [enriched.model?.trim(), enriched.year?.trim()].filter(Boolean).join(" ");
   const brandName = resolveMigrationBrandName(enriched, "engine");
+
+  // `engineCode` is the code and nothing else. It used to be set from the
+  // display name, so the grid rendered `brand · name` — "SUBARU · Subaru
+  // EJ251" — with the manufacturer printed twice in one cell.
+  // Left empty when no code can be read. It used to fall back to the display
+  // name, which put the manufacturer in the code column — the grid renders
+  // `brandName · engineCode`, so the cell read "Subaru · SUBARU".
+  const engineCode =
+    enriched.model?.trim() || readEngineCode(serial)?.code || readEngineCode(name)?.code || "";
+
+  // Configuration is «КОМПЛЕКТАЦИЯ» — "полная", "без навесного". It used to be
+  // built from `model`, which by then held the engine code, so the column just
+  // repeated the code that was already two columns to its left.
+  const configuration = [enriched.configuration?.trim(), enriched.year?.trim()]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     companyId,
     serialCode: serial,
-    engineCode: enriched.name?.trim() || name,
+    engineCode: engineCode || undefined,
     brandName: brandName || undefined,
     configuration: configuration || undefined,
     notes: appendPhotoNote(enriched.comment?.trim() ?? "", photoPath),
@@ -172,8 +188,9 @@ export function buildSpecificRecordDataFromMigrationRow(
   if (!serial) return null;
 
   const brand = resolveMigrationBrandName(enriched, recordType);
-  const model = enriched.model?.trim();
-  const configuration = [brand, model].filter(Boolean).join(" ") || model || brand || "";
+  const configuration =
+    enriched.configuration?.trim() ||
+    [brand, enriched.model?.trim()].filter(Boolean).join(" ");
   const notes = appendPhotoNote(enriched.comment?.trim() ?? "", photoPath);
 
   return {
