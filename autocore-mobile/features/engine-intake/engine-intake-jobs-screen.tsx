@@ -43,6 +43,7 @@ import {
   drainIntakeOutbox,
   humanizeIntakeOutboxError,
   resolveFailedIntakeOutbox,
+  enqueueIntakeCommand,
   sendOrQueueIntakeCommand,
   useEngineIntakeOutbox,
 } from './store/intake-outbox';
@@ -51,6 +52,7 @@ import {
   getEngineIntakeDeviceId,
   getEngineIntakeDeviceName,
 } from './lib/device';
+import { canOpenSessionImmediately, resolveClaimOutcome } from './lib/claim-outcome';
 import { openEngineIntakeSession } from './lib/open-engine-intake';
 import { cancelIntakeJob } from './lib/cancel-intake-job';
 import {
@@ -230,15 +232,36 @@ export function EngineIntakeJobsScreen() {
     [router],
   );
 
+  /**
+   * Continue / Open camera.
+   *
+   * The camera opens before the claim goes anywhere near the network. Every
+   * piece of state the session screen needs — the job, the session, the claim
+   * — is written synchronously and persisted by `seedOptimisticIntakeClaim`,
+   * so awaiting the round-trip bought nothing and cost everything: during a
+   * sync wave the claim POST queues behind up to four parallel photo uploads,
+   * and `starting` disabled the whole bay until it returned. Worse, a failure
+   * was fatal, and `EngineIntakeCommandError` defaults to 409 — so the
+   * ordinary "the previous Finish has not synced yet" answer refused to open
+   * the camera at all.
+   *
+   * The claim is now sent in the background and only two answers can take the
+   * camera away again: somebody else holds the bay, or the job is in a state
+   * that cannot be captured into. See `resolveClaimOutcome`.
+   */
   const claimAndOpen = useCallback(
-    async (job: EngineIntakeJob) => {
+    (job: EngineIntakeJob) => {
       if (!companyId || !uid || !can('engine_intake_execute')) return;
       if (
-        job.assignment.activeSessionId &&
-        job.assignment.claimedByUid === uid &&
-        job.assignment.claimDeviceId === deviceId
+        canOpenSessionImmediately({
+          activeSessionId: job.assignment.activeSessionId,
+          claimedByUid: job.assignment.claimedByUid,
+          claimDeviceId: job.assignment.claimDeviceId,
+          uid,
+          deviceId,
+        })
       ) {
-        openSession(job.id, job.assignment.activeSessionId);
+        openSession(job.id, job.assignment.activeSessionId!);
         return;
       }
       if (job.state === 'quarantine') {
@@ -251,31 +274,42 @@ export function EngineIntakeJobsScreen() {
       }
       const wasReady = job.state === 'awaiting_verification';
       const sessionId = engineIntakeId('session');
-      setStarting(true);
-      try {
-        seedOptimisticIntakeClaim({
-          companyId,
-          job,
-          sessionId,
-          uid,
-          displayName: profile?.displayName ?? null,
-          deviceId,
-          deviceName: getEngineIntakeDeviceName(),
-        });
-        await sendOrQueueIntakeCommand(companyId, createClaimCommand(job.id, sessionId));
-        haptics.success();
-        openSession(job.id, sessionId);
-      } catch (claimError) {
-        dropOptimisticIntakeClaim(companyId, job.id, wasReady);
-        haptics.error();
-        toast({
-          title: 'Engine could not be opened',
-          description: claimError instanceof Error ? claimError.message : undefined,
-          variant: 'destructive',
-        });
-      } finally {
-        setStarting(false);
-      }
+      const command = createClaimCommand(job.id, sessionId);
+
+      seedOptimisticIntakeClaim({
+        companyId,
+        job,
+        sessionId,
+        uid,
+        displayName: profile?.displayName ?? null,
+        deviceId,
+        deviceName: getEngineIntakeDeviceName(),
+      });
+      haptics.success();
+      openSession(job.id, sessionId);
+
+      void (async () => {
+        try {
+          await sendOrQueueIntakeCommand(companyId, command);
+        } catch (claimError) {
+          const outcome = resolveClaimOutcome(claimError);
+          if (outcome.action === 'queued') {
+            // Transient — keep the camera open and let the drain settle it.
+            enqueueIntakeCommand(companyId, command);
+            return;
+          }
+          // A real dead end. Dropping the optimistic claim makes the session
+          // screen's claim-loss effect return the worker to the bay, and their
+          // photos stay in the queue either way.
+          dropOptimisticIntakeClaim(companyId, job.id, wasReady);
+          haptics.error();
+          toast({
+            title: 'Engine could not be opened',
+            description: outcome.message,
+            variant: 'destructive',
+          });
+        }
+      })();
     },
     [can, companyId, deviceId, openSession, profile?.displayName, uid],
   );
@@ -395,7 +429,7 @@ export function EngineIntakeJobsScreen() {
         void openAcceptSheet(job);
         return;
       }
-      void claimAndOpen(job);
+      claimAndOpen(job);
     },
     [can, claimAndOpen, openAcceptSheet],
   );
@@ -839,7 +873,7 @@ export function EngineIntakeJobsScreen() {
                 canVerify={can('engine_intake_verify')}
                 onPress={() => handleRowPress(item)}
                 onAddPhotos={
-                  can('engine_intake_execute') ? (job) => void claimAndOpen(job) : undefined
+                  can('engine_intake_execute') ? (job) => claimAndOpen(job) : undefined
                 }
                 onRelease={
                   can('engine_intake_verify') ? (job) => void openAcceptSheet(job) : undefined

@@ -457,7 +457,7 @@ export function saveIntakePhotoLocally(input: {
   // The shot is durable and queued as of the line above — that guarantee is
   // never traded for bandwidth. Shrinking it is a best-effort improvement
   // afterwards, and it only lands while the row is still waiting its turn.
-  void optimizeQueuedPhoto(id);
+  startPhotoOptimization(id);
   // Pause before the PUT lands makes the current production API reject the
   // upload ("Resume the session before taking photos"). Drop it; Finish or a
   // later pause can run after the files are on the server.
@@ -480,18 +480,43 @@ export function saveIntakePhotoLocally(input: {
  */
 async function optimizeQueuedPhoto(photoId: string): Promise<void> {
   const queued = photos.find((item) => item.id === photoId);
-  if (!queued || queued.status !== 'queued') return;
+  if (!queued) return;
   const outcome = await optimizeIntakePhotoFile(queued.localUri);
   if (!outcome.changed) return;
-  // Re-check: the drain may have picked the row up while the re-encode ran.
-  // The bytes are already swapped, so all that is left is to keep the row's
-  // timestamp honest.
-  const live = photos.find((item) => item.id === photoId);
-  if (!live) return;
+  if (!photos.some((item) => item.id === photoId)) return;
   photos = photos.map((item) =>
     item.id === photoId ? { ...item, updatedAt: new Date().toISOString() } : item,
   );
   publish();
+}
+
+/**
+ * Re-encodes still running, keyed by photo id.
+ *
+ * `ingestPhotoUris` kicks a drain on the next frame, and a re-encode takes
+ * 100–300 ms, so without this the drain always won the race: it flipped the
+ * row to `uploading`, the optimizer saw a row it must not touch and bailed,
+ * and the full-resolution original went over the wire every time. The
+ * compression was, in practice, dead code on any usable connection.
+ *
+ * Uploads now wait for the re-encode of the specific photo they are about to
+ * send — never for other photos, so a slow re-encode cannot stall the wave.
+ */
+const pendingOptimizations = new Map<string, Promise<void>>();
+
+function startPhotoOptimization(photoId: string): void {
+  const run = optimizeQueuedPhoto(photoId)
+    .catch(() => undefined)
+    .finally(() => {
+      pendingOptimizations.delete(photoId);
+    });
+  pendingOptimizations.set(photoId, run);
+}
+
+/** Resolves once this photo's bytes are final and safe to read. */
+async function awaitPhotoOptimization(photoId: string): Promise<void> {
+  const pending = pendingOptimizations.get(photoId);
+  if (pending) await pending;
 }
 
 function prepareRequest(
@@ -827,6 +852,10 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
  * Resolves only when the server confirms a photo URL.
  */
 async function transferPhoto(item: IntakeOutboxPhoto): Promise<{ url: string }> {
+  // The bytes must be final before they are measured or sent — a re-encode
+  // landing mid-flight would upload one image and finalize against the size
+  // of another.
+  await awaitPhotoOptimization(item.id);
   const file = new File(item.localUri);
   if (!file.exists) {
     throw new MobileApiError('Local photo is missing. Retake this angle.', 410);

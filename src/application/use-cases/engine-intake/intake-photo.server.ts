@@ -457,9 +457,7 @@ export async function prepareIntakePhoto(
     photoId,
     contentType: validation.contentType,
     extension: validation.extension,
-    ...(preparedState.storagePath
-      ? { storagePath: preparedState.storagePath, preserveExisting: true }
-      : {}),
+    ...(preparedState.storagePath ? { storagePath: preparedState.storagePath } : {}),
   });
   await photoRef.set(
     {

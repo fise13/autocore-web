@@ -27,6 +27,7 @@ import {
   useEngineIntakeJobDetail,
   useEngineIntakeJobs,
 } from './hooks/use-engine-intake-data';
+import { canShowSessionForLocalClaim } from './lib/claim-outcome';
 import { useIntakeOverlay } from './store/intake-local-overlay';
 import { useVolumeShutter } from './hooks/use-volume-shutter';
 import {
@@ -353,14 +354,20 @@ export function EngineIntakeSessionScreen() {
     job.assignment.activeSessionId !== sessionId ||
     job.assignment.claimedByUid !== uid
   ) {
-    const pendingLocalClaim = outbox.commands.some(
+    const hasPendingClaimCommand = outbox.commands.some(
       (item) =>
         item.companyId === companyId &&
         (item.command.type === 'claim_job' || item.command.type === 'create_job') &&
         'jobId' in item.command.payload &&
         item.command.payload.jobId === jobId,
     );
-    if (!pendingLocalClaim) {
+    if (
+      !canShowSessionForLocalClaim({
+        sessionId,
+        overlaySessionIds: (overlay.sessions[jobId] ?? []).map((item) => item.id),
+        hasPendingClaimCommand,
+      })
+    ) {
       return (
         <ScreenGate
           variant="custom"

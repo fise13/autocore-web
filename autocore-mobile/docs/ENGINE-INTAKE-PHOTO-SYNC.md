@@ -127,6 +127,92 @@ Watch Firestore at
 | 7 | Replay the same prepare+finalize twice | One Firestore row, one Storage object |
 | 8 | Cancel the intake while photos are pending | Local files and rows dropped; see the known gap below |
 
+## Continue never blocks on the network
+
+Tapping Continue (or Open camera) writes the optimistic claim, the job and the
+session into the persisted overlay **synchronously**, then routes straight to
+the camera. The `claim_job` command is sent afterwards, in the background.
+
+It used to `await` that command before opening. Two things went wrong with
+that:
+
+- **Starvation.** The claim POST competes for the pipe with up to four
+  parallel photo uploads, so during a sync wave Continue spun for seconds —
+  and `starting` disabled every row in the bay while it did.
+- **False fatality.** `EngineIntakeCommandError` defaults to **409**, and
+  `isTerminalError` rethrows any 4xx except 408/429. So the ordinary "the
+  previous Finish has not synced yet, the old session is still active" answer
+  came back as *"Engine could not be opened"*.
+
+`resolveClaimOutcome` now decides what a claim failure means for the person
+who tapped. Only two answers take the camera away again:
+
+| Answer | Outcome |
+| --- | --- |
+| Another worker holds the bay (`claimed by`, `assigned to another`) | blocked |
+| Role cannot execute intake (403) | blocked |
+| `Job cannot be claimed while {state}` | blocked |
+| Offline, timeout, 5xx, 429, 401, and the rest of the 409 family | **queued** — camera opens, drain settles the claim |
+
+The session screen's gate was widened to match: it used to require a
+`claim_job` row in the outbox, which only exists once a claim has already
+*failed*. It now also accepts a session id the optimistic overlay holds
+(`canShowSessionForLocalClaim`), which covers the window between opening the
+camera and the claim reaching the server.
+
+Photos are safe on the device under every one of these paths, so refusing to
+open the camera could only ever lose work.
+
+## Upload latency
+
+Two costs were removed:
+
+- **The re-encode never used to win its race.** `ingestPhotoUris` kicks a
+  drain on the next frame; a re-encode takes 100–300 ms. The drain always got
+  there first, flipped the row to `uploading`, and the optimizer skipped it —
+  so the compression added earlier was, in practice, dead code on any usable
+  connection and full-resolution frames went over the wire every time. Uploads
+  now await the re-encode **of the photo they are about to send** (never of
+  other photos, so one slow re-encode cannot stall the wave).
+- **Two Storage round-trips per photo, in the request the device waits on.**
+  `prepareIntakePhotoUpload` called `exists()` and then wrote a 0-byte
+  placeholder object, purely to reserve a path that is already deterministic.
+  A v4 signed URL is computed locally from the service-account key and needs
+  neither. On a twelve-photo bay walk that is two dozen round-trips the worker
+  waited through before any image byte could move.
+
+### Not fixed: Firestore contention on the job document
+
+The likely dominant cost is still in the backend and was left alone on
+purpose, because fixing it properly changes progress semantics and wants a
+measurement first.
+
+Every `prepare` **and** every `finalize` runs a transaction that reads the
+whole `photos` subcollection and writes the single `jobRef` document
+(`progress`, `documentationChecklist`, `revision` increment). With
+`PHOTO_UPLOAD_CONCURRENCY = 4` that is eight transactions per four photos, all
+contending on one document — and Firestore sustains roughly one write per
+second to a single document, retrying the losers with backoff. For a
+twelve-photo session: 24 contended transactions, each reading N photo
+documents, so O(N²) reads overall.
+
+Worth noting that raising the upload concurrency would make this *worse*, not
+better.
+
+Candidate fixes, in order of preference:
+
+1. Stop recomputing job progress inside `prepare`. It exists to include a
+   not-yet-uploaded photo in the checklist, which mainly matters at Finish.
+   Verify first whether requirement gating counts `queued` photos — if it
+   does, moving this changes when Finish unlocks.
+2. Debounce progress recomputation into a Firestore trigger on the photos
+   subcollection, so the per-photo request path writes only its own document.
+3. Failing both, lower prepare/finalize concurrency (not PUT concurrency) so
+   transactions stop colliding, and measure.
+
+Measure before choosing: instrument transaction retry counts and p95 duration
+of `prepare` and `finalize` on a twelve-photo session.
+
 ## Known gaps
 
 - **Test 8 leaves server-side orphans.** `discardIntakeWorkForCancelledJob`
