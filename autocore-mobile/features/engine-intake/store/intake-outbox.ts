@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { AppState } from 'react-native';
+import { Platform } from 'react-native';
 import { Directory, File, Paths, UploadType } from 'expo-file-system';
 import type {
   EngineIntakeCommand,
@@ -14,6 +14,8 @@ import { getJson, setJson } from '@/lib/storage/kv';
 import { engineIntakeId, getEngineIntakeDeviceId, getEngineIntakeDeviceName } from '../lib/device';
 import { commandFailureAbortsDrainWave, orderIntakeDrainWork } from '../lib/intake-drain-order';
 import { normalizeIntakePhotoPayload } from '../lib/intake-photo-payload';
+import { optimizeIntakePhotoFile } from '../lib/optimize-intake-photo';
+import { resolvePhotoUploadSession } from '../lib/photo-upload-session';
 import {
   isClaimGoneError,
   isClaimHeldByOtherMessage,
@@ -39,6 +41,10 @@ import {
   markIntakeJobReady,
   restoreIntakeJobReady,
 } from './intake-local-overlay';
+import {
+  clearIntakeUploadProgress,
+  setIntakeUploadProgress,
+} from './intake-upload-progress';
 
 const STORAGE_KEY = 'engine-intake:outbox:v2';
 const LEGACY_STORAGE_KEY = 'engine-intake:outbox:v1';
@@ -448,6 +454,10 @@ export function saveIntakePhotoLocally(input: {
     updatedAt: new Date().toISOString(),
   };
   photos = [...photos, item];
+  // The shot is durable and queued as of the line above — that guarantee is
+  // never traded for bandwidth. Shrinking it is a best-effort improvement
+  // afterwards, and it only lands while the row is still waiting its turn.
+  void optimizeQueuedPhoto(id);
   // Pause before the PUT lands makes the current production API reject the
   // upload ("Resume the session before taking photos"). Drop it; Finish or a
   // later pause can run after the files are on the server.
@@ -458,6 +468,30 @@ export function saveIntakePhotoLocally(input: {
   );
   publish();
   return item;
+}
+
+/**
+ * Re-encode a queued photo in place, if the compression policy says it is
+ * worth it and the upload has not already started.
+ *
+ * Bails the moment the row is anything but `queued`: replacing the file under
+ * a running background URLSession task would upload one image and finalize
+ * against the size of another.
+ */
+async function optimizeQueuedPhoto(photoId: string): Promise<void> {
+  const queued = photos.find((item) => item.id === photoId);
+  if (!queued || queued.status !== 'queued') return;
+  const outcome = await optimizeIntakePhotoFile(queued.localUri);
+  if (!outcome.changed) return;
+  // Re-check: the drain may have picked the row up while the re-encode ran.
+  // The bytes are already swapped, so all that is left is to keep the row's
+  // timestamp honest.
+  const live = photos.find((item) => item.id === photoId);
+  if (!live) return;
+  photos = photos.map((item) =>
+    item.id === photoId ? { ...item, updatedAt: new Date().toISOString() } : item,
+  );
+  publish();
 }
 
 function prepareRequest(
@@ -480,18 +514,32 @@ function prepareRequest(
 }
 
 /**
- * Native PUT — survives leaving the app when backgrounded.
- * In the foreground use the foreground session: background URLSession is
- * throttled by iOS and made multi-photo sync feel stuck.
+ * Native PUT onto the iOS background URLSession, which keeps transferring
+ * while the app is suspended or after its process is gone. See
+ * `resolvePhotoUploadSession` for why the session is never chosen from
+ * `AppState` any more.
+ *
+ * Progress is reported to the caller rather than kept native-side, so the
+ * persistent queue owns the state and the UI merely reads it.
  */
-async function putPhotoBytes(file: File, uploadUrl: string, contentType: string): Promise<void> {
-  const sessionType = AppState.currentState === 'active' ? 'foreground' : 'background';
+async function putPhotoBytes(
+  file: File,
+  uploadUrl: string,
+  contentType: string,
+  onProgress?: (progress: { bytesSent: number; totalBytes: number }) => void,
+): Promise<void> {
   const result = await file.upload(uploadUrl, {
     httpMethod: 'PUT',
     uploadType: UploadType.BINARY_CONTENT,
     headers: { 'Content-Type': contentType },
     mimeType: contentType,
-    sessionType,
+    sessionType: resolvePhotoUploadSession(Platform.OS),
+    ...(onProgress
+      ? {
+          onProgress: (data: { bytesSent: number; totalBytes: number }) =>
+            onProgress({ bytesSent: data.bytesSent, totalBytes: data.totalBytes }),
+        }
+      : {}),
   });
   if (result.status < 200 || result.status >= 300) {
     throw new Error(`Photo upload failed (HTTP ${result.status})`);
@@ -798,7 +846,14 @@ async function transferPhoto(item: IntakeOutboxPhoto): Promise<{ url: string }> 
     if (!prepared.uploadUrl) {
       throw new MobileApiError('Photo upload URL was missing from the server.', 502);
     }
-    await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType);
+    try {
+      await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType, (bytes) =>
+        setIntakeUploadProgress(item.id, bytes),
+      );
+    } finally {
+      // Live bytes are meaningless once the transfer settles, either way.
+      clearIntakeUploadProgress(item.id);
+    }
   }
   try {
     const finalized = await finalizePreparedPhoto(item, prepared, sizeBytes);

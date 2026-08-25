@@ -92,6 +92,33 @@ export async function prepareIntakePhotoUpload(input: {
   };
 }
 
+/**
+ * What is actually sitting at a prepared photo path.
+ *
+ * Used by `prepare` to tell a completed background PUT apart from the 0-byte
+ * placeholder it writes to reserve the path, so a retry after the app was
+ * killed does not re-send bytes the bucket already holds.
+ */
+export async function readIntakePhotoStorageState(
+  storagePath: string,
+  downloadToken: string,
+): Promise<{ exists: boolean; sizeBytes: number; url: string }> {
+  const bucket = await resolveAdminStorageBucket();
+  const url = buildFirebaseStorageDownloadUrl(bucket.name, storagePath, downloadToken);
+  const file = bucket.file(storagePath);
+  const [exists] = await file.exists();
+  if (!exists) return { exists: false, sizeBytes: 0, url };
+  try {
+    const [metadata] = await file.getMetadata();
+    const sizeBytes = Number(metadata.size ?? 0);
+    return { exists: true, sizeBytes: Number.isFinite(sizeBytes) ? sizeBytes : 0, url };
+  } catch {
+    // Treat an unreadable object as absent — the caller then re-uploads, which
+    // is always safe.
+    return { exists: false, sizeBytes: 0, url };
+  }
+}
+
 export async function finalizeIntakePhotoUpload(input: {
   companyId: string;
   jobId: string;
