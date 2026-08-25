@@ -238,7 +238,11 @@ describe("motor inventory profile (MOTOR LAND layout)", () => {
     const row = analysis.rows[0];
     assert.equal(row.classification.recordType, "engine");
     assert.equal(row.values.serial, "807520");
-    assert.ok(row.values.name?.includes("807520"));
+    // The name is the product — `Subaru EJ251` — not the unit. The serial used
+    // to be folded into it, which meant two identical engines never looked
+    // like the same product; it is carried by `values.serial` instead.
+    assert.equal(row.values.name, "Subaru EJ251");
+    assert.equal(row.values.brand, "Subaru");
     assert.equal(row.confidence.tier, "high");
     assert.equal(analysis.mapping.fields.price, undefined);
     assert.equal(analysis.mapping.fields.name, undefined);

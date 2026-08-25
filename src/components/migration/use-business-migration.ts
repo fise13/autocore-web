@@ -34,6 +34,10 @@ import type {
   ReviewRow,
   ReviewTableMapping,
 } from "./migration-types";
+import {
+  buildDuplicateGroups as findDuplicateGroups,
+  countDuplicateRows,
+} from "@/lib/import/duplicate-resolution";
 
 export type UseBusinessMigrationOptions = {
   commitPort: MigrationCommitPort;
@@ -47,8 +51,6 @@ export type UseBusinessMigrationOptions = {
   };
   onLearn?: MigrationLearnFn;
 };
-
-const DUP_FIELDS: CanonicalField[] = ["serial", "vin", "sku", "name"];
 
 function buildReviewRow(
   tableIndex: number,
@@ -128,35 +130,17 @@ function buildRecognition(rows: ReviewRow[], images: ImageAsset[], tableCount: n
   };
 }
 
-function dedupeKey(value: string): string {
-  return value.trim().toLowerCase();
-}
-
+/**
+ * In-file repeats, defaulting to "Обновить" — keep the first row, drop the
+ * rest. Grouping itself lives in `@/lib/import/duplicate-resolution`, so the
+ * review panel and both commit ports agree on what a duplicate is.
+ */
 function buildDuplicateGroups(rows: ReviewRow[]): DuplicateGroup[] {
-  const groups: DuplicateGroup[] = [];
-  for (const field of DUP_FIELDS) {
-    const byValue = new Map<string, string[]>();
-    for (const row of rows) {
-      const raw = row.values[field];
-      if (!raw) continue;
-      const key = dedupeKey(raw);
-      if (!key) continue;
-      const list = byValue.get(key) ?? [];
-      list.push(row.id);
-      byValue.set(key, list);
-    }
-    for (const [, rowIds] of byValue) {
-      if (rowIds.length > 1) {
-        groups.push({ field, value: rows.find((r) => r.id === rowIds[0])!.values[field] ?? "", rowIds, resolution: "update" });
-      }
-    }
-    if (groups.length > 0) break; // strongest dup signal only (serial > vin > sku > name)
-  }
-  return groups;
+  return findDuplicateGroups(rows).map((group) => ({ ...group, resolution: "update" }));
 }
 
 function countDuplicates(rows: ReviewRow[]): number {
-  return buildDuplicateGroups(rows).reduce((sum, group) => sum + (group.rowIds.length - 1), 0);
+  return countDuplicateRows(findDuplicateGroups(rows));
 }
 
 export function useBusinessMigration(options: UseBusinessMigrationOptions) {

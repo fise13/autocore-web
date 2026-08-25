@@ -34,6 +34,7 @@ import type {
   ReviewRow,
 } from "./migration-types";
 import { userCopy } from "@/lib/user-copy";
+import { resolveRowAction } from "@/lib/import/duplicate-resolution";
 
 const CHUNK_SIZE = 40;
 
@@ -114,20 +115,17 @@ function motorIndexBySerial(motors: MotorEntity[]): Map<string, MotorEntity> {
   return map;
 }
 
+/**
+ * Both of these used to act on the whole group, which is how the import
+ * produced the duplicates it was meant to prevent — see
+ * `resolveRowAction` for what each resolution actually means.
+ */
 function shouldSkipDuplicate(row: ReviewRow, duplicates: DuplicateGroup[]): boolean {
-  for (const group of duplicates) {
-    if (!group.rowIds.includes(row.id)) continue;
-    if (group.resolution === "skip") return true;
-  }
-  return false;
+  return resolveRowAction(row.id, duplicates).skip;
 }
 
 function shouldUpdateDuplicate(row: ReviewRow, duplicates: DuplicateGroup[]): boolean {
-  for (const group of duplicates) {
-    if (!group.rowIds.includes(row.id)) continue;
-    if (group.resolution === "update") return true;
-  }
-  return false;
+  return resolveRowAction(row.id, duplicates).updateExisting;
 }
 
 export function createFirestoreCommitPort(uid: string): MigrationCommitPort {

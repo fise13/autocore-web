@@ -1,10 +1,11 @@
 /**
  * Record-type classification.
  *
- * Order of precedence, per spec:
+ * Order of precedence:
  *   1. Domain Dictionary  (engines / transmissions / body parts / consumables …)
- *   2. Keyword rules      (refine coarse dictionary hits, cover gaps)
- *   3. AI fallback        (only when 1 & 2 cannot decide — handled by caller)
+ *   2. Engine code        (a stock book row that is only `EJ251- C085834`)
+ *   3. Keyword rules      (refine coarse dictionary hits, cover gaps)
+ *   4. AI fallback        (only when the rest cannot decide — handled by caller)
  *
  * The classifier itself never calls AI; it returns `needsAi: true` so the
  * orchestrator can batch the uncertain rows to an injected {@link ImportAiPort}.
@@ -14,6 +15,8 @@ import { fold } from "@/lib/domain/normalize";
 import { searchDomain } from "@/lib/domain/domain-dictionary";
 import type { DomainCategory } from "@/lib/domain/types";
 import type { DomainDictionary } from "@/lib/domain/domain-dictionary";
+
+import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
 
 import { fromDictionaryScore, makeConfidence } from "./confidence";
 import { isVin, looksLikeMileage, parseYear } from "./value-detectors";
@@ -215,7 +218,26 @@ export function classifyRecord(
     };
   }
 
-  // 2) Keyword rules — cover gaps the dictionary does not.
+  // 2) An engine code in the serial or the name. A stock book that carries
+  //    only `EJ251- C085834` has nothing for the dictionary to match on — no
+  //    name column, no category — and used to fall all the way through to
+  //    `unknown`. The code itself is the strongest signal such a row has.
+  const codeReading = readEngineCode(values.serial) ?? readEngineCode(values.name);
+  if (codeReading) {
+    return {
+      recordType: "engine",
+      target: RECORD_TYPE_TARGET.engine,
+      confidence: makeConfidence(
+        codeReading.brand ? 0.9 : 0.72,
+        codeReading.brand
+          ? `Код двигателя ${codeReading.code} — ${codeReading.brand}`
+          : `Похоже на код двигателя ${codeReading.code}`,
+        "rules",
+      ),
+    };
+  }
+
+  // 3) Keyword rules — cover gaps the dictionary does not.
   const keyword =
     keywordMatch(fold(values.name ?? "")) ??
     keywordMatch(fold([query, values.comment].filter(Boolean).join(" "))) ??
@@ -228,7 +250,7 @@ export function classifyRecord(
     };
   }
 
-  // 3) Weak dictionary hint, still better than nothing.
+  // 4) Weak dictionary hint, still better than nothing.
   if (bestDict && bestDict.score >= 0.36) {
     const recordType = bestDict.type === "body" ? refineBodyType(folded) : bestDict.type;
     return {

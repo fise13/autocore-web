@@ -29,6 +29,7 @@ import type { SpecificCategoryEntity } from "@/domain/specific-category";
 import type { DuplicateGroup, ReviewRow } from "@/components/migration/migration-types";
 import type { RecordType } from "./types";
 import { RECORD_TYPE_LABELS } from "./types";
+import { resolveRowAction } from "./duplicate-resolution";
 
 export type MigrationBatchResult = {
   imported: Array<{ type: RecordType; label: string; count: number }>;
@@ -51,20 +52,17 @@ function generateWebLocalId(existingMotors: MotorEntity[]): number {
   return candidate;
 }
 
+/**
+ * Both of these used to act on the whole group, which is how the import
+ * produced the duplicates it was meant to prevent — see
+ * `resolveRowAction` for what each resolution actually means.
+ */
 function shouldSkipDuplicate(row: ReviewRow, duplicates: DuplicateGroup[]): boolean {
-  for (const group of duplicates) {
-    if (!group.rowIds.includes(row.id)) continue;
-    if (group.resolution === "skip") return true;
-  }
-  return false;
+  return resolveRowAction(row.id, duplicates).skip;
 }
 
 function shouldUpdateDuplicate(row: ReviewRow, duplicates: DuplicateGroup[]): boolean {
-  for (const group of duplicates) {
-    if (!group.rowIds.includes(row.id)) continue;
-    if (group.resolution === "update") return true;
-  }
-  return false;
+  return resolveRowAction(row.id, duplicates).updateExisting;
 }
 
 function parseQuantity(raw: string | undefined): number {
