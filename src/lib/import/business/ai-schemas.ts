@@ -35,37 +35,103 @@ const confidence = z.preprocess((value) => {
   if (typeof numeric !== "number" || !Number.isFinite(numeric)) return value;
   return numeric > 1 && numeric <= 100 ? numeric / 100 : numeric;
 }, z.number().min(0).max(1));
-const rowId = z.string().min(1).max(200);
-const entityId = z.string().min(1).max(64);
-const shortText = z.string().max(400);
+/**
+ * Text the model wrote for a person to read: a reason, a summary, a note.
+ *
+ * The third shape failure in a row came from here — `reason` arrived as
+ * something other than a string and took the whole discovery pass with it,
+ * which the person saw as "ИИ-анализ недоступен". None of these fields decides
+ * anything: they explain. Refusing an explanation because it arrived as a
+ * number, a list of sentences, or nothing at all trades the entire analysis
+ * for a punctuation preference.
+ *
+ * Over-long text is cut rather than rejected for the same reason. Values are
+ * capped far above anything real — a VIN is seventeen characters — so the cut
+ * only ever lands on prose.
+ */
+function text(max: number) {
+  return z.preprocess((value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string") return value.slice(0, max);
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (Array.isArray(value)) {
+      return value
+        .filter((entry) => typeof entry === "string" || typeof entry === "number")
+        .join("; ")
+        .slice(0, max);
+    }
+    if (typeof value === "object") {
+      // Keep what it says rather than dropping the entry over its packaging.
+      try {
+        return JSON.stringify(value).slice(0, max);
+      } catch {
+        return "";
+      }
+    }
+    return value;
+  }, z.string().max(max));
+}
 
 /**
- * A list the model may also have written as an object.
+ * An id echoed back from the request.
  *
- * Every pass of the business import asks for arrays, and a model will
- * occasionally answer with a map keyed by the id instead — `{"Sheet1#3": {...}}`
- * where `[{"rowId": "Sheet1#3", ...}]` was asked for. That is a shape wobble,
- * not a wrong answer, and it used to throw away the entire pass: one chunk of
- * sixty rows, or in the worst case every chunk in the file, reduced to
- * "AI unavailable". The prompts now print the exact shape; this is the second
- * line, because model output is untrusted input and the cost of being strict
- * about punctuation is losing the reasoning entirely.
+ * Coerced from a number — a row keyed `12` is still row 12 — but never allowed
+ * to be empty: an answer that cannot be attributed to its row is not a wobble,
+ * it is unusable, and applying it to the wrong row would be worse than
+ * dropping it.
+ */
+function identifier(max: number) {
+  return z.preprocess((value) => {
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (typeof value === "string") return value.trim().slice(0, max);
+    return value;
+  }, z.string().min(1).max(max));
+}
+
+const rowId = identifier(200);
+const entityId = identifier(64);
+const shortText = text(400);
+
+/**
+ * A list, however the model wrote it, keeping every entry that makes sense.
  *
- * The key is folded back in as the id field when the entry does not carry one,
- * so an answer keyed by rowId stays attributable to its row. Anything else
- * is passed through untouched and fails validation as it should.
+ * Two failures live here, and both cost the whole analysis before they were
+ * fixed. The first is shape: a model will occasionally answer with a map keyed
+ * by id — `{"Sheet1#3": {...}}` where `[{"rowId": "Sheet1#3", ...}]` was asked
+ * for. The key is folded back in as the id field so the answer stays
+ * attributable to its row.
+ *
+ * The second is all-or-nothing validation. One entry with a malformed field
+ * used to fail the array, which failed the object, which failed the chunk —
+ * sixty rows of correct reasoning thrown away over one of them, reported to
+ * the person as "ИИ-анализ недоступен". Entries are now judged one at a time:
+ * what parses is kept, what does not is dropped. Nothing invalid gets through,
+ * and nothing valid is lost because of its neighbour.
+ *
+ * Dropped entries are not silent. The provider compares what it sent with
+ * what came back and logs the gap; the rows behind a dropped entry keep their
+ * deterministic reading, which is what they would have had anyway.
  */
 function listOf<Item extends z.ZodTypeAny>(item: Item, idKey?: string) {
-  return z.preprocess((value) => {
-    if (value === undefined || value === null) return [];
-    if (Array.isArray(value)) return value;
-    if (typeof value !== "object") return value;
-    return Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
-      if (!idKey || idKey in (entry as Record<string, unknown>)) return entry;
-      return { ...(entry as Record<string, unknown>), [idKey]: key };
+  return z
+    .preprocess((value) => {
+      if (value === undefined || value === null) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value !== "object") return value;
+      return Object.entries(value as Record<string, unknown>).map(([key, entry]) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+        if (!idKey || idKey in (entry as Record<string, unknown>)) return entry;
+        return { ...(entry as Record<string, unknown>), [idKey]: key };
+      });
+    }, z.array(z.unknown()))
+    .transform((entries) => {
+      const kept: Array<z.infer<Item>> = [];
+      for (const entry of entries) {
+        const parsed = item.safeParse(entry);
+        if (parsed.success) kept.push(parsed.data as z.infer<Item>);
+      }
+      return kept;
     });
-  }, z.array(item));
 }
 
 const ROW_ROLES = [
@@ -118,8 +184,8 @@ export const aiOntologyResponseSchema = z.object({
       reason: shortText,
       fields: listOf(
         z.object({
-          field: z.string().min(1).max(40),
-          value: z.string().max(500),
+          field: identifier(40),
+          value: text(500),
           confidence,
         }),
         "field",
@@ -131,8 +197,8 @@ export const aiOntologyResponseSchema = z.object({
          */
       unresolved: listOf(
         z.object({
-          header: z.string().max(120),
-          value: z.string().max(500),
+          header: text(120),
+          value: text(500),
           reason: shortText,
         }),
         "header",
@@ -152,8 +218,8 @@ export const aiNormalizationResponseSchema = z.object({
   values: listOf(
     z.object({
       /** Echoes the id the request supplied, so answers cannot be misfiled. */
-      valueId: z.string().min(1).max(120),
-      normalized: z.string().max(500),
+      valueId: identifier(120),
+      normalized: text(500),
       confidence,
       reason: shortText,
     }),

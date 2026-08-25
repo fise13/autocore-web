@@ -86,28 +86,93 @@ test("a confidence written as text or a percentage still means what it says", ()
   );
 });
 
-test("something that is not a confidence at all is still refused", () => {
-  assert.throws(() =>
-    aiDiscoveryResponseSchema.parse({
-      rowRoles: [{ rowId: "r1", role: "record", confidence: "очень уверен", reason: "" }],
-    }),
-  );
-  assert.throws(() =>
-    aiDiscoveryResponseSchema.parse({
-      rowRoles: [{ rowId: "r1", role: "record", confidence: 900, reason: "" }],
-    }),
-  );
+test("something that is not a confidence at all is refused", () => {
+  // Dropped rather than thrown: the entry never reaches the plan either way,
+  // and the rows either side of it keep their answers.
+  const parsed = aiDiscoveryResponseSchema.parse({
+    rowRoles: [
+      { rowId: "r1", role: "record", confidence: "очень уверен", reason: "" },
+      { rowId: "r2", role: "record", confidence: 900, reason: "" },
+      { rowId: "r3", role: "record", confidence: 0.9, reason: "" },
+    ],
+  });
+  assert.deepEqual(parsed.rowRoles.map((role) => role.rowId), ["r3"]);
 });
 
 test("shape tolerance does not extend to invented values", () => {
-  assert.throws(() =>
-    aiRelationshipResponseSchema.parse({
-      links: [{ kind: "owns-the-company", fromId: "e1", toId: "e2", confidence: 1, reason: "" }],
-    }),
-  );
-  assert.throws(() =>
-    aiDiscoveryResponseSchema.parse({
-      rowRoles: [{ rowId: "r1", role: "delete-everything", confidence: 1, reason: "" }],
-    }),
-  );
+  // An invented relationship kind or row role is dropped, never accepted —
+  // the entry cannot reach the plan either way, and its neighbours survive.
+  const links = aiRelationshipResponseSchema.parse({
+    links: [
+      { kind: "owns-the-company", fromId: "e1", toId: "e2", confidence: 1, reason: "" },
+      { kind: "part-of-donor", fromId: "e3", toId: "e4", confidence: 0.9, reason: "VIN" },
+    ],
+  }).links;
+  assert.deepEqual(links.map((link) => link.kind), ["part-of-donor"]);
+
+  const roles = aiDiscoveryResponseSchema.parse({
+    rowRoles: [
+      { rowId: "r1", role: "delete-everything", confidence: 1, reason: "" },
+      { rowId: "r2", role: "total", confidence: 0.9, reason: "ИТОГО" },
+    ],
+  }).rowRoles;
+  assert.deepEqual(roles.map((role) => role.rowId), ["r2"]);
+});
+
+test("prose that is not a string is still read as prose", () => {
+  // The failure a customer actually saw: rowRoles[0].reason was not a string
+  // and the whole discovery pass was thrown away.
+  const parsed = aiDiscoveryResponseSchema.parse({
+    sheetSummary: ["Лист двигателей", "и склад"],
+    rowRoles: [
+      { rowId: "r1", role: "record", confidence: 0.9, reason: null },
+      { rowId: "r2", role: "total", confidence: 0.9, reason: 42 },
+      { rowId: "r3", role: "note", confidence: 0.9, reason: { text: "заметка" } },
+      { rowId: "r4", role: "record", confidence: 0.9, reason: ["один", "два"] },
+    ],
+  });
+
+  assert.equal(parsed.rowRoles.length, 4);
+  assert.equal(parsed.rowRoles[0]!.reason, "");
+  assert.equal(parsed.rowRoles[1]!.reason, "42");
+  assert.ok(parsed.rowRoles[2]!.reason.includes("заметка"));
+  assert.equal(parsed.rowRoles[3]!.reason, "один; два");
+  assert.equal(parsed.sheetSummary, "Лист двигателей; и склад");
+});
+
+test("over-long prose is cut, not refused", () => {
+  const parsed = aiDiscoveryResponseSchema.parse({
+    rowRoles: [{ rowId: "r1", role: "record", confidence: 0.9, reason: "я".repeat(900) }],
+  });
+  assert.equal(parsed.rowRoles[0]!.reason.length, 400);
+});
+
+test("an id written as a number still identifies its row", () => {
+  const parsed = aiOntologyResponseSchema.parse({
+    rows: [{ rowId: 12, kind: "engine", confidence: 0.9, reason: "ok" }],
+  });
+  assert.equal(parsed.rows[0]!.rowId, "12");
+});
+
+test("an answer that cannot be attributed to a row is dropped", () => {
+  const parsed = aiOntologyResponseSchema.parse({
+    rows: [
+      { rowId: "", kind: "engine", confidence: 0.9, reason: "no id" },
+      { kind: "engine", confidence: 0.9, reason: "no id at all" },
+      { rowId: "Лист1#5", kind: "engine", confidence: 0.9, reason: "fine" },
+    ],
+  });
+  assert.deepEqual(parsed.rows.map((row) => row.rowId), ["Лист1#5"]);
+});
+
+test("one bad entry does not take the good ones with it", () => {
+  const rows = Array.from({ length: 12 }, (_, index) => ({
+    rowId: `Лист1#${index}`,
+    kind: index === 3 ? "spaceship" : "engine",
+    confidence: 0.9,
+    reason: "ok",
+  }));
+  const parsed = aiOntologyResponseSchema.parse({ rows });
+  assert.equal(parsed.rows.length, 11);
+  assert.ok(!parsed.rows.some((row) => row.rowId === "Лист1#3"));
 });

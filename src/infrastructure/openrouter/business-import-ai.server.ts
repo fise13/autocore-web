@@ -111,6 +111,26 @@ function resolveModel(): string {
  */
 type FailureLog = { failures: number; lastError: string | null };
 
+/**
+ * What the model was asked about versus what came back usable.
+ *
+ * A pass can now fail without throwing: entries that do not validate are
+ * dropped one at a time rather than failing the chunk, which is what keeps one
+ * malformed row from costing sixty good ones. The price of that is a pass that
+ * quietly answers nothing, so the gap is counted here — logged always, and
+ * recorded as the reason when nothing at all came back, so the person is never
+ * told "ИИ-анализ недоступен" with no explanation underneath it.
+ */
+function noteCoverage(log: FailureLog, pass: string, sent: number, answered: number): void {
+  if (sent === 0) return;
+  if (answered >= sent) return;
+  console.warn(`[business-import-ai] ${pass}: ${answered}/${sent} answers usable`);
+  if (answered === 0) {
+    log.lastError ??=
+      `Модель ответила, но ни один ответ по «${pass}» не удалось прочитать (${sent} строк)`;
+  }
+}
+
 async function guarded<T>(
   run: () => Promise<T>,
   fallback: T,
@@ -196,6 +216,9 @@ function discoverWith(budget: AiBudget, log: FailureLog) {
           aiDiscoveryResponseSchema,
           { profile: "importGrid", title: "AutoCore Business Import - discovery" },
         );
+        if (!response.sheetSummary) {
+          noteCoverage(log, "discovery", input.sampleRows.length, response.rowRoles.length);
+        }
         const result: AiDiscoveryResult = {
           rowRoles: response.rowRoles,
           sheetSummary: response.sheetSummary,
@@ -247,6 +270,9 @@ function ontologyWith(budget: AiBudget, log: FailureLog) {
         });
       }
     }
+    // Only the rows this run actually reached count as "sent": chunks the
+    // budget never started are not a coverage problem, they are the budget.
+    noteCoverage(log, "ontology", answers.length * CHUNK, rows.length);
     return { rows };
   };
 }
