@@ -206,7 +206,7 @@ export async function runBusinessImport(
         ai.ontology!({
           companyId: options.companyId,
           domain,
-          rows: analyzed.map((entry) =>
+          rows: uncertainFirst(analyzed).map((entry) =>
             rowContext(
               tables.find((table) => table.name === entry.table)!,
               entry.row.index,
@@ -274,6 +274,31 @@ export async function runBusinessImport(
     status.configured && !Object.values(status.passes).some(Boolean);
 
   return { plan, rows: analyzed, audit, aiStatus: status };
+}
+
+/**
+ * The rows the model should read first.
+ *
+ * Every row is still sent. What this decides is the order, and order is what
+ * matters once a provider runs on a clock: a real book is thousands of rows,
+ * each answer costs seconds, and a request that must finish inside five
+ * minutes will not get through all of them. Whatever the model does not reach
+ * keeps its deterministic reading — so the rows worth spending the budget on
+ * are the ones the rules could not settle, and a confidently classified engine
+ * is the right thing to run out of time on.
+ *
+ * Answers come back keyed by rowId, so reordering changes nothing downstream.
+ */
+function uncertainFirst(rows: ImportRunResult["rows"]): ImportRunResult["rows"] {
+  const doubt = (entry: ImportRunResult["rows"][number]) => {
+    const type = entry.row.classification.recordType;
+    const tier = entry.row.confidence.tier;
+    return (type === "unknown" ? 4 : 0) + (tier === "low" ? 2 : tier === "medium" ? 1 : 0);
+  };
+  return [...rows]
+    .map((entry, index) => ({ entry, index, doubt: doubt(entry) }))
+    .sort((a, b) => b.doubt - a.doubt || a.index - b.index)
+    .map((item) => item.entry);
 }
 
 /**

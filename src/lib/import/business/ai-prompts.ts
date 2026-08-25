@@ -17,7 +17,7 @@ import type { AiDomainContext } from "./ai-port";
  * deterministic layer then judges.
  */
 
-export const BUSINESS_IMPORT_PROMPT_VERSION = "business-import-v1";
+export const BUSINESS_IMPORT_PROMPT_VERSION = "business-import-v2";
 
 const SHARED_RULES = `
 YOU ARE READING A BUSINESS, NOT A SPREADSHEET.
@@ -53,9 +53,12 @@ asked to approve, create or change anything.
    whether a user may import. You do not compute totals or convert currencies.
    Report what the data says; arithmetic and authorisation happen elsewhere.
 
-6. JSON ONLY
-   Return exactly the documented object. No prose, no markdown, no commentary
-   outside the JSON.
+6. JSON ONLY, IN THE SHAPE GIVEN
+   Return exactly the object shape printed under OUTPUT. No prose, no markdown,
+   no commentary outside the JSON. Every list is a JSON array — never an object
+   keyed by id, never a single object where an array is shown. A list with
+   nothing in it is an empty array. Getting the shape wrong throws the whole answer away,
+   including the parts that were right.
 `.trim();
 
 function withOntology(context: AiDomainContext, task: string): string {
@@ -84,6 +87,22 @@ Marking a row as anything other than "record" removes it from the import, so
 only do it when you are sure. Marking one "record" has no effect: a row already
 ruled out by the deterministic pass stays out. Totals and headings are the
 common ones; a row of numbers with no label is usually a total.
+
+Write sheetSummary in Russian — it is shown to the person who uploaded the
+file, next to an interface that is in Russian.
+
+OUTPUT — exactly this shape:
+{
+  "sheetSummary": "одно предложение",
+  "primaryEntity": "engine",
+  "secondaryEntities": ["donor"],
+  "relationshipHints": [{ "kind": "engine-of-donor", "reason": "why" }],
+  "rowRoles": [
+    { "rowId": "Sheet1#12", "role": "total", "confidence": 0.9, "reason": "why" }
+  ]
+}
+role is one of: record, section-header, total, note, separator, repeated-header.
+primaryEntity and every entity name is one of the kinds listed above.
 `.trim(),
   );
 }
@@ -109,6 +128,24 @@ VIN and a make/model/year is the donor itself.
 The section heading above a row is context: a heading naming a car makes the
 rows beneath it parts of that car; a heading naming a branch is a location, not
 an entity.
+
+Keep every "reason" to at most twelve words — a short true sentence, not a
+paragraph. A long answer for one row is paid for by the rows further down the
+file that then never get read at all.
+
+OUTPUT — exactly this shape, one entry per row you were given:
+{
+  "rows": [
+    {
+      "rowId": "Sheet1#12",
+      "kind": "engine",
+      "confidence": 0.9,
+      "reason": "why",
+      "fields": [{ "field": "serial", "value": "EJ251-442063", "confidence": 0.95 }],
+      "unresolved": [{ "header": "250", "value": "250", "reason": "price or quantity" }]
+    }
+  ]
+}
 `.trim(),
   );
 }
@@ -134,6 +171,13 @@ says "Camry" and not the year, the normalized value does not gain a year.
 
 If a value has no sensible canonical form, return it unchanged with low
 confidence.
+
+OUTPUT — exactly this shape, one entry per value you were given:
+{
+  "values": [
+    { "valueId": "v12", "normalized": "Toyota Camry XV50", "confidence": 0.8, "reason": "why" }
+  ]
+}
 `.trim(),
   );
 }
@@ -158,6 +202,19 @@ something genuinely identifying agrees: a shared plate, a shared customer and
 date, an obviously identical name plus a matching amount.
 
 Returning no groups is a good answer for most inputs.
+
+OUTPUT — exactly this shape:
+{
+  "groups": [
+    {
+      "entityIds": ["e12", "e40"],
+      "confidence": 0.8,
+      "reason": "why",
+      "evidence": ["same plate", "same customer and date"]
+    }
+  ]
+}
+No groups is: { "groups": [] }
 `.trim(),
   );
 }
@@ -179,6 +236,20 @@ section heading naming its donor, a sale whose row names the part it was for.
 Every link needs a confidence and a reason naming the evidence. A link you are
 below 0.7 on will be shown to a person rather than applied, so say what you
 actually believe rather than rounding up.
+
+OUTPUT — exactly this shape:
+{
+  "links": [
+    {
+      "kind": "part-of-donor",
+      "fromId": "e12",
+      "toId": "e3",
+      "confidence": 0.82,
+      "reason": "why"
+    }
+  ]
+}
+No links is: { "links": [] }
 `.trim(),
   );
 }

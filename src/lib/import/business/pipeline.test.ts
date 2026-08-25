@@ -156,6 +156,35 @@ describe("runBusinessImport — the AI layer", () => {
     assert.equal(plan.summary.relationships["part-of-donor"], 2);
   });
 
+  it("shows the model the rows the rules could not settle first", async () => {
+    // Order is what decides which rows get read when the provider runs out of
+    // clock on a large book: whatever it does not reach keeps its
+    // deterministic reading, so the doubtful rows have to go first.
+    const MIXED = sheet(
+      "Смешанный",
+      ["VIN", "МАРКА", "МОДЕЛЬ", "ГОД", "ЗАПЧАСТЬ", "НОМЕР", "ЦЕНА"],
+      [
+        { VIN: VIN_A, "МАРКА": "Acura", "МОДЕЛЬ": "TLX", "ГОД": "2015", "ЗАПЧАСТЬ": "", "НОМЕР": "", "ЦЕНА": "1200000" },
+        { VIN: "", "МАРКА": "", "МОДЕЛЬ": "", "ГОД": "", "ЗАПЧАСТЬ": "хз что это", "НОМЕР": "X-9", "ЦЕНА": "1500" },
+        { VIN: VIN_B, "МАРКА": "Toyota", "МОДЕЛЬ": "Camry", "ГОД": "2016", "ЗАПЧАСТЬ": "", "НОМЕР": "", "ЦЕНА": "900000" },
+      ],
+    );
+
+    let seen: string[] = [];
+    const ai: BusinessImportAI = {
+      name: "order-probe",
+      ontology: async (input) => {
+        seen = input.rows.map((row) => row.rowId);
+        return { rows: [] };
+      },
+    };
+
+    await run([MIXED], { ai });
+
+    assert.equal(seen.length, 3);
+    assert.equal(seen[0], "Смешанный#1");
+  });
+
   it("never lets a provider promote a total back into the data", async () => {
     // A model must not be able to talk the import into importing "ИТОГО".
     const ai: BusinessImportAI = {

@@ -1,12 +1,16 @@
 import "server-only";
 
 import {
+  ABSOLUTE_MAX_TOKENS,
   AI_PROFILES,
   isRecoverableAiParseError,
+  resolveProfileMaxTokens,
   resolveProfileModel,
+  TRUNCATED_RESPONSE_MESSAGE,
   type AiProfileId,
 } from "@/infrastructure/openrouter/ai-profiles";
 import { DEFAULT_GEMINI_MODEL } from "@/infrastructure/openrouter/gemini-models";
+import { headerSafeTitle } from "@/infrastructure/openrouter/header-safe-title";
 import { parseAiJsonContent } from "@/infrastructure/openrouter/parse-ai-json";
 import { resolveProxyAuthHeaders } from "@/infrastructure/openrouter/proxy-auth.server";
 import type { AiTransport } from "@/infrastructure/openrouter/transport";
@@ -14,7 +18,6 @@ import type { AiTransport } from "@/infrastructure/openrouter/transport";
 export type { AiTransport };
 
 const DEFAULT_MODEL = DEFAULT_GEMINI_MODEL;
-const ABSOLUTE_MAX_TOKENS = 8192;
 const AI_PROXY_REGION = "europe-west1";
 const AI_PROXY_FUNCTION = "openrouterProxy";
 
@@ -139,21 +142,6 @@ export function resolveOpenRouterModel(explicit?: string, profileId: AiProfileId
   );
 }
 
-function clampMaxTokens(value: number): number {
-  return Math.min(Math.max(Math.floor(value), 64), ABSOLUTE_MAX_TOKENS);
-}
-
-function resolveMaxTokens(explicit: number | undefined, profileDefault: number): number {
-  if (typeof explicit === "number" && Number.isFinite(explicit) && explicit > 0) {
-    return clampMaxTokens(explicit);
-  }
-  const fromEnv = Number(process.env.OPENROUTER_MAX_TOKENS?.trim());
-  if (Number.isFinite(fromEnv) && fromEnv > 0) {
-    return clampMaxTokens(fromEnv);
-  }
-  return clampMaxTokens(profileDefault);
-}
-
 function mapOpenRouterError(status: number, text: string, maxTokens: number): Error {
   try {
     const parsed = JSON.parse(text) as {
@@ -250,7 +238,7 @@ async function callOpenRouterOnce<T>(
       : {
           Authorization: `Bearer ${transport.apiKey}`,
           "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://app.myautocore.com",
-          "X-Title": params.title,
+          "X-Title": headerSafeTitle(params.title),
         };
 
   const body: Record<string, unknown> = {
@@ -315,13 +303,18 @@ async function callOpenRouterOnce<T>(
   const tagged = extractTaggedReasoning(rawContent);
   const content = tagged.content || rawContent;
 
+  // A reply the model was cut off mid-sentence is incomplete, and the shared
+  // parser is good enough at closing dangling braces to make it look whole —
+  // an answer about sixty rows arrives as an answer about one. Refuse it here
+  // and let the retry ask again with the larger budget.
+  if (choice?.finish_reason === "length") {
+    throw new Error(TRUNCATED_RESPONSE_MESSAGE);
+  }
+
   let parsed: unknown;
   try {
     parsed = parseAiJsonContent(content);
   } catch {
-    if (choice?.finish_reason === "length") {
-      throw new Error("The AI returned invalid JSON (the response was cut off by max_tokens)");
-    }
     throw new Error("The AI returned invalid JSON");
   }
 
@@ -369,16 +362,19 @@ export async function callOpenRouterJsonDetailed<T>(
     lane === "nvidia"
       ? resolveNvidiaAiModel(options?.model)
       : resolveOpenRouterModel(options?.model, profileId);
-  const title = options?.title?.trim() || profile.title;
+  // Sanitized once, here, so a label with an em dash in it cannot throw before
+  // the request is made. See `headerSafeTitle`.
+  const title = headerSafeTitle(options?.title?.trim() || profile.title);
   const temperature = options?.temperature ?? profile.temperature;
   const timeoutMs = options?.timeoutMs ?? profile.timeoutMs;
   const retries = Math.max(0, options?.retries ?? 1);
   const includeReasoning = Boolean(options?.includeReasoning ?? lane === "nvidia");
 
-  let maxTokens = resolveMaxTokens(options?.maxTokens, profile.maxTokens);
-  const retryMaxTokens = resolveMaxTokens(
+  let maxTokens = resolveProfileMaxTokens(profile, options?.maxTokens);
+  const retryMaxTokens = resolveProfileMaxTokens(
+    profile,
     options?.retryMaxTokens,
-    profile.retryMaxTokens,
+    "retryMaxTokens",
   );
 
   let lastError: unknown;

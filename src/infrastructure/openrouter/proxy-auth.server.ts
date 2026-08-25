@@ -1,5 +1,6 @@
 import "server-only";
 
+import { headerSafeTitle } from "@/infrastructure/openrouter/header-safe-title";
 import type { AiTransport } from "@/infrastructure/openrouter/transport";
 
 /**
@@ -14,7 +15,9 @@ export async function resolveProxyAuthHeaders(
   transport: Extract<AiTransport, { kind: "proxy" }>,
   title: string,
 ): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "x-ai-title": title };
+  // A header value is a ByteString: an em dash in the title throws inside
+  // `fetch` and takes the whole call with it. See `headerSafeTitle`.
+  const headers: Record<string, string> = { "x-ai-title": headerSafeTitle(title) };
   if (transport.secret) {
     headers["x-ai-proxy-key"] = transport.secret;
     return headers;
