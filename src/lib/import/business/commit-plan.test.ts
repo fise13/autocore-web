@@ -209,3 +209,146 @@ describe("commitImportPlan", () => {
     ]);
   });
 });
+
+describe("commitImportPlan — a real book's worth of records", () => {
+  /**
+   * 2,264 records is what a customer actually uploaded, and one-at-a-time
+   * writing is why the progress bar sat at "0 / 2264" until the platform
+   * killed the request. These tests are about the two properties that fixed
+   * it: writes overlap, and a call that cannot finish says how far it got
+   * instead of dying.
+   */
+  function bigPlan(count: number) {
+    return plan(Array.from({ length: count }, (_, index) => draft(`e${index}`, "engine")));
+  }
+
+  function slowWriters(latencyMs: number) {
+    let inFlight = 0;
+    let peak = 0;
+    let written = 0;
+    const base = recordingWriters();
+    const writers: PlanWriters = {
+      ...base.writers,
+      createEngine: async (input) => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, latencyMs));
+        inFlight -= 1;
+        written += 1;
+        return `engine-${input.entityId}`;
+      },
+    };
+    return { writers, peak: () => peak, written: () => written };
+  }
+
+  it("writes records at the same time instead of one after another", async () => {
+    const slow = slowWriters(5);
+    const started = Date.now();
+    const result = await commitImportPlan({
+      plan: bigPlan(120),
+      writers: slow.writers,
+      concurrency: 12,
+    });
+
+    assert.equal(result.created, 120);
+    assert.equal(result.remaining, 0);
+    assert.equal(slow.peak(), 12);
+    // Sequential would be 120 x 5ms = 600ms at the very least.
+    assert.ok(Date.now() - started < 400, "twelve at a time must beat one at a time");
+  });
+
+  it("stops at its deadline and reports what is left rather than timing out", async () => {
+    let clock = 1_000;
+    const result = await commitImportPlan({
+      plan: bigPlan(100),
+      writers: recordingWriters().writers,
+      concurrency: 1,
+      now: () => (clock += 1),
+      deadlineAt: 1_010,
+      ledger: inMemoryLedger(),
+    });
+
+    // The clock only moves when an action is attempted, so exactly ten run.
+    assert.ok(result.created > 0 && result.created < 100);
+    assert.equal(result.created + result.remaining, 100);
+    assert.equal(result.total, 100);
+  });
+
+  it("a second call finishes what the first one could not, writing nothing twice", async () => {
+    const built = bigPlan(50);
+    const ledger = inMemoryLedger();
+    let clock = 0;
+    const first = recordingWriters();
+    const firstRun = await commitImportPlan({
+      plan: built,
+      writers: first.writers,
+      ledger,
+      concurrency: 1,
+      now: () => (clock += 1),
+      deadlineAt: 20,
+    });
+    assert.ok(firstRun.remaining > 0, "the first call must not finish");
+
+    const second = recordingWriters();
+    const secondRun = await commitImportPlan({
+      plan: built,
+      writers: second.writers,
+      ledger,
+      concurrency: 4,
+    });
+
+    assert.equal(secondRun.remaining, 0);
+    assert.equal(firstRun.created + secondRun.created, 50);
+    assert.equal(secondRun.skipped, firstRun.created);
+
+    // Nothing was created twice: every entity was written by exactly one run.
+    const createdIds = [...first.calls, ...second.calls].filter((call) =>
+      call.startsWith("createEngine:"),
+    );
+    assert.equal(new Set(createdIds).size, createdIds.length);
+    assert.equal(createdIds.length, 50);
+  });
+
+  it("does not attach relationships while records are still unwritten", async () => {
+    const built = plan(
+      [draft("e1", "donor"), draft("e2", "usedPart")],
+      [
+        {
+          kind: "part-of-donor",
+          fromId: "e2",
+          toId: "e1",
+          decision: decision("relationship", 0.98, "VIN", "rules"),
+        },
+      ],
+    );
+    let clock = 0;
+    const { writers, calls } = recordingWriters();
+    const result = await commitImportPlan({
+      plan: built,
+      writers,
+      concurrency: 1,
+      now: () => (clock += 10),
+      deadlineAt: 15,
+    });
+
+    assert.ok(result.remaining > 0);
+    assert.equal(result.linked, 0);
+    assert.ok(!calls.some((call) => call.startsWith("link:")), "no dangling link may be written");
+  });
+
+  it("reports progress that only ever moves forward", async () => {
+    const seen: number[] = [];
+    await commitImportPlan({
+      plan: bigPlan(40),
+      writers: recordingWriters().writers,
+      concurrency: 8,
+      onProgress: (done, total) => {
+        assert.equal(total, 40);
+        seen.push(done);
+      },
+    });
+    assert.equal(seen.length, 40);
+    assert.deepEqual([...seen].sort((a, b) => a - b), seen);
+    assert.equal(seen.at(-1), 40);
+  });
+});

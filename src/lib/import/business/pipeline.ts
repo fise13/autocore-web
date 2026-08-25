@@ -91,6 +91,13 @@ export type AiStatus = {
   };
   /** Set when a provider was supplied but contributed nothing. */
   degraded: boolean;
+  /**
+   * Why, in the provider's own words, when it contributed nothing. Shown to
+   * the person: "ИИ-анализ недоступен" alone is not something anyone can act
+   * on, and the difference between a missing key and a timeout is the whole
+   * answer.
+   */
+  failureReason: string | null;
   sheetSummaries: Array<{ table: string; summary: string; primaryEntity?: ImportEntityKind }>;
 };
 
@@ -146,6 +153,7 @@ export async function runBusinessImport(
       relationships: false,
     },
     degraded: false,
+    failureReason: null,
     sheetSummaries: [],
   };
 
@@ -272,6 +280,23 @@ export async function runBusinessImport(
 
   status.degraded =
     status.configured && !Object.values(status.passes).some(Boolean);
+
+  if (status.degraded) {
+    let diagnosis: { failures: number; lastError: string | null } | undefined;
+    try {
+      diagnosis = ai.diagnostics?.();
+    } catch {
+      diagnosis = undefined;
+    }
+    status.failureReason = diagnosis?.lastError ?? null;
+    if (status.failureReason) {
+      console.warn("[business-import] AI contributed nothing", {
+        provider: status.provider,
+        failures: diagnosis?.failures ?? 0,
+        reason: status.failureReason,
+      });
+    }
+  }
 
   return { plan, rows: analyzed, audit, aiStatus: status };
 }

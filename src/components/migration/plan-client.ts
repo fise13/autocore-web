@@ -23,6 +23,12 @@ export type CommitPlanResponse = {
   importId: string;
   status: "completed" | "partial";
   result: CommitPlanResult;
+  /**
+   * How far the whole import has got, counting everything earlier calls
+   * already wrote — not just what this call did. Optional so a client running
+   * against an older deployment still works.
+   */
+  progress?: { done: number; total: number };
   deferred: string[];
 };
 

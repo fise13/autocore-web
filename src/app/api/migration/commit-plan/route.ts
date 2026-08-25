@@ -29,6 +29,20 @@ import type { PlanAction } from "@/lib/import/business/contracts";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
+/**
+ * How long one call spends writing.
+ *
+ * The route may run for 300 seconds; this stops well short of that so the
+ * response is always a real answer rather than a platform timeout. What is
+ * left comes back as `status: "partial"` with a count, and the client calls
+ * again — which is the resume path that already existed, now used for pacing
+ * as well as for recovery. A person watching a progress bar gets a number
+ * that moves; a person watching a request that will be killed at 300 seconds
+ * gets nothing at all, which is exactly what an import of 2,264 records used
+ * to do.
+ */
+const WRITE_BUDGET_MS = 120_000;
+
 type CommitPlanBody = {
   companyId?: string;
   importId?: string;
@@ -92,20 +106,29 @@ export async function POST(request: NextRequest) {
 
     await updateImportJob(access.companyId, importId, { status: "committing", error: null });
 
-    const result = await commitImportPlan({ plan, writers, ledger });
+    const result = await commitImportPlan({
+      plan,
+      writers,
+      ledger,
+      deadlineAt: Date.now() + WRITE_BUDGET_MS,
+    });
+
+    const done = result.created + result.updated + result.skipped;
 
     // "Partial" is a real, resumable state and is reported as one: telling
     // someone their import failed when 632 of 710 records landed is both
-    // untrue and the fastest way to make them import it all again.
-    const status = result.failed.length > 0 ? "partial" : "completed";
+    // untrue and the fastest way to make them import it all again. It also
+    // covers the ordinary case where this call simply ran out of its budget.
+    const status = result.remaining > 0 || result.failed.length > 0 ? "partial" : "completed";
     await updateImportJob(access.companyId, importId, {
       status,
-      processedActions: result.created + result.updated + result.skipped,
+      totalActions: result.total,
+      processedActions: done,
       created: result.created,
       updated: result.updated,
       skipped: result.skipped,
       errors: result.failed.length,
-      completedAt: new Date(),
+      ...(status === "completed" ? { completedAt: new Date() } : {}),
       error: result.failed[0]?.message ?? null,
     });
 
@@ -113,6 +136,7 @@ export async function POST(request: NextRequest) {
       importId,
       status,
       result,
+      progress: { done, total: result.total },
       deferred: stored.job.deferred,
     });
   } catch (error) {

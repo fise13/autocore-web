@@ -28,6 +28,21 @@ const aiFunctions = functions.region("europe-west1").runWith({
 
 const FUNCTION_NAME = "openrouterProxy";
 
+/**
+ * Header values are ByteStrings: one em dash in a caller's title makes this
+ * function's own `fetch` throw before the request leaves. The caller sanitizes
+ * too; this is the half that cannot be redeployed by fixing the caller.
+ */
+function headerSafeTitle(title: string | undefined): string {
+  const value = (title ?? "")
+    .replace(/[\u2012-\u2015]/g, "-")
+    .replace(/[^\x20-\x7e]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  return value || "AutoCore";
+}
+
 function expectedAudience(project: string): string {
   return (
     process.env.AI_PROXY_URL?.trim() ||
@@ -87,7 +102,7 @@ export const openrouterProxy = aiFunctions.https.onRequest(async (request, respo
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.APP_URL || "https://app.myautocore.com",
-        "X-Title": request.get("x-ai-title") || "AutoCore",
+        "X-Title": headerSafeTitle(request.get("x-ai-title") ?? undefined),
       },
       body: JSON.stringify(body),
     });

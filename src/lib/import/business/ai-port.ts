@@ -210,6 +210,16 @@ export type BusinessImportAI = {
   normalize?: (input: AiNormalizationRequest) => Promise<AiNormalizationResult>;
   resolve?: (input: AiResolutionRequest) => Promise<AiResolutionResult>;
   relate?: (input: AiRelationshipRequest) => Promise<AiRelationshipResult>;
+  /**
+   * Why the model contributed nothing, when it contributed nothing.
+   *
+   * A provider swallows its own failures on purpose — a bad day for the model
+   * must not take an import down. The cost of that is a person being told
+   * "ИИ-анализ недоступен" with no way to tell a missing key from a timeout
+   * from a schema mismatch, and nobody can act on that. This is how the
+   * reason gets out without any of it becoming an exception.
+   */
+  diagnostics?: () => { failures: number; lastError: string | null };
 };
 
 /** The provider used when none is configured. Never throws, never guesses. */
@@ -225,7 +235,7 @@ export const NULL_BUSINESS_IMPORT_AI: BusinessImportAI = { name: "none" };
  * rather than raw rows, which is what makes a whole-file view affordable.
  */
 export const AI_DISCOVERY_SAMPLE_ROWS = 40;
-export const AI_ONTOLOGY_CHUNK_ROWS = 60;
+export const AI_ONTOLOGY_CHUNK_ROWS = 12;
 
 /**
  * Pick a spread of rows rather than the first N.

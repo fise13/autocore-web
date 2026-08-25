@@ -109,17 +109,23 @@ function resolveModel(): string {
  * this function. A provider having a bad day degrades the import to
  * deterministic, which is a worse import and a working one.
  */
+type FailureLog = { failures: number; lastError: string | null };
+
 async function guarded<T>(
   run: () => Promise<T>,
   fallback: T,
   label: string,
+  log?: FailureLog,
 ): Promise<T> {
   try {
     return await run();
   } catch (error) {
-    console.warn(`[business-import-ai] ${label} failed, falling back`, {
-      message: error instanceof Error ? error.message : String(error),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[business-import-ai] ${label} failed, falling back`, { message });
+    if (log) {
+      log.failures += 1;
+      log.lastError = message;
+    }
     return fallback;
   }
 }
@@ -176,7 +182,7 @@ async function runChunks<Chunk, Answer>(
   return results;
 }
 
-function discoverWith(budget: AiBudget) {
+function discoverWith(budget: AiBudget, log: FailureLog) {
   return async function discover(input: AiDiscoveryRequest): Promise<AiDiscoveryResult> {
     if (budget.remainingMs() <= 0) return { rowRoles: [] };
     return guarded(
@@ -201,11 +207,12 @@ function discoverWith(budget: AiBudget) {
       },
       { rowRoles: [] } satisfies AiDiscoveryResult,
       `discovery(${input.table})`,
+      log,
     );
   };
 }
 
-function ontologyWith(budget: AiBudget) {
+function ontologyWith(budget: AiBudget, log: FailureLog) {
   return async function ontology(input: AiOntologyRequest): Promise<AiOntologyResult> {
     // Chunked: a model asked to hold sixty rows reasons better than one asked
     // to hold five thousand, and the window is finite either way.
@@ -221,6 +228,7 @@ function ontologyWith(budget: AiBudget) {
             ),
           { rows: [] },
           `ontology(${chunk.length} rows)`,
+          log,
         ),
       budget,
       "ontology",
@@ -243,7 +251,7 @@ function ontologyWith(budget: AiBudget) {
   };
 }
 
-function normalizeWith(budget: AiBudget) {
+function normalizeWith(budget: AiBudget, log: FailureLog) {
   return async function normalize(
     input: AiNormalizationRequest,
   ): Promise<AiNormalizationResult> {
@@ -259,6 +267,7 @@ function normalizeWith(budget: AiBudget) {
             ),
           { values: [] },
           `normalization(${chunk.length} values)`,
+          log,
         ),
       budget,
       "normalization",
@@ -267,7 +276,7 @@ function normalizeWith(budget: AiBudget) {
   };
 }
 
-function resolveWith(budget: AiBudget) {
+function resolveWith(budget: AiBudget, log: FailureLog) {
   return async function resolve(input: AiResolutionRequest): Promise<AiResolutionResult> {
     // Global by nature, so the chunks are summaries rather than rows — that is
     // what makes a whole-file view affordable on a large book.
@@ -283,6 +292,7 @@ function resolveWith(budget: AiBudget) {
             ),
           { groups: [] },
           `resolution(${chunk.length} entities)`,
+          log,
         ),
       budget,
       "resolution",
@@ -291,7 +301,7 @@ function resolveWith(budget: AiBudget) {
   };
 }
 
-function relateWith(budget: AiBudget) {
+function relateWith(budget: AiBudget, log: FailureLog) {
   return async function relate(input: AiRelationshipRequest): Promise<AiRelationshipResult> {
     const answers = await runChunks(
       [...chunkRows(input.entities, GLOBAL_CHUNK)],
@@ -305,6 +315,7 @@ function relateWith(budget: AiBudget) {
             ),
           { links: [] },
           `relationships(${chunk.length} entities)`,
+          log,
         ),
       budget,
       "relationships",
@@ -325,13 +336,15 @@ export function createBusinessImportAiProvider(): BusinessImportAI | null {
   // The clock starts here, once per request, so every pass measures against
   // the same import rather than against itself.
   const budget = createAiBudget();
+  const log: FailureLog = { failures: 0, lastError: null };
   return {
     name: "openrouter",
     metadata: businessImportAiMetadata,
-    discover: discoverWith(budget),
-    ontology: ontologyWith(budget),
-    normalize: normalizeWith(budget),
-    resolve: resolveWith(budget),
-    relate: relateWith(budget),
+    diagnostics: () => ({ failures: log.failures, lastError: log.lastError }),
+    discover: discoverWith(budget, log),
+    ontology: ontologyWith(budget, log),
+    normalize: normalizeWith(budget, log),
+    resolve: resolveWith(budget, log),
+    relate: relateWith(budget, log),
   };
 }

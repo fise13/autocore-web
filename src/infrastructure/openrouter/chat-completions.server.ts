@@ -145,9 +145,14 @@ export function resolveOpenRouterModel(explicit?: string, profileId: AiProfileId
 function mapOpenRouterError(status: number, text: string, maxTokens: number): Error {
   try {
     const parsed = JSON.parse(text) as {
-      error?: { message?: string; code?: number };
+      error?: { message?: string; code?: number } | string;
     };
-    const message = parsed.error?.message?.trim();
+    // The Firebase proxy answers `{"error": "..."}` while OpenRouter answers
+    // `{"error": {"message": "..."}}`. The proxy's message is the one that
+    // names a misconfiguration a person can actually fix, so it must not be
+    // the one that gets thrown away.
+    const message =
+      typeof parsed.error === "string" ? parsed.error.trim() : parsed.error?.message?.trim();
     if (message) {
       if (status === 402 || /credits|max_tokens|afford/i.test(message)) {
         return new Error(

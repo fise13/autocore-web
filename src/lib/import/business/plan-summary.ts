@@ -60,6 +60,8 @@ export type PlanPresentation = {
     used: boolean;
     /** True when a provider was configured but contributed nothing. */
     degraded: boolean;
+    /** Why it contributed nothing, when it did not. */
+    reason: string | null;
     provider: string;
     sheetSummaries: Array<{ table: string; summary: string }>;
   };
@@ -159,6 +161,7 @@ export function presentPlan(plan: ImportPlan, ai?: AiStatus): PlanPresentation {
     ai: {
       used: Boolean(ai?.configured && !ai.degraded),
       degraded: Boolean(ai?.degraded),
+      reason: ai?.degraded ? (ai.failureReason ?? null) : null,
       provider: ai?.provider ?? "none",
       sheetSummaries: (ai?.sheetSummaries ?? []).map((entry) => ({
         table: entry.table,

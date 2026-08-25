@@ -1,4 +1,5 @@
 import type { CanonicalField } from "../types";
+import { runWithBudget } from "./ai-budget";
 import { actionFingerprint, committableActions } from "./import-plan";
 import type { EntityDraft, ImportEntityKind, ImportPlan, PlanAction } from "./contracts";
 
@@ -70,6 +71,13 @@ export type CommitPlanResult = {
   linked: number;
   /** Draft entity id → the record id now in the database. */
   recordIds: Record<string, string>;
+  /** Committable actions in the plan — the denominator a person is shown. */
+  total: number;
+  /**
+   * Actions this run never attempted, because the clock ran out or the person
+   * cancelled. Not a failure: the next call to the same import picks them up.
+   */
+  remaining: number;
 };
 
 function flatten(entity: EntityDraft): Partial<Record<CanonicalField, string>> {
@@ -121,11 +129,52 @@ export type CommitPlanOptions = {
   ledger?: CommitLedger;
   onProgress?: (done: number, total: number) => void;
   shouldCancel?: () => boolean;
+  /**
+   * Writes in flight at once.
+   *
+   * One at a time is what made a real import impossible: 2,264 records, each
+   * a write and a ledger entry awaited in turn, is two round-trips per record
+   * and well past the five minutes the route is allowed. The records do not
+   * depend on each other within a kind, so they do not have to wait for each
+   * other.
+   */
+  concurrency?: number;
+  /**
+   * Epoch ms after which no further action is started. What is left is
+   * reported as `remaining` and the caller comes back for it — resume is the
+   * same call with the same import id, and the ledger makes it exact.
+   */
+  deadlineAt?: number;
+  now?: () => number;
 };
+
+/** Writes in flight when the caller does not say. */
+const DEFAULT_COMMIT_CONCURRENCY = 12;
+
+/**
+ * Actions grouped so that everything a later group points at already exists.
+ *
+ * `committableActions` sorts by kind — donors, then engines, then parts and
+ * stock. Running a whole kind at once and waiting for it before starting the
+ * next keeps that guarantee while letting the records inside a kind, which
+ * depend on nothing but themselves, be written together.
+ */
+function wavesByKind(actions: PlanAction[]): PlanAction[][] {
+  const waves: PlanAction[][] = [];
+  for (const action of actions) {
+    const current = waves[waves.length - 1];
+    if (current && current[0]!.kind === action.kind) current.push(action);
+    else waves.push([action]);
+  }
+  return waves;
+}
 
 export async function commitImportPlan(options: CommitPlanOptions): Promise<CommitPlanResult> {
   const { plan, writers, ledger } = options;
   const actions = committableActions(plan);
+  const now = options.now ?? Date.now;
+  const deadlineAt = options.deadlineAt ?? Number.POSITIVE_INFINITY;
+  const concurrency = Math.max(1, options.concurrency ?? DEFAULT_COMMIT_CONCURRENCY);
 
   const result: CommitPlanResult = {
     created: 0,
@@ -136,13 +185,22 @@ export async function commitImportPlan(options: CommitPlanOptions): Promise<Comm
     failed: [],
     linked: 0,
     recordIds: {},
+    total: actions.length,
+    remaining: 0,
   };
 
   let done = 0;
-  for (const action of actions) {
-    if (options.shouldCancel?.()) break;
+  let cancelled = false;
+
+  async function perform(action: PlanAction): Promise<void> {
+    if (cancelled || options.shouldCancel?.()) {
+      cancelled = true;
+      result.remaining += 1;
+      return;
+    }
+
     const entity = plan.entities[action.entityId];
-    if (!entity) continue;
+    if (!entity) return;
 
     const fingerprint = actionFingerprint(plan, action);
     if (ledger?.has(fingerprint)) {
@@ -153,7 +211,7 @@ export async function commitImportPlan(options: CommitPlanOptions): Promise<Comm
       if (known) result.recordIds[action.entityId] = known;
       done += 1;
       options.onProgress?.(done, actions.length);
-      continue;
+      return;
     }
 
     try {
@@ -185,26 +243,45 @@ export async function commitImportPlan(options: CommitPlanOptions): Promise<Comm
     options.onProgress?.(done, actions.length);
   }
 
-  // Relationships last: both ends exist by now, because the ordering above
-  // guarantees a donor is written before anything pointing at it.
-  if (writers.linkToDonor) {
-    for (const link of plan.relationships) {
-      if (options.shouldCancel?.()) break;
+  for (const wave of wavesByKind(actions)) {
+    if (cancelled) {
+      result.remaining += wave.length;
+      continue;
+    }
+    const { skipped } = await runWithBudget(wave, perform, { concurrency, deadlineAt, now });
+    result.remaining += skipped;
+    if (skipped > 0) break;
+  }
+
+  // Relationships last, and only once every record exists. Attaching a part to
+  // a donor that a later call has not written yet would be a dangling
+  // reference, and there is no hurry: the next call does it.
+  if (writers.linkToDonor && result.remaining === 0 && !cancelled) {
+    const links = plan.relationships.filter((link) => {
       const childId = result.recordIds[link.fromId];
       const donorId = result.recordIds[link.toId];
-      if (!childId || !donorId) continue;
-      const kind = plan.entities[link.fromId]?.kind;
-      if (!kind) continue;
-      try {
-        await writers.linkToDonor({ childId, donorId, kind });
-        result.linked += 1;
-      } catch (error) {
-        result.failed.push({
-          entityId: link.fromId,
-          message: error instanceof Error ? error.message : "Не удалось связать записи",
-        });
-      }
-    }
+      return Boolean(childId && donorId && plan.entities[link.fromId]?.kind);
+    });
+
+    await runWithBudget(
+      links,
+      async (link) => {
+        try {
+          await writers.linkToDonor!({
+            childId: result.recordIds[link.fromId]!,
+            donorId: result.recordIds[link.toId]!,
+            kind: plan.entities[link.fromId]!.kind,
+          });
+          result.linked += 1;
+        } catch (error) {
+          result.failed.push({
+            entityId: link.fromId,
+            message: error instanceof Error ? error.message : "Не удалось связать записи",
+          });
+        }
+      },
+      { concurrency, deadlineAt, now },
+    );
   }
 
   return result;

@@ -47,10 +47,18 @@ export function PlanPreview({
           </h2>
         </div>
         {plan.ai.degraded ? (
-          <p className="inline-flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-500">
-            <AlertTriangle className="size-3.5" aria-hidden />
-            ИИ-анализ недоступен — использован разбор по правилам
-          </p>
+          <div className="flex flex-col gap-0.5">
+            <p className="inline-flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="size-3.5" aria-hidden />
+              ИИ-анализ недоступен — использован разбор по правилам
+            </p>
+            {plan.ai.reason ? (
+              // The reason, verbatim. Without it "недоступен" is a dead end:
+              // nobody can tell a missing key from a timeout, and the person
+              // holding the file is often the only one who can fix it.
+              <p className="pl-5 text-xs text-muted-foreground">{plan.ai.reason}</p>
+            ) : null}
+          </div>
         ) : null}
         {plan.ai.sheetSummaries.map((sheet) => (
           <p key={sheet.table} className="text-sm text-muted-foreground">

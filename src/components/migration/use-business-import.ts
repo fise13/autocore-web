@@ -6,6 +6,7 @@ import { ingestFiles } from "@/lib/import";
 import type { PlanPresentation } from "@/lib/import/business/plan-summary";
 import { userCopy } from "@/lib/user-copy";
 
+import { runCommitToCompletion } from "./commit-loop";
 import {
   analyzeBusinessFile,
   commitBusinessPlan,
@@ -128,16 +129,28 @@ export function useBusinessImport(options: UseBusinessImportOptions) {
     setProgress({ done: 0, total: presentation?.createTotal ?? 0 });
 
     try {
-      const response = await commitBusinessPlan({
-        companyId: options.companyId,
-        importId,
-        mergeDecisions,
-      });
+      // Each call writes what it can inside its budget and reports where the
+      // import stands; this keeps asking until it is done. That is the same
+      // resume path a failed run uses, so nothing is ever written twice.
+      const response = await runCommitToCompletion(
+        async () => {
+          const answer = await commitBusinessPlan({
+            companyId: options.companyId,
+            importId,
+            mergeDecisions,
+          });
+          const done = answer.result.created + answer.result.updated + answer.result.skipped;
+          // An older deployment does not send progress; the counts it does
+          // send say the same thing.
+          return {
+            ...answer,
+            progress: answer.progress ?? { done, total: answer.result.total ?? done },
+          };
+        },
+        (next) => setProgress(next),
+      );
       setCommitResult(response);
-      setProgress({
-        done: response.result.created + response.result.updated + response.result.skipped,
-        total: response.result.created + response.result.updated + response.result.skipped,
-      });
+      setProgress(response.progress);
       setPhase(response.status === "partial" ? "partial" : "completed");
     } catch (caught) {
       const raw = caught instanceof Error ? caught.message : "";
