@@ -76,7 +76,15 @@ export function DocumentPdfHeader({
 
         {header.renderCompanyName ? (
           <div className="doc-pdf-header__identity">
-            <h1 className="doc-pdf-header__name">{header.displayName}</h1>
+            {/*
+              A rendered document is embedded inside other pages — the marketing
+              product walkthrough and the in-app document previews — so its
+              company name must not announce itself as those pages' top-level
+              heading. `/product` was shipping three `<h1>`s for exactly this
+              reason. Styling is class-driven, so the document itself is
+              pixel-identical.
+            */}
+            <p className="doc-pdf-header__name">{header.displayName}</p>
             {header.slogan ? <p className="doc-pdf-header__slogan">{header.slogan}</p> : null}
             {header.address ? <p className="doc-pdf-header__address">{header.address}</p> : null}
             <HeaderContactLines header={header} />

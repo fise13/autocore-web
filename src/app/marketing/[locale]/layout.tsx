@@ -1,15 +1,12 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 
 import { MarketingBarbaLayout } from "@/components/marketing/motion/marketing-barba-layout";
-import { PaddleCountryProvider } from "@/components/marketing/paddle-country-provider";
 import { MarketingJsonLd } from "@/components/marketing/seo/marketing-json-ld";
-import { LocaleHtmlLang } from "@/components/marketing/site/locale-html-lang";
 import { routing, type AppLocale } from "@/i18n/routing";
-import { detectCountryFromHeaders } from "@/lib/paddle/detect-country";
+import { buildMarketingRootMetadata } from "@/lib/seo/build-marketing-metadata";
 
 type LocaleLayoutProps = {
   children: ReactNode;
@@ -24,6 +21,19 @@ function isMarketingLocale(value: string): value is AppLocale {
   return (routing.locales as readonly string[]).includes(value);
 }
 
+/**
+ * Site-wide defaults every marketing page inherits: title template, publisher,
+ * and — the part that actually matters — the Search Console / Yandex Webmaster
+ * verification tags. This layout previously rendered no metadata at all, which
+ * left `buildMarketingRootMetadata` unreachable and
+ * `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` silently doing nothing.
+ */
+export async function generateMetadata({ params }: LocaleLayoutProps) {
+  const { locale } = await params;
+  if (!isMarketingLocale(locale)) return {};
+  return buildMarketingRootMetadata(locale);
+}
+
 export default async function MarketingLocaleLayout({ children, params }: LocaleLayoutProps) {
   const { locale } = await params;
   if (!isMarketingLocale(locale)) {
@@ -32,15 +42,11 @@ export default async function MarketingLocaleLayout({ children, params }: Locale
 
   setRequestLocale(locale);
   const messages = await getMessages();
-  const country = detectCountryFromHeaders(await headers());
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <LocaleHtmlLang />
       <MarketingJsonLd locale={locale} />
-      <PaddleCountryProvider country={country}>
-        <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
-      </PaddleCountryProvider>
+      <MarketingBarbaLayout>{children}</MarketingBarbaLayout>
     </NextIntlClientProvider>
   );
 }

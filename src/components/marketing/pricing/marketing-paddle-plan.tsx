@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { usePaddleCheckout } from "@/components/billing/paddle-provider";
-import { usePaddleCountry } from "@/components/marketing/paddle-country-provider";
 import { Button } from "@/components/ui/button";
 import { usePaddlePrices } from "@/hooks/use-paddle-prices";
 import { usePaddleSubscribe } from "@/hooks/use-paddle-subscribe";
@@ -51,8 +50,10 @@ export function MarketingPaddlePlan({
   priceClassName,
   showIntervalToggle = true,
 }: MarketingPaddlePlanProps) {
-  const countryFromContext = usePaddleCountry();
-  const country = countryProp ?? countryFromContext;
+  // Marketing pages are prerendered, so there is no request to read a CDN geo
+  // header from. Passing null is deliberate: Paddle resolves the buyer's
+  // country from their IP at checkout-preview time, client side.
+  const country = countryProp ?? null;
   const { paddle, ready, configured } = usePaddleCheckout();
   const { subscribe } = usePaddleSubscribe();
   const [frequency, setFrequency] = useState<MarketingBillingFrequency>("month");

@@ -40,12 +40,6 @@ export function localizedPath(
   return base;
 }
 
-/** @deprecated No-op now that there's only one locale — kept for old call sites. */
-export function swapLocaleInPathname(pathname: string, nextLocale: AppLocale): string {
-  const withoutLocale = stripLocalePrefix(pathname);
-  return localizedPath(nextLocale, withoutLocale);
-}
-
 /** Map a legacy `/marketing/...` path to its public clean-path equivalent. */
 export function legacyPathToLocalized(
   pathname: string,

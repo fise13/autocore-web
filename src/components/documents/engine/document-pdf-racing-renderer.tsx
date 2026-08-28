@@ -145,7 +145,7 @@ export function DocumentPdfRacingRenderer({ model }: { model: DocumentRenderMode
 
         <div className="doc-racing-title-row">
           <div className="doc-racing-title-main">
-            <h1>{racing.vehicleTitle}</h1>
+            <p className="doc-racing-title">{racing.vehicleTitle}</p>
             <p className="doc-racing-vin">— VIN {racing.vin} —</p>
           </div>
           <div className="doc-racing-plate-box">

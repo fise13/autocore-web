@@ -1,11 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { headers } from "next/headers";
-
 import { PricingExperience } from "@/components/marketing/pricing/pricing-experience";
 import { MarketingExtraJsonLd } from "@/components/marketing/seo/marketing-json-ld";
 import { routing } from "@/i18n/routing";
-import { detectCountryFromHeaders } from "@/lib/paddle/detect-country";
 import { buildMarketingMetadata } from "@/lib/seo/build-marketing-metadata";
 import { buildWebPageJsonLd } from "@/lib/seo/build-webpage-jsonld";
 import { buildBreadcrumbJsonLd, buildFaqJsonLd, buildPricingOfferJsonLd } from "@/lib/seo/marketing-seo";
@@ -34,7 +31,6 @@ export default async function PricingPage({ params }: PageProps) {
 
   const t = await getTranslations({ locale, namespace: "marketing" });
   const faqItems = t.raw("pages.pricing.faq") as Array<{ q: string; a: string }>;
-  const country = detectCountryFromHeaders(await headers());
 
   return (
     <>
@@ -46,7 +42,7 @@ export default async function PricingPage({ params }: PageProps) {
           buildFaqJsonLd(faqItems),
         ]}
       />
-      <PricingExperience country={country} />
+      <PricingExperience />
     </>
   );
 }

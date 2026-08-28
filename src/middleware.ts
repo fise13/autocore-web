@@ -10,6 +10,7 @@ import {
 } from "@/i18n/marketing-paths";
 import { marketingPathnames } from "@/i18n/routing";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isAppLocale } from "@autocore/i18n/config";
+import { buildAppHostRobotsTxt } from "@/lib/seo/marketing-robots";
 import {
   cleanPathFromInternal,
   isMarketingContentPath,
@@ -25,21 +26,6 @@ import {
   isMarketingPublicPath,
   normalizeHost,
 } from "@/lib/site-urls";
-
-const APP_HOST_ROBOTS_TXT = [
-  "User-agent: *",
-  "Allow: /",
-  "Allow: /login",
-  "Allow: /legal/",
-  "Allow: /welcome",
-  "Allow: /business.html",
-  "Disallow: /home",
-  "Disallow: /warehouse",
-  "Disallow: /work-orders",
-  "Disallow: /settings",
-  "Disallow: /api/",
-  "",
-].join("\n");
 
 const APP_HOST_LEGAL_PATHS = new Set([
   "/legal/privacy",
@@ -189,7 +175,8 @@ export function middleware(request: NextRequest) {
 
   if (kind === "app") {
     if (pathname === "/robots.txt") {
-      return new NextResponse(APP_HOST_ROBOTS_TXT, {
+      const sitemapUrl = `${getMarketingUrl().replace(/\/$/, "")}/sitemap.xml`;
+      return new NextResponse(buildAppHostRobotsTxt(sitemapUrl), {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     }

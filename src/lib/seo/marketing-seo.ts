@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE } from "@autocore/i18n/config";
 import enMarketingMessages from "@autocore/i18n/messages/en/marketing.json";
 import ruMarketingMessages from "@autocore/i18n/messages/ru/marketing.json";
 
+import { MARKETING_PRICING, priceString } from "@/lib/seo/pricing-facts";
 import type { MarketingPathKey } from "@/lib/seo/marketing-paths";
 import { marketingAbsoluteUrl } from "@/lib/seo/marketing-paths";
 import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
@@ -32,8 +33,17 @@ export const MARKETING_BRAND = {
   locale: "en_US",
   language: "en",
   themeColor: "#0a0a0a",
-  /** Primary market for Yandex region + schema areaServed */
-  regionCountries: ["KZ", "RU", "US"] as const,
+  /**
+   * Markets the site actually targets, used for schema.org `areaServed`.
+   *
+   * This was `["KZ", "RU", "US"]` while every title, description, and line of
+   * body copy was English aimed at US salvage yards — and the pages also
+   * carried `geo.region: KZ` meta. Those are hard geo-targeting signals, and
+   * they contradicted the content. The site is English-only for the US market
+   * (see the marketing routing config), so this is the list that matches it.
+   * Re-adding a country here is a positioning decision, not a formatting one.
+   */
+  regionCountries: ["US"] as const,
 } as const;
 
 function brandForLocale(locale: AppLocale) {
@@ -73,41 +83,6 @@ const logoUrl = `${marketingUrl}/icon`;
 function breadcrumbTitle(key: MarketingPathKey, locale: AppLocale): string {
   const messages = getMarketingMessages(locale);
   return messages.seo.breadcrumbs[key];
-}
-
-/** Fallback commercial keywords (EN). Live metadata uses i18n `seo.keywords.*`. */
-export const MARKETING_KEYWORDS = enMarketingMessages.seo.keywords.general;
-
-export type MarketingSeoPageConfig = {
-  key: MarketingPathKey;
-  title: string;
-  description: string;
-  keywords?: string[];
-  ogTitle?: string;
-};
-
-/** Fallback page SEO (EN). Prefer `buildMarketingMetadata` / i18n messages at runtime. */
-export const MARKETING_SEO_PAGES: Record<MarketingPathKey, MarketingSeoPageConfig> = (
-  Object.keys(enMarketingMessages.seo.pages) as MarketingPathKey[]
-).reduce(
-  (acc, key) => {
-    const page = enMarketingMessages.seo.pages[key];
-    const pageKeywords =
-      (enMarketingMessages.seo.keywords as Record<string, string[] | undefined>)[key] ?? [];
-    acc[key] = {
-      key,
-      title: page.title,
-      description: page.description,
-      ogTitle: page.ogTitle,
-      keywords: [...enMarketingMessages.seo.keywords.general, ...pageKeywords],
-    };
-    return acc;
-  },
-  {} as Record<MarketingPathKey, MarketingSeoPageConfig>,
-);
-
-export function getMarketingSeoPage(key: MarketingPathKey): MarketingSeoPageConfig {
-  return MARKETING_SEO_PAGES[key];
 }
 
 /** BreadcrumbList JSON-LD: Home → current page, localized. */
@@ -150,10 +125,12 @@ export const buildFaqJsonLdFromMessages = buildFaqJsonLd;
 
 const SOFTWARE_COPY = {
   en: {
-    trialName: "14-day free trial",
-    trialDescription: "Full access for 14 days; payment method required",
-    proName: "Pro subscription",
-    proDescription: "Full AutoCore for one company",
+    trialName: `${MARKETING_PRICING.trialDays}-day free trial`,
+    trialDescription: `Full access for ${MARKETING_PRICING.trialDays} days; payment method required`,
+    proName: "Pro subscription (monthly)",
+    proDescription: "Full AutoCore for one company, billed monthly",
+    proYearlyName: "Pro subscription (yearly)",
+    proYearlyDescription: "Full AutoCore for one company, billed yearly — two months free",
     audience: "Salvage yards, auto recyclers, repair shops, used auto parts sellers",
     features: [
       "Auto parts warehouse inventory",
@@ -167,14 +144,15 @@ const SOFTWARE_COPY = {
     ],
     contactName: "Contact AutoCore",
     contactDescription: "Demo, sales, support, and partnerships for AutoCore inventory software.",
-    offerDescription:
-      "Full AutoCore access for one company with a 14-day free trial.",
+    offerDescription: `Full AutoCore access for one company with a ${MARKETING_PRICING.trialDays}-day free trial.`,
   },
   ru: {
     trialName: "Пробный период 14 дней",
     trialDescription: "Полный доступ на 14 дней; требуется способ оплаты",
-    proName: "Подписка Pro",
-    proDescription: "Полный AutoCore для одной компании",
+    proName: "Подписка Pro (помесячно)",
+    proDescription: "Полный AutoCore для одной компании, оплата помесячно",
+    proYearlyName: "Подписка Pro (на год)",
+    proYearlyDescription: "Полный AutoCore для одной компании, оплата за год — два месяца бесплатно",
     audience: "Авторазборки, авторециклеры, автосервисы, магазины б/у запчастей",
     features: [
       "Складской учёт автозапчастей",
@@ -222,7 +200,7 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
           email: brand.supportEmail,
           telephone: brand.supportPhone,
           url: supportUrl,
-          availableLanguage: ["ru", "en", "kk"],
+          availableLanguage: ["en"],
           areaServed: MARKETING_BRAND.regionCountries.map((code) => ({
             "@type": "Country",
             name: code,
@@ -233,7 +211,7 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
           contactType: "sales",
           email: brand.supportEmail,
           url: supportUrl,
-          availableLanguage: ["ru", "en"],
+          availableLanguage: ["en"],
         },
       ],
       areaServed: MARKETING_BRAND.regionCountries.map((code) => ({
@@ -241,7 +219,6 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
         name: code,
       })),
       knowsAbout: [...KNOWS_ABOUT],
-      sameAs: [],
     },
     {
       "@context": "https://schema.org",
@@ -275,15 +252,15 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
       offers: {
         "@type": "AggregateOffer",
         lowPrice: "0",
-        highPrice: "39",
-        priceCurrency: "USD",
-        offerCount: 2,
+        highPrice: priceString(MARKETING_PRICING.yearly),
+        priceCurrency: MARKETING_PRICING.currency,
+        offerCount: 3,
         offers: [
           {
             "@type": "Offer",
             name: copy.trialName,
             price: "0",
-            priceCurrency: "USD",
+            priceCurrency: MARKETING_PRICING.currency,
             url: `${appUrl}/demo`,
             availability: "https://schema.org/InStock",
             description: copy.trialDescription,
@@ -291,14 +268,14 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
           {
             "@type": "Offer",
             name: copy.proName,
-            price: "39",
-            priceCurrency: "USD",
+            price: priceString(MARKETING_PRICING.monthly),
+            priceCurrency: MARKETING_PRICING.currency,
             url: pricingUrl,
             availability: "https://schema.org/InStock",
             priceSpecification: {
               "@type": "UnitPriceSpecification",
-              price: "39",
-              priceCurrency: "USD",
+              price: priceString(MARKETING_PRICING.monthly),
+              priceCurrency: MARKETING_PRICING.currency,
               billingDuration: "P1M",
               referenceQuantity: {
                 "@type": "QuantitativeValue",
@@ -307,6 +284,26 @@ export function buildMarketingJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
               },
             },
             description: copy.proDescription,
+          },
+          {
+            "@type": "Offer",
+            name: copy.proYearlyName,
+            price: priceString(MARKETING_PRICING.yearly),
+            priceCurrency: MARKETING_PRICING.currency,
+            url: pricingUrl,
+            availability: "https://schema.org/InStock",
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              price: priceString(MARKETING_PRICING.yearly),
+              priceCurrency: MARKETING_PRICING.currency,
+              billingDuration: "P1Y",
+              referenceQuantity: {
+                "@type": "QuantitativeValue",
+                value: 1,
+                unitText: "company",
+              },
+            },
+            description: copy.proYearlyDescription,
           },
         ],
       },
@@ -391,12 +388,12 @@ export function buildPricingOfferJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
     url,
     name: "AutoCore Pro",
     category: "SaaS subscription",
-    price: "39",
-    priceCurrency: "USD",
+    price: priceString(MARKETING_PRICING.monthly),
+    priceCurrency: MARKETING_PRICING.currency,
     priceSpecification: {
       "@type": "UnitPriceSpecification",
-      price: "39",
-      priceCurrency: "USD",
+      price: priceString(MARKETING_PRICING.monthly),
+      priceCurrency: MARKETING_PRICING.currency,
       billingDuration: "P1M",
       referenceQuantity: {
         "@type": "QuantitativeValue",
@@ -406,7 +403,7 @@ export function buildPricingOfferJsonLd(locale: AppLocale = DEFAULT_LOCALE) {
     },
     eligibleDuration: {
       "@type": "QuantitativeValue",
-      value: 14,
+      value: MARKETING_PRICING.trialDays,
       unitCode: "DAY",
     },
     itemOffered: {

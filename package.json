@@ -14,7 +14,7 @@
     "dev": "next dev",
     "insta:dev": "node insta-demo/server.mjs",
     "dev:desktop": "node scripts/dev-desktop.mjs",
-    "prebuild": "npm run tokens:build && python3 scripts/generate-favicon-ico.py && node scripts/build-documents-css.mjs",
+    "prebuild": "node scripts/check-seo-origins.mjs && npm run tokens:build && python3 scripts/generate-favicon-ico.py && node scripts/build-documents-css.mjs",
     "build": "next build",
     "analyze": "ANALYZE=true next build",
     "start": "next start",

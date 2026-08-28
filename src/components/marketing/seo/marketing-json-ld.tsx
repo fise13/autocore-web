@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { AppLocale } from "@autocore/i18n/config";
 import { DEFAULT_LOCALE } from "@autocore/i18n/config";
 import { buildMarketingJsonLd } from "@/lib/seo/marketing-seo";
@@ -47,21 +45,6 @@ export function MarketingExtraJsonLd({ extra }: { extra: JsonLdGraph | JsonLdGra
           dangerouslySetInnerHTML={{ __html: JSON.stringify(graph) }}
         />
       ))}
-    </>
-  );
-}
-
-export function MarketingPageJsonLd({
-  page,
-  children,
-}: {
-  page: JsonLdGraph;
-  children?: ReactNode;
-}) {
-  return (
-    <>
-      <MarketingExtraJsonLd extra={page} />
-      {children}
     </>
   );
 }

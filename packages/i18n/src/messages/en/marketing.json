@@ -2509,42 +2509,42 @@
     "pages": {
       "home": {
         "title": "Auto Parts Inventory Software for Salvage Yards | AutoCore",
-        "description": "Auto parts inventory software for auto recyclers, salvage yards, and repair shops. Track used engines, stock, VIN/barcode, work orders, and warehouse inventory in one system. 14-day free trial.",
+        "description": "Auto parts inventory software for auto recyclers, salvage yards, and repair shops. Track used engines, stock, VIN/barcode, and work orders. 14-day free trial.",
         "ogTitle": "AutoCore — auto parts inventory software for salvage yards & recyclers"
       },
       "product": {
         "title": "Automotive Parts Inventory Management Software | AutoCore",
-        "description": "See how automotive parts inventory management works in AutoCore: Overview, warehouse stock, used auto parts sales, work orders, documents, and live sync across desktop and phone.",
+        "description": "See how automotive parts inventory management works in AutoCore: warehouse stock, used parts sales, work orders, documents, and live desktop-to-phone sync.",
         "ogTitle": "How AutoCore inventory management works for auto recyclers"
       },
       "modules": {
         "title": "Used Engine & Warehouse Inventory Software Modules | AutoCore",
-        "description": "Modules for used engine inventory software, parts warehouse, work orders, accounting, and team roles. VIN, barcode, SKU tracking, engine catalog, suppliers, and inventory analytics.",
+        "description": "Modules for used engine inventory, parts warehouse, work orders, accounting, and team roles. VIN, barcode, and SKU tracking with an engine catalog built in.",
         "ogTitle": "AutoCore modules: engines, warehouse, work orders, accounting"
       },
       "pricing": {
         "title": "Salvage Yard & Auto Recycler Software Pricing | $40/mo — AutoCore",
-        "description": "One plan for auto parts inventory software: $40/month per company. Full warehouse, engines, work orders, and accounting. 14-day free trial; payment method required. Built for salvage yards and recyclers.",
+        "description": "One plan for auto parts inventory software: $40/month per company. Warehouse, engines, work orders, and accounting. 14-day free trial, no module upsells.",
         "ogTitle": "AutoCore pricing — $40/mo inventory software for salvage yards"
       },
       "contact": {
         "title": "Demo Auto Parts Inventory Software | Contact AutoCore",
-        "description": "Request a demo of AutoCore salvage yard and auto recycler software. Talk to support about warehouse inventory, used engines, and onboarding. We reply within one business day.",
+        "description": "Request a demo of AutoCore salvage yard and auto recycler software. Ask about warehouse inventory, used engines, and onboarding — we reply in a business day.",
         "ogTitle": "Contact AutoCore — demo for salvage yards & recyclers"
       },
       "download": {
         "title": "Download Warehouse Inventory Software | Windows, Web — AutoCore",
-        "description": "Download AutoCore inventory tracking software for Windows, or open the web app. Same account for warehouse stock, barcode scanning, work orders, and used auto parts — synced in real time.",
+        "description": "Download AutoCore inventory tracking software for Windows, or open the web app. Warehouse stock, barcode scanning, and work orders, synced in real time.",
         "ogTitle": "Download AutoCore — warehouse inventory on Windows & web"
       },
       "downloadMobile": {
         "title": "Mobile Inventory App for Salvage Yards | iPhone & Android",
-        "description": "AutoCore mobile inventory app for the shop floor: VIN and barcode scan, warehouse stock, work orders, and used parts — same account as desktop auto parts inventory software.",
+        "description": "AutoCore mobile inventory app for the shop floor: VIN and barcode scan, warehouse stock, work orders, and used parts — the same account as on desktop.",
         "ogTitle": "AutoCore mobile — VIN, barcode & warehouse inventory"
       },
       "privacy": {
         "title": "Privacy Policy | AutoCore Inventory Software",
-        "description": "How AutoCore auto parts inventory software handles personal and operational data for salvage yards, recyclers, and repair shops: storage, rights, security, and contacts.",
+        "description": "How AutoCore auto parts inventory software handles personal and operational data for salvage yards and repair shops: storage, rights, security, and contacts.",
         "ogTitle": "AutoCore privacy policy"
       },
       "refund": {
@@ -2559,7 +2559,7 @@
       },
       "security": {
         "title": "Secure Warehouse Inventory Software | Roles & Audit — AutoCore",
-        "description": "Security for auto parts inventory software: per-module RBAC, activity audit log, company data isolation, and server-side checks for salvage yards and multi-user warehouses.",
+        "description": "Security for auto parts inventory software: per-module RBAC, an activity audit log, company data isolation, and server-side checks for multi-user warehouses.",
         "ogTitle": "AutoCore security — RBAC, audit, tenant isolation"
       }
     },

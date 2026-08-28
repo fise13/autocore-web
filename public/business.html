@@ -8,7 +8,15 @@
       name="description"
       content="AutoCore is cloud software for auto dismantlers, engine sellers, and repair shops. Pricing, contact, and legal policies."
     />
-    <meta name="robots" content="index,follow" />
+    <!--
+      noindex, not index. This file is served from /public, so it answers on
+      BOTH myautocore.com/business.html and app.myautocore.com/business.html —
+      two indexable copies of one document, with no canonical between them, and
+      it repeats what /legal/* and /pricing already say. It exists so payment
+      providers and reviewers can reach merchant details directly, which
+      "follow" preserves; it was never meant to rank.
+    -->
+    <meta name="robots" content="noindex,follow" />
     <style>
       :root {
         color-scheme: light dark;

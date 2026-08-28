@@ -70,7 +70,7 @@ function ScrollReveal({
   );
 }
 
-export function PricingExperience({ country }: { country: string | null }) {
+export function PricingExperience() {
   const pages = useMarketingPages();
   const copy = pages.pricing;
   const [openFaq, setOpenFaq] = useState<string[]>(["faq-0"]);
@@ -101,7 +101,6 @@ export function PricingExperience({ country }: { country: string | null }) {
 
           <HeroReveal className="pricing-offer" delay={0.22} duration={0.58} y={18}>
             <MarketingPaddlePlan
-              country={country}
               fallbackPrice={copy.plan.price}
               fallbackPeriod={copy.plan.period}
               fallbackYearlyPrice={copy.plan.yearlyPrice}

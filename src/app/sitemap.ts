@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { routing } from "@/i18n/routing";
+import { contentLastModified } from "@/lib/seo/content-modified";
 import {
   marketingAbsoluteUrl,
   marketingCleanPaths,
@@ -22,40 +23,41 @@ const SITEMAP_PRIORITY: Record<MarketingPathKey, number> = {
   terms: 0.3,
 };
 
-const SITEMAP_CHANGE_FREQUENCY: Record<MarketingPathKey, "weekly" | "monthly" | "yearly"> = {
-  home: "weekly",
-  product: "weekly",
-  modules: "weekly",
-  pricing: "weekly",
-  security: "monthly",
-  contact: "monthly",
-  download: "weekly",
-  downloadMobile: "monthly",
-  privacy: "yearly",
-  refund: "yearly",
-  terms: "yearly",
-};
+/**
+ * hreflang belongs in a sitemap only when there is more than one language to
+ * declare. With a single locale the old output listed `x-default` and `en`
+ * pointing at the very same `<loc>` — eleven URLs of self-referencing noise.
+ */
+function languageAlternates(key: MarketingPathKey) {
+  if (routing.locales.length < 2) return undefined;
+
+  const languages: Record<string, string> = {
+    "x-default": marketingAbsoluteUrl(key, routing.defaultLocale),
+  };
+  for (const locale of routing.locales) {
+    languages[locale] = marketingAbsoluteUrl(key, locale);
+  }
+  return languages;
+}
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
   const marketingUrl = getMarketingUrl().replace(/\/$/, "");
   const ogImage = `${marketingUrl}/opengraph-image`;
   const keys = Object.keys(marketingCleanPaths) as MarketingPathKey[];
 
   return keys.flatMap((key) => {
     const priority = SITEMAP_PRIORITY[key];
-    const languages: Record<string, string> = { "x-default": marketingAbsoluteUrl(key, routing.defaultLocale) };
-    for (const loc of routing.locales) {
-      languages[loc] = marketingAbsoluteUrl(key, loc);
-    }
+    const languages = languageAlternates(key);
+    // Real commit date, or nothing. See `content-modified.ts` for why a
+    // build-time `new Date()` on every URL was actively harmful.
+    const lastModified = contentLastModified(key) ?? undefined;
 
     return routing.locales.map((locale) => ({
       url: marketingAbsoluteUrl(key, locale),
-      lastModified,
-      changeFrequency: SITEMAP_CHANGE_FREQUENCY[key],
+      ...(lastModified ? { lastModified } : {}),
       priority,
-      alternates: { languages },
-      images: key === "home" || priority >= 0.85 ? [ogImage] : undefined,
+      ...(languages ? { alternates: { languages } } : {}),
+      images: priority >= 0.85 ? [ogImage] : undefined,
     }));
   });
 }
