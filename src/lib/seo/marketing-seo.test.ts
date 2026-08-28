@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 
 import enMarketingMessages from "@autocore/i18n/messages/en/marketing.json";
@@ -147,4 +148,62 @@ test("the marketing site declares exactly one locale", () => {
   // revisiting all three.
   assert.equal(routing.locales.length, 1);
   assert.equal(routing.defaultLocale, "en");
+});
+
+/* ------------------------------------------------------- prebuild guard */
+// `scripts/check-seo-origins.mjs` gates production builds. Its first version
+// validated the raw env string and rejected `app.myautocore.com` — a bare host
+// the app itself normalises to `https://app.myautocore.com` via
+// `ensureHttpScheme`. That false positive failed a good production deploy, so
+// the accepted shapes are pinned here.
+
+function runOriginGuard(marketing: string, app: string) {
+  try {
+    execFileSync("node", ["scripts/check-seo-origins.mjs"], {
+      encoding: "utf8",
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        VERCEL_ENV: "production",
+        NEXT_PUBLIC_MARKETING_URL: marketing,
+        NEXT_PUBLIC_APP_URL: app,
+      },
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+
+test("origin guard accepts every shape the app normalises correctly", () => {
+  const accepted: Array<[string, string]> = [
+    ["https://myautocore.com", "https://app.myautocore.com"],
+    // The exact production config. A bare host is valid input.
+    ["https://myautocore.com", "app.myautocore.com"],
+    ["myautocore.com", "app.myautocore.com"],
+    ["https://myautocore.com/", "https://app.myautocore.com/"],
+  ];
+  for (const [marketing, app] of accepted) {
+    assert.ok(
+      runOriginGuard(marketing, app).ok,
+      `guard rejected a valid production config: marketing=${marketing} app=${app}`,
+    );
+  }
+});
+
+test("origin guard still fails on origins that would poison the canonicals", () => {
+  const rejected: Array<[string, string, string]> = [
+    ["https://myautocore.com", "", "app origin missing"],
+    ["", "https://app.myautocore.com", "marketing origin missing"],
+    ["https://www.myautocore.com", "app.myautocore.com", "www host"],
+    ["autocore-web.vercel.app", "app.myautocore.com", "vercel preview host"],
+    ["http://localhost:3000", "app.myautocore.com", "localhost"],
+  ];
+  for (const [marketing, app, why] of rejected) {
+    assert.equal(
+      runOriginGuard(marketing, app).ok,
+      false,
+      `guard should have failed on ${why}`,
+    );
+  }
 });
