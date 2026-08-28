@@ -8,6 +8,10 @@ export type AutocompleteOptionMeta = {
   /** Display title override (e.g. "Subaru EJ205"); commit still uses `value`. */
   title?: string;
   matchRanges?: Array<{ start: number; end: number }>;
+  sku?: string;
+  price?: number;
+  chipKind?: 'service' | 'part';
+  stockCount?: number;
 };
 
 export type AutocompleteOption = {
@@ -46,6 +50,8 @@ export type AutocompleteConfig = {
   minQueryLength?: number;
   context?: Record<string, string>;
   fieldKey?: string;
+  /** chips — QuickType dock (default); list — vertical keyboard panel. */
+  presentation?: 'list' | 'chips';
 };
 
 /** Window-space rect of the input the suggestions belong to. */

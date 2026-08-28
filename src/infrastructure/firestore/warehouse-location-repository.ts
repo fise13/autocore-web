@@ -30,6 +30,11 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { buildLocationEntityLink } from "@/lib/warehouse/location-entity-link";
+import {
+  inferLocationType,
+  joinLocationPath,
+  splitLocationPath,
+} from "@/lib/warehouse/location-path";
 
 const COLLECTION = "warehouseLocations";
 
@@ -261,6 +266,7 @@ export function createWarehouseLocationRepository() {
 
     /**
      * Create a custom leaf from a free-text label (Excel «Место», quick add).
+     * Nested paths ("СКЛАД / КОРОБКА 1") become parent → child nodes.
      * Idempotent on displayCode within the warehouse.
      */
     async ensureCustomLeaf(
@@ -273,22 +279,67 @@ export function createWarehouseLocationRepository() {
       if (!code) {
         return this.ensureUnlocated(companyId, warehouseId, actorUserId);
       }
-      const displayCode = buildLocationDisplayCode([code]);
-      const existing = await this.findByDisplayCode(companyId, warehouseId, displayCode);
-      if (existing) return existing;
 
-      const id = await this.create({
-        companyId,
-        warehouseId,
-        type: "custom",
-        code,
-        path: [code],
-        displayCode,
-        actorUserId,
-      });
-      const created = await this.getById(id);
-      if (!created) throw new Error("Could not create the location");
-      return created;
+      const legacy = await this.findByDisplayCode(companyId, warehouseId, code);
+      if (legacy) return legacy;
+
+      const segments = splitLocationPath(code);
+      if (segments.length === 0) {
+        return this.ensureUnlocated(companyId, warehouseId, actorUserId);
+      }
+
+      if (segments.length > 1) {
+        const joined = joinLocationPath(segments);
+        const nested = await this.findByDisplayCode(companyId, warehouseId, joined);
+        if (nested) return nested;
+      }
+
+      if (segments.length === 1) {
+        const displayCode = buildLocationDisplayCode(segments);
+        const existing = await this.findByDisplayCode(companyId, warehouseId, displayCode);
+        if (existing) return existing;
+        const id = await this.create({
+          companyId,
+          warehouseId,
+          type: inferLocationType(segments[0]!, 0, 1),
+          code: segments[0]!,
+          path: segments,
+          displayCode,
+          actorUserId,
+        });
+        const created = await this.getById(id);
+        if (!created) throw new Error("Could not create the location");
+        return created;
+      }
+
+      let parentId: string | null = null;
+      let current: WarehouseLocation | null = null;
+      const path: string[] = [];
+      for (const [index, segment] of segments.entries()) {
+        path.push(segment);
+        const displayCode = buildLocationDisplayCode(path);
+        const existing = await this.findByDisplayCode(companyId, warehouseId, displayCode);
+        if (existing) {
+          parentId = existing.id;
+          current = existing;
+          continue;
+        }
+        const id = await this.create({
+          companyId,
+          warehouseId,
+          parentId,
+          type: inferLocationType(segment, index, segments.length),
+          code: segment,
+          path: [...path],
+          displayCode,
+          actorUserId,
+        });
+        current = await this.getById(id);
+        if (!current) throw new Error("Could not create the location");
+        parentId = current.id;
+      }
+      if (!current) throw new Error("Could not create the location");
+      return current;
     },
 
     async update(locationId: string, input: UpdateWarehouseLocationInput): Promise<void> {

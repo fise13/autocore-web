@@ -44,6 +44,8 @@ type AutocompleteContextValue = {
   setAnchor: (inputId: string, anchor: AutocompleteAnchor) => void;
   activeInputId: string | null;
   setChromeBottomInset: (height: number) => void;
+  /** Height of the keyboard-docked suggestion bar (0 when hidden). */
+  dockInset: number;
 };
 
 const AutocompleteContext = createContext<AutocompleteContextValue | null>(null);
@@ -57,6 +59,7 @@ function shouldShowPanel(query: string) {
 export function AutocompleteProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AutocompleteSession | null>(null);
   const [chromeBottomInset, setChromeBottomInset] = useState(0);
+  const [dockInset, setDockInset] = useState(0);
   const sessionRef = useRef<AutocompleteSession | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,8 +95,12 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       const key = cacheKey(next.query, next.config, next.customOptions);
       let suggestions = searchCacheRef.current.get(key);
       if (!suggestions) {
-        const data = getAutocompleteDataSnapshot();
-        suggestions = searchAutocomplete(next.query, next.config, data, next.customOptions);
+        try {
+          const data = getAutocompleteDataSnapshot();
+          suggestions = searchAutocomplete(next.query, next.config, data, next.customOptions);
+        } catch {
+          suggestions = [];
+        }
         searchCacheRef.current.set(key, suggestions);
         if (searchCacheRef.current.size > SEARCH_CACHE_LIMIT) {
           const first = searchCacheRef.current.keys().next().value;
@@ -307,6 +314,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       activeInputId: session?.inputId ?? null,
       setChromeBottomInset,
       setAnchor,
+      dockInset,
     }),
     [
       commitHighlighted,
@@ -318,6 +326,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
       setHighlightedIndex,
       setQuery,
       unregisterInput,
+      dockInset,
     ],
   );
 
@@ -330,6 +339,7 @@ export function AutocompleteProvider({ children }: { children: ReactNode }) {
           session={session}
           chromeBottomInset={chromeBottomInset}
           onInteractionStart={cancelBlurDismiss}
+          onDockHeight={setDockInset}
           onSelect={(index) => {
             const current = sessionRef.current;
             if (!current) return;
@@ -347,6 +357,11 @@ export function useAutocompleteContext(): AutocompleteContextValue {
     throw new Error('useAutocompleteContext must be used within AutocompleteProvider');
   }
   return ctx;
+}
+
+/** Height of the keyboard-docked suggestion bar — 0 when hidden. */
+export function useAutocompleteDockInset(): number {
+  return useContext(AutocompleteContext)?.dockInset ?? 0;
 }
 
 /** Registers bottom chrome (e.g. sticky footer) so autocomplete stays above it. */

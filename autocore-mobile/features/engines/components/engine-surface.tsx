@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, View, type ViewStyle } from 'react-native
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, tokens } from '@/theme';
+import { cardPress } from '@/theme/motion';
 import { withAlpha } from '@/theme/color-utils';
 
 import { eng, engFontCap, engType } from '../layout';
@@ -138,7 +139,7 @@ export function EngineInkButton({
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? tokens.opacity.pressed : 1,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        transform: [{ scale: pressed ? cardPress.scale : 1 }],
       }}
     >
       {loading ? (
@@ -197,7 +198,7 @@ export function EngineLineButton({
         backgroundColor: pressed ? colors.muted : colors.card,
         alignItems: 'center',
         justifyContent: 'center',
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        transform: [{ scale: pressed ? cardPress.scale : 1 }],
       }}
     >
       {loading ? (
@@ -250,7 +251,7 @@ export function EngineNavButton({
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? tokens.opacity.pressed : 1,
-        transform: [{ scale: pressed ? 0.96 : 1 }],
+        transform: [{ scale: pressed ? cardPress.scale : 1 }],
       }}
     >
       {children}

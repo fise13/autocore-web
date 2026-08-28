@@ -11,6 +11,7 @@
  * "nothing to report".
  */
 import { isAssignedToWorkOrder, isClaimableWorkOrder } from '@autocore/rbac';
+import { canOpenSessionImmediately } from '@/features/engine-intake/lib/claim-outcome';
 import { coerceToDate } from '@/lib/firestore-timestamp';
 import { isMotorStale, isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
 import { isOpenStatus } from '@/lib/work-order/work-order-utils';
@@ -55,6 +56,10 @@ export type HomeSourceInput = {
   items: InventoryItem[];
   payroll: PayrollTransaction[];
   intakeJobs: HomeIntakeJob[];
+  /** This phone's intake identity — what decides whether a session is ours. */
+  deviceId: string | null;
+  /** Intake photos this phone has failed to upload and a person can retry. */
+  stuckIntakePhotos: number;
   /** Pre-derived ledger snapshot; computed here when omitted. */
   money?: HomeMoneySnapshot;
 };
@@ -81,11 +86,26 @@ export type HomePartFacts = {
   lastUpdatedAt: Date | null;
 };
 
+/** The one session this reader can reopen on this device without a claim. */
+export type HomeResumableIntake = {
+  jobId: string;
+  sessionId: string;
+  label: string;
+};
+
 export type HomeIntakeFacts = {
   inProgressCount: number;
   reworkCount: number;
   quarantineCount: number;
   awaitingVerificationCount: number;
+  /**
+   * null unless this device already holds a live claim. A job that is merely
+   * open, or claimed on someone else's phone, is a queue decision — it belongs
+   * to Engines, not to a one-tap button that would quietly take the bay.
+   */
+  resumable: HomeResumableIntake | null;
+  /** Photos stuck on this phone. Nobody else can clear them. */
+  stuckPhotoCount: number;
 };
 
 export type HomeEarningsFacts = {
@@ -140,6 +160,44 @@ function countCreatedInRange(orders: WorkOrder[], start: Date, end: Date): numbe
     if (ts >= from && ts < to) total += 1;
   }
   return total;
+}
+
+/** States a capture session can legitimately be reopened from. */
+const RESUMABLE_INTAKE_STATES = new Set(['in_session', 'paused', 'rework']);
+
+/**
+ * The session Continue would reopen.
+ *
+ * `canOpenSessionImmediately` is the same predicate the Engines row uses, so
+ * Home cannot offer a Continue that the intake screens would then refuse. The
+ * newest job wins: the catalog arrives ordered by `updatedAt` desc, so the
+ * first match is the engine this person was last standing in front of.
+ */
+function resolveResumableIntake(input: HomeSourceInput): HomeResumableIntake | null {
+  const { uid, deviceId } = input;
+  if (!uid || !deviceId) return null;
+
+  for (const job of input.intakeJobs) {
+    if (!RESUMABLE_INTAKE_STATES.has(job.state)) continue;
+    if (
+      !canOpenSessionImmediately({
+        activeSessionId: job.activeSessionId,
+        claimedByUid: job.claimedByUid,
+        claimDeviceId: job.claimDeviceId,
+        uid,
+        deviceId,
+      })
+    ) {
+      continue;
+    }
+    return {
+      jobId: job.id,
+      sessionId: job.activeSessionId as string,
+      label: job.label,
+    };
+  }
+
+  return null;
 }
 
 export function buildHomeFacts(input: HomeSourceInput): HomeFacts {
@@ -209,6 +267,8 @@ export function buildHomeFacts(input: HomeSourceInput): HomeFacts {
         inProgressCount: input.intakeJobs.filter(
           (job) => job.state === 'open' || job.state === 'in_session' || job.state === 'paused',
         ).length,
+        resumable: resolveResumableIntake(input),
+        stuckPhotoCount: Math.max(0, Math.trunc(input.stuckIntakePhotos)),
         reworkCount: input.intakeJobs.filter((job) => job.state === 'rework').length,
         quarantineCount: input.intakeJobs.filter((job) => job.state === 'quarantine').length,
         awaitingVerificationCount: input.intakeJobs.filter(

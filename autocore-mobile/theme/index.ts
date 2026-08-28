@@ -10,6 +10,7 @@ export * from './gradients';
 export * from './animations';
 export * from './motion';
 export * from './tokens';
+export * from './autocomplete';
 export * from './use-motion';
 export * from './design-language';
 export * from './design-language-context';

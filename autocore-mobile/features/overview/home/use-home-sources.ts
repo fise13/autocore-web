@@ -12,9 +12,11 @@
  * alone is how a screen ends up insisting there are zero open orders while the
  * first snapshot is still in flight.
  */
-import { useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 
 import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
+import { getEngineIntakeDeviceId } from '@/features/engine-intake/lib/device';
+import { useEngineIntakeOutbox } from '@/features/engine-intake/store/intake-outbox';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useSession } from '@/hooks/use-session';
@@ -47,6 +49,10 @@ export type HomeSources = {
   items: InventoryItem[];
   payroll: PayrollTransaction[];
   intakeJobs: HomeIntakeJob[];
+  /** This phone's intake identity — what makes a claimed session ours to resume. */
+  deviceId: string | null;
+  /** Intake photos this phone has failed to upload. */
+  stuckIntakePhotos: number;
   offline: boolean;
 };
 
@@ -59,6 +65,8 @@ const EMPTY_INTAKE: HomeIntakeJob[] = [];
 
 export function useHomeSources(): HomeSources {
   const { companyId, uid } = useSession();
+  /** Stable for the life of the install — read once rather than on every render. */
+  const [deviceId] = useState(getEngineIntakeDeviceId);
   const rbac = useRbacPolicy();
   const offline = !useAuthStore((state) => state.isOnline);
 
@@ -150,6 +158,11 @@ export function useHomeSources(): HomeSources {
   );
 
   const intake = useEngineIntakeJobs(intakeEnabled ? (companyId ?? null) : null);
+  /**
+   * A local store, not a listener — reading it costs nothing and it is the only
+   * place that knows which photos this phone is still holding.
+   */
+  const outbox = useEngineIntakeOutbox(intakeEnabled ? (companyId ?? null) : null);
 
   /**
    * One string per render, compared by value — a stable snapshot for
@@ -185,10 +198,26 @@ export function useHomeSources(): HomeSources {
     [inventoryEnabled, rawInventory],
   );
 
+  /**
+   * The claim fields ride along because Home offers Continue, and Continue is
+   * only honest when this device already holds the session. `useEngineIntakeJobs`
+   * merges the optimistic overlay, so an engine created seconds ago on this
+   * phone is resumable before the server has acknowledged anything.
+   */
   const intakeJobs = useMemo<HomeIntakeJob[]>(
     () =>
       intakeEnabled
-        ? intake.jobs.map((job) => ({ id: job.id, state: job.state as string }))
+        ? intake.jobs.map((job) => ({
+            id: job.id,
+            state: job.state as string,
+            activeSessionId: job.assignment.activeSessionId ?? null,
+            claimedByUid: job.assignment.claimedByUid ?? null,
+            claimDeviceId: job.assignment.claimDeviceId ?? null,
+            label:
+              job.expectedIdentity.serialCode?.trim() ||
+              job.expectedIdentity.engineCode?.trim() ||
+              '',
+          }))
         : EMPTY_INTAKE,
     [intake.jobs, intakeEnabled],
   );
@@ -205,6 +234,8 @@ export function useHomeSources(): HomeSources {
     items,
     payroll: payrollEnabled ? payroll : EMPTY_PAYROLL,
     intakeJobs,
+    deviceId: intakeEnabled ? deviceId : null,
+    stuckIntakePhotos: intakeEnabled ? outbox.photoFailedCount : 0,
     offline,
   };
 }

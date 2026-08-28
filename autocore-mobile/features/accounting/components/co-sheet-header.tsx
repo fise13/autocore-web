@@ -19,8 +19,6 @@ export type CoSubmitPhase = 'idle' | 'submitting' | 'success';
 
 const ROW_HEIGHT = tokens.control.heightLg; // 48 — the pill sets the row
 const PRESS_SCALE = 0.97;
-/** Reserved side space is capped so the title keeps a usable column on 320pt. */
-const MAX_SIDE_RATIO = 0.38;
 
 type CoSheetHeaderProps = {
   title: string;
@@ -61,7 +59,6 @@ export function CoSheetHeader({
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
 
-  const [rowWidth, setRowWidth] = useState(0);
   const [leftWidth, setLeftWidth] = useState(0);
   const [rightWidth, setRightWidth] = useState(0);
   /** Width the pill settles at when idle — held through the spinner state. */
@@ -92,11 +89,6 @@ export function CoSheetHeader({
     },
     [phase],
   );
-
-  const onRowLayout = useCallback((event: LayoutChangeEvent) => {
-    const next = Math.round(event.nativeEvent.layout.width);
-    setRowWidth((current) => (current === next ? current : next));
-  }, []);
 
   const submitting = phase === 'submitting';
   const success = phase === 'success';
@@ -172,9 +164,9 @@ export function CoSheetHeader({
    * clip the title for the two thirds of a second the confirmation is up.
    */
   const actionWidth = restWidth > 0 ? restWidth : rightWidth;
-  const rawSide = Math.max(leftWidth, actionWidth) + tokens.space.inline;
-  const maxSide = rowWidth > 0 ? rowWidth * MAX_SIDE_RATIO : rawSide;
-  const sideInset = Math.min(rawSide, maxSide);
+  // Inset must cover the real Cancel / action widths. Capping this below the
+  // pill size is what let "Photograph" paint over "Add engine".
+  const sideInset = Math.max(leftWidth, actionWidth) + tokens.space.inline;
 
   /** Icon rides the label's colour, which Button resolves from the disabled surface. */
   const actionInk = accented ? colors.primaryForeground : colors.mutedForeground;
@@ -191,7 +183,7 @@ export function CoSheetHeader({
         borderBottomColor: colors.border,
       }}
     >
-      <View style={{ minHeight: ROW_HEIGHT, justifyContent: 'center' }} onLayout={onRowLayout}>
+      <View style={{ minHeight: ROW_HEIGHT, justifyContent: 'center' }}>
         <View
           // Style form, not the prop: RN 0.85 / New Arch treats the legacy
           // `pointerEvents` prop as deprecated, and this layer spans the row

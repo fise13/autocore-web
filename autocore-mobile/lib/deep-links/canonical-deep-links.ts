@@ -242,8 +242,13 @@ const MATCHERS: Matcher[] = [
   ({ lower }, query) =>
     lower[0] === 'motors' ? target('/objects/engines', stripSensitiveQuery(query)) : null,
 
-  ({ lower }, query) =>
-    lower[0] === 'engine-intake' ? target('/intake', stripSensitiveQuery(query)) : null,
+  ({ lower }, query) => {
+    if (lower[0] !== 'engine-intake') return null;
+    const stripped = stripSensitiveQuery(query);
+    if (stripped.new === '1') return target('/objects/new', {});
+    const filter = stripped.filter === 'all' ? 'all' : 'incoming';
+    return target('/objects/engines', { ...stripped, filter });
+  },
 
   ({ lower }, query) =>
     lower[0] === 'accounting' ? target('/(tabs)/accounting', stripSensitiveQuery(query)) : null,

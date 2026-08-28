@@ -14,6 +14,7 @@ export const ENGINE_THUMB_SIZE = eng.thumb;
 
 /**
  * Engine preview — skeleton until decode; `recyclingKey` avoids FlashList reuse flashes.
+ * Fits the whole capture in the tile rather than cropping the centre.
  */
 export const EngineThumbnail = memo(function EngineThumbnail({
   url,
@@ -56,7 +57,7 @@ export const EngineThumbnail = memo(function EngineThumbnail({
             source={{ uri: url }}
             recyclingKey={url}
             style={{ width: size, height: size }}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             transition={0}
             alt=""

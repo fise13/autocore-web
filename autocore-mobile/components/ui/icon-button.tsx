@@ -8,6 +8,7 @@ import {
 
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { layout, minTouchTarget, radius } from '@/theme';
 
 type IconButtonProps = Omit<PressableProps, 'style'> & {
@@ -83,7 +84,7 @@ export const IconButton = forwardRef<React.ComponentRef<typeof Pressable>, IconB
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: radius.lg,
-            opacity: pressed ? 0.72 : 1,
+            opacity: pressed ? tokens.opacity.pressed : 1,
             ...bg,
           },
           style,

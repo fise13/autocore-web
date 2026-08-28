@@ -333,7 +333,7 @@ export const NotificationService = {
     if (event.type === 'synced') {
       if (channels.toast) {
         void import('@/components/ui/toast-store').then(({ toast }) => {
-          toast({ title: 'All changes synced', variant: 'success', duration: 3000 });
+          toast({ title: 'All changes saved', variant: 'success', duration: 3000 });
         });
       }
       return;
@@ -341,8 +341,8 @@ export const NotificationService = {
 
     if (event.type === 'failed') {
       store.showBanner({
-        title: 'Sync failed',
-        message: event.error ?? 'Could not sync data',
+        title: 'Some changes are still on this phone',
+        message: event.error ?? 'They will be sent again on their own.',
         priority: 'warning',
         actions: event.retry
           ? [{ label: 'Retry', onPress: event.retry }]
@@ -351,8 +351,8 @@ export const NotificationService = {
       if (channels.local) {
         void scheduleLocalNotification({
           id: 'sync-failed',
-          title: 'Sync failed',
-          body: event.error ?? 'Could not sync',
+          title: 'Some changes are still on this phone',
+          body: event.error ?? 'They will be sent again on their own.',
           data: { type: 'sync.failed' },
         });
       }
@@ -360,8 +360,8 @@ export const NotificationService = {
         type: 'sync.failed',
         category: 'sync',
         priority: 'silent',
-        title: 'Sync failed',
-        message: event.error ?? 'Could not sync',
+        title: 'Some changes are still on this phone',
+        message: event.error ?? 'They will be sent again on their own.',
       });
       return;
     }
@@ -503,7 +503,7 @@ export const NotificationService = {
       const message =
         error instanceof MobileApiError
           ? error.message
-          : 'Could not sync notifications';
+          : 'Could not load notifications';
 
       if (cache.items.length === 0) {
         store.setError(message);

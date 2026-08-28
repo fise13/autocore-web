@@ -22,6 +22,8 @@
     "@tanstack/react-query-persist-client": "^5.101.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "background-execution": "file:modules/background-execution",
+    "engine-intake-camera": "file:modules/engine-intake-camera",
     "expo": "~56.0.12",
     "expo-apple-authentication": "~56.0.4",
     "expo-auth-session": "~56.0.14",
@@ -38,7 +40,7 @@
     "expo-haptics": "^56.0.3",
     "expo-hardware-buttons": "^1.0.1",
     "expo-image": "~56.0.0",
-    "expo-image-manipulator": "^57.0.13",
+    "expo-image-manipulator": "~56.0.19",
     "expo-image-picker": "~56.0.19",
     "expo-linear-gradient": "^56.0.4",
     "expo-linking": "~56.0.14",
@@ -85,7 +87,7 @@
     "ios": "expo run:ios",
     "ios:provision": "bash scripts/ios-refresh-provisioning.sh",
     "ios:release": "expo run:ios --device --configuration Release",
-    "postinstall": "node scripts/patch-expo-camera-shutter.mjs && node scripts/patch-openiap-purchase.mjs",
+    "postinstall": "node scripts/patch-expo-camera-shutter.mjs && node scripts/patch-openiap-purchase.mjs && node scripts/patch-expo-file-system-upload.mjs",
     "prebuild": "expo prebuild",
     "prebuild:ios": "expo prebuild --platform ios",
     "web": "expo start --web",
@@ -96,6 +98,9 @@
   },
   "private": true,
   "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./modules"
+    },
     "install": {
       "exclude": [
         "@shopify/react-native-skia"

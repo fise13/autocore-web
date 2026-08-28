@@ -24,6 +24,7 @@ import { attentionInterrupts } from './lib/attention';
 import type { HomeGreetingSignal } from './lib/greeting';
 import { resolveHomeNotice } from './lib/notice';
 import type { HomeDestination } from './types';
+import { useHomeQuickActionRunner } from './use-home-quick-actions';
 import { useHomeViewModel } from './use-home-view-model';
 
 const WORK_HREF = '/(tabs)/work';
@@ -53,6 +54,8 @@ const HomeBody = memo(function HomeBody() {
   const { model, setTrendPeriod } = useHomeViewModel();
   const navigateTab = useNavigateTab();
   const router = useRouter();
+  // Quick actions run commands; they are the one section that does not `open`.
+  const quickActions = useHomeQuickActionRunner();
 
   const open = useCallback(
     (destination: HomeDestination | null) => {
@@ -137,7 +140,8 @@ const HomeBody = memo(function HomeBody() {
 
           <HomeQuickActions
             actions={model.quickActions}
-            onOpen={(action) => open({ pathname: action.href })}
+            busyId={quickActions.busyId}
+            onRun={quickActions.run}
           />
 
           <HomeActivity

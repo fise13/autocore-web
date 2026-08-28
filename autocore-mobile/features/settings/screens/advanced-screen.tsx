@@ -9,7 +9,7 @@ export function AdvancedScreen() {
   const router = useGuardedRouter();
 
   return (
-    <ProfileScreenShell title="Advanced" subtitle="Export, sync, and data cleanup">
+    <ProfileScreenShell title="Advanced" subtitle="Export and data cleanup">
       <ListSection
         title="Data"
         footer="Clear local caches without affecting cloud data."
@@ -43,7 +43,7 @@ export function AdvancedScreen() {
 
       <ListSection
         title="Desktop"
-        footer="AutoCore Desktop doesn't sync with mobile yet. Use the web version for full company control."
+        footer="AutoCore Desktop doesn't share data with mobile yet. Use the web version for full company control."
       >
         <CollectionRow title="Connection" value="Not connected" showChevron={false} />
       </ListSection>

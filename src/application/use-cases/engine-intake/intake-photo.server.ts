@@ -68,9 +68,11 @@ function assertActivePhotoSession(
   if (!session) {
     throw new EngineIntakeCommandError("Engine intake session was not found", 404);
   }
-  if (job.assignment?.activeSessionId !== sessionId) {
-    throw new EngineIntakeCommandError("Session claim is no longer active");
-  }
+  // Ownership is checked on the *session*, not on the live claim. The bytes were
+  // shot by this person on this device inside this session; that is what earns
+  // them a place on the engine, and it stays true however the bay has moved on
+  // since. Requiring a live claim here is what pushed the phone into reclaiming
+  // finished jobs — see `canAcceptIntakePhotoUpload`.
   if (session.userId !== access.uid) {
     throw new EngineIntakeCommandError("This session belongs to another worker", 403);
   }
@@ -84,9 +86,7 @@ function assertActivePhotoSession(
     })
   ) {
     throw new EngineIntakeCommandError(
-      session.state === "active" || session.state === "paused"
-        ? "Job is not in an active intake session"
-        : "Resume the session before taking photos",
+      "This engine is no longer open for photos",
     );
   }
   // Capture-first: serial is committed at create; free photos do not need a
@@ -421,10 +421,22 @@ export async function prepareIntakePhoto(
       photoId,
       uploadUrl: "",
       storagePath: preparedState.storagePath,
-      downloadToken: "",
+      // The stored token, never "".
+      //
+      // This one empty string was a permanent, silent data-loss trap. `prepare`
+      // reports `alreadyUploaded` exactly when a previous attempt finalized and
+      // the device never heard the answer — the app was killed, or the reply
+      // was lost. The client then finalizes again to learn the URL, and
+      // `finalizeIntakePhotoSchema` requires a non-empty `downloadToken`, so
+      // that call came back 400 "Invalid intake photo finalization": a
+      // non-retryable code for a photo that was already safely in Storage. The
+      // worker saw a red card over an engine they had documented correctly, and
+      // no amount of retrying could ever clear it.
+      downloadToken: preparedState.downloadToken ?? "",
       url: preparedState.url,
       contentType: preparedState.contentType,
       alreadyUploaded: true,
+      alreadyFinalized: true,
     };
   }
 
@@ -477,6 +489,221 @@ export async function prepareIntakePhoto(
     url: prepared.url,
     contentType: validation.contentType,
   };
+}
+
+type FinalizationActor = {
+  id: string;
+  name: string | null;
+  role: string | null;
+  deviceId: string;
+  client: "mobile" | "server";
+};
+
+/**
+ * Close a photo out: mark the row synced, recompute the job, record the event.
+ *
+ * Shared by the device's `finalize` call and by the Storage trigger that
+ * finalizes a photo whose bytes arrived after the app was gone. Both must
+ * produce byte-identical state, or a worker who left the app would end up with
+ * a job whose progress disagreed with its own photos.
+ */
+async function commitIntakePhotoFinalization(input: {
+  companyId: string;
+  jobId: string;
+  sessionId: string;
+  photoId: string;
+  storagePath: string;
+  downloadToken: string;
+  contentType: string;
+  url: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+  actor: FinalizationActor;
+  idempotencyKey: string;
+}): Promise<void> {
+  const db = getAdminFirestore();
+  const jobRef = db
+    .collection("companies")
+    .doc(input.companyId)
+    .collection("engineIntakeJobs")
+    .doc(input.jobId);
+  const photoRef = jobRef.collection("photos").doc(input.photoId);
+
+  await db.runTransaction(async (transaction) => {
+    const [freshJobSnapshot, freshPhotoSnapshot, photosSnapshot] = await Promise.all([
+      transaction.get(jobRef),
+      transaction.get(photoRef),
+      transaction.get(jobRef.collection("photos")),
+    ]);
+    if (!freshJobSnapshot.exists || !freshPhotoSnapshot.exists) {
+      throw new EngineIntakeCommandError("Intake photo was removed during upload", 409);
+    }
+    const freshPhoto = freshPhotoSnapshot.data() as Record<string, unknown>;
+    // Whoever got here first already did all of this. Returning rather than
+    // rewriting is what makes the trigger safe to fire twice and safe to race
+    // the device.
+    if (freshPhoto.url && freshPhoto.syncState === "synced") return;
+    if (
+      freshPhoto.storagePath !== input.storagePath ||
+      freshPhoto.downloadToken !== input.downloadToken
+    ) {
+      throw new EngineIntakeCommandError(
+        "Prepared photo upload changed before finalization",
+        409,
+      );
+    }
+    const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
+    const derived = deriveEngineIntakeProgress(
+      freshJob.requirements ?? [],
+      photosSnapshot.docs.map((candidate) => {
+        const data = candidate.data() as Record<string, unknown>;
+        return candidate.id === input.photoId
+          ? progressPhoto(candidate.id, {
+              ...data,
+              storagePath: input.storagePath,
+              url: input.url,
+              syncState: "synced",
+            })
+          : progressPhoto(candidate.id, data);
+      }),
+      {
+        serialConfirmed: Boolean(
+          (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
+        ),
+        previousChecklist: freshJob.documentationChecklist ?? null,
+      },
+    );
+    const { progress, documentationChecklist } = splitDerivedProgress(derived);
+
+    transaction.update(photoRef, {
+      storagePath: input.storagePath,
+      url: input.url,
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+      width: input.width,
+      height: input.height,
+      uploadedAt: FieldValue.serverTimestamp(),
+      syncState: "synced",
+      aiInspectionState: "none",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    transaction.update(jobRef, {
+      progress,
+      documentationChecklist,
+      updatedAt: FieldValue.serverTimestamp(),
+      revision: FieldValue.increment(1),
+    });
+    if (
+      freshJob.engineDocPath?.startsWith("users/") &&
+      freshJob.engineDocPath.includes("/motors/")
+    ) {
+      transaction.update(db.doc(freshJob.engineDocPath), {
+        photoUrls: FieldValue.arrayUnion(input.url),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    transaction.create(jobRef.collection("events").doc(`${input.photoId}-uploaded`), {
+      companyId: input.companyId,
+      jobId: input.jobId,
+      engineId: freshJob.engineId,
+      sessionId: input.sessionId,
+      actorId: input.actor.id,
+      actorName: input.actor.name,
+      actorRole: input.actor.role,
+      deviceId: input.actor.deviceId,
+      client: input.actor.client,
+      type: "photo.uploaded",
+      payload: {
+        photoId: input.photoId,
+        storagePath: input.storagePath,
+      },
+      clientAt: FieldValue.serverTimestamp(),
+      serverAt: FieldValue.serverTimestamp(),
+      idempotencyKey: input.idempotencyKey,
+    });
+  });
+}
+
+/**
+ * Finish a photo the moment its bytes land in Storage, with no client involved.
+ *
+ * This is what makes leaving the app safe. The PUT runs on the iOS background
+ * URLSession and survives a suspend or a kill; `finalize` is an ordinary
+ * request from the JS runtime and does not. Before this, a photo whose bytes
+ * arrived after the app was gone stayed `syncing` in Firestore until the worker
+ * happened to open the app again — the object was in the bucket, and the
+ * business still could not see the engine.
+ *
+ * Everything it needs was already written by `prepare`, so there is nothing to
+ * trust from the caller beyond which object landed.
+ */
+export async function autoFinalizeIntakePhotoFromStorage(input: {
+  companyId: string;
+  jobId: string;
+  photoId: string;
+}): Promise<{ status: "finalized" | "already_finalized" | "not_ready" }> {
+  const db = getAdminFirestore();
+  const companyId = input.companyId.trim();
+  const jobRef = db
+    .collection("companies")
+    .doc(companyId)
+    .collection("engineIntakeJobs")
+    .doc(input.jobId);
+  const photoRef = jobRef.collection("photos").doc(input.photoId);
+  const photoSnapshot = await photoRef.get();
+  if (!photoSnapshot.exists) return { status: "not_ready" };
+
+  const photo = photoSnapshot.data() as Record<string, unknown>;
+  if (photo.url && photo.syncState === "synced") return { status: "already_finalized" };
+  if (photo.deletedAt) return { status: "already_finalized" };
+
+  const storagePath = typeof photo.storagePath === "string" ? photo.storagePath : "";
+  const downloadToken = typeof photo.downloadToken === "string" ? photo.downloadToken : "";
+  const contentType = typeof photo.contentType === "string" ? photo.contentType : "";
+  // `prepare` writes all three before it answers the device, so a gap here means
+  // the object arrived for a row that is not ready to be closed — leave it to
+  // the client, which still has the credentials.
+  if (!storagePath || !downloadToken || !contentType) return { status: "not_ready" };
+
+  const claimedBytes = Number(photo.sizeBytes);
+  const validation = assertIntakePhotoUpload({
+    contentType,
+    sizeBytes: Number.isFinite(claimedBytes) && claimedBytes > 0 ? claimedBytes : 1,
+  });
+
+  const finalized = await finalizeIntakePhotoUpload({
+    companyId,
+    jobId: input.jobId,
+    photoId: input.photoId,
+    storagePath,
+    downloadToken,
+    contentType: validation.contentType,
+  });
+
+  await commitIntakePhotoFinalization({
+    companyId,
+    jobId: input.jobId,
+    sessionId: typeof photo.sessionId === "string" ? photo.sessionId : "",
+    photoId: input.photoId,
+    storagePath,
+    downloadToken,
+    contentType: validation.contentType,
+    url: finalized.url,
+    sizeBytes: finalized.sizeBytes,
+    width: typeof photo.width === "number" ? photo.width : null,
+    height: typeof photo.height === "number" ? photo.height : null,
+    actor: {
+      id: typeof photo.capturedByUid === "string" ? photo.capturedByUid : "",
+      name: null,
+      role: null,
+      deviceId: typeof photo.capturedOnDeviceId === "string" ? photo.capturedOnDeviceId : "",
+      client: "server",
+    },
+    idempotencyKey: `${input.photoId}:storage-finalize`,
+  });
+
+  return { status: "finalized" };
 }
 
 export async function finalizeIntakePhoto(
@@ -588,95 +815,26 @@ export async function finalizeIntakePhoto(
   }
   const aiInspectionId = `${input.photoId}-latest`;
 
-  await db.runTransaction(async (transaction) => {
-    const [freshJobSnapshot, freshPhotoSnapshot, photosSnapshot] = await Promise.all([
-      transaction.get(jobRef),
-      transaction.get(photoRef),
-      transaction.get(jobRef.collection("photos")),
-    ]);
-    if (!freshJobSnapshot.exists || !freshPhotoSnapshot.exists) {
-      throw new EngineIntakeCommandError("Intake photo was removed during upload", 409);
-    }
-    const freshPhoto = freshPhotoSnapshot.data() as Record<string, unknown>;
-    if (freshPhoto.url && freshPhoto.syncState === "synced") return;
-    if (
-      freshPhoto.storagePath !== input.storagePath ||
-      freshPhoto.downloadToken !== input.downloadToken
-    ) {
-      throw new EngineIntakeCommandError(
-        "Prepared photo upload changed before finalization",
-        409,
-      );
-    }
-    const freshJob = freshJobSnapshot.data() as PhotoJobDocument;
-    const derived = deriveEngineIntakeProgress(
-      freshJob.requirements ?? [],
-      photosSnapshot.docs.map((candidate) => {
-        const data = candidate.data() as Record<string, unknown>;
-        return candidate.id === input.photoId
-          ? progressPhoto(candidate.id, {
-              ...data,
-              storagePath: input.storagePath,
-              url: finalized.url,
-              syncState: "synced",
-            })
-          : progressPhoto(candidate.id, data);
-      }),
-      {
-        serialConfirmed: Boolean(
-          (freshJob.expectedIdentity as { serialCode?: string } | undefined)?.serialCode?.trim(),
-        ),
-        previousChecklist: freshJob.documentationChecklist ?? null,
-      },
-    );
-    const { progress, documentationChecklist } = splitDerivedProgress(derived);
-
-    transaction.update(photoRef, {
-      storagePath: input.storagePath,
-      url: finalized.url,
-      contentType: validation.contentType,
-      sizeBytes: finalized.sizeBytes,
-      width: input.width ?? null,
-      height: input.height ?? null,
-      uploadedAt: FieldValue.serverTimestamp(),
-      syncState: "synced",
-      aiInspectionState: "none",
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    transaction.update(jobRef, {
-      progress,
-      documentationChecklist,
-      updatedAt: FieldValue.serverTimestamp(),
-      revision: FieldValue.increment(1),
-    });
-    if (
-      freshJob.engineDocPath?.startsWith("users/") &&
-      freshJob.engineDocPath.includes("/motors/")
-    ) {
-      transaction.update(db.doc(freshJob.engineDocPath), {
-        photoUrls: FieldValue.arrayUnion(finalized.url),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    }
-    transaction.create(jobRef.collection("events").doc(`${input.photoId}-uploaded`), {
-      companyId: access.companyId,
-      jobId: input.jobId,
-      engineId: freshJob.engineId,
-      sessionId: input.sessionId,
-      actorId: access.uid,
-      actorName: access.actorName,
-      actorRole: access.actorRole,
+  await commitIntakePhotoFinalization({
+    companyId: access.companyId,
+    jobId: input.jobId,
+    sessionId: input.sessionId,
+    photoId: input.photoId,
+    storagePath: input.storagePath,
+    downloadToken: input.downloadToken,
+    contentType: validation.contentType,
+    url: finalized.url,
+    sizeBytes: finalized.sizeBytes,
+    width: input.width ?? null,
+    height: input.height ?? null,
+    actor: {
+      id: access.uid,
+      name: access.actorName,
+      role: access.actorRole,
       deviceId: input.deviceId,
       client: "mobile",
-      type: "photo.uploaded",
-      payload: {
-        photoId: input.photoId,
-        storagePath: input.storagePath,
-      },
-      clientAt: FieldValue.serverTimestamp(),
-      serverAt: FieldValue.serverTimestamp(),
-      idempotencyKey: input.idempotencyKey,
-    });
+    },
+    idempotencyKey: input.idempotencyKey,
   });
 
   return { photoId: input.photoId, url: finalized.url, aiInspectionId };

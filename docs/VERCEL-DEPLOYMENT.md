@@ -76,6 +76,14 @@ DOCUMENT_WORKER_SECRET
 
 Use independent random values with at least 32 characters. Keep production and preview values separate.
 
+### Engine intake photos
+
+```text
+INTAKE_PHOTO_WORKER_SECRET
+```
+
+Authorizes `/api/engine-intake/photos/auto-finalize`, which the `onIntakePhotoUploaded` Storage trigger calls to finish a photo whose bytes arrived after the mobile app was closed. The same value must be set on Firebase Functions (`firebase/functions/.env`) or the trigger logs a warning and photos stay `syncing` until the worker reopens the app. Same rules as above: 32+ random characters, separate per environment.
+
 ### Application URLs
 
 ```text

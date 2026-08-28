@@ -5,6 +5,7 @@ import { PremiumBadge } from '@/components/subscription/premium-badge';
 import { SettingsSectionCard, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -80,7 +81,7 @@ export function WorkspaceHeroCard({
         }}
       >
         {({ pressed }) => (
-          <View style={{ opacity: pressed ? 0.85 : 1 }}>{body}</View>
+          <View style={{ opacity: pressed ? tokens.opacity.pressed : 1 }}>{body}</View>
         )}
       </Pressable>
     </SettingsSectionCard>

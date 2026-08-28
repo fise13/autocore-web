@@ -1,4 +1,5 @@
 import { readEngineCode } from "@/lib/motors/import/engine-code-shorthand";
+import { pushLocationHeading } from "@/lib/warehouse/location-path";
 
 import { sanitizeGridText } from "../ai-grid-contract";
 import type { ParsedTable } from "../types";
@@ -65,9 +66,9 @@ function filledCells(row: Record<string, string>, headers: readonly string[]): s
 }
 
 function looksNumeric(value: string): boolean {
-  const cleaned = value.replace(/[\s ]/g, "").replace(",", ".");
+  const cleaned = value.replace(/[\s\u00a0]/g, "").replace(",", ".");
   if (!cleaned) return false;
-  return /^-?\d+(\.\d+)?$/.test(cleaned.replace(/[^\d.,-]/g, ""));
+  return /^-?\d+(\.\d+)?$/.test(cleaned);
 }
 
 function startsWithAny(text: string, words: readonly string[]): boolean {
@@ -158,19 +159,24 @@ export function discoverSheet(table: ParsedTable): SheetDiscovery {
   const recordIndexes: number[] = [];
   const sections: string[] = [];
   let currentSection: string | null = null;
+  let locationStack: string[] = [];
 
   table.rows.forEach((row, index) => {
     const { role, reason } = classifyRow(row, table.headers);
 
     if (role === "section-header") {
       currentSection = filledCells(row, table.headers)[0] ?? null;
-      if (currentSection) sections.push(currentSection);
+      if (currentSection) {
+        sections.push(currentSection);
+        locationStack = pushLocationHeading(locationStack, currentSection);
+      }
     }
 
     rows.push({
       index,
       role,
       section: role === "section-header" ? null : currentSection,
+      locationPath: role === "section-header" ? [] : [...locationStack],
       decision: decision("entity", role === "record" ? 0.95 : 0.9, reason, "rules"),
     });
 

@@ -407,21 +407,11 @@ export function buildIntakeBayWidgetProps(
     };
   }
 
-  if (known(counts.syncing) && counts.syncing > 0) {
-    return {
-      ...base,
-      headline: String(counts.syncing),
-      title: copy.photosSyncing(counts.syncing),
-      detail: known(counts.active)
-        ? copy.documenting(counts.active)
-        : copy.waitingForReview,
-      link: WIDGET_URL.intake,
-      symbol: 'arrow.triangle.2.circlepath',
-      accent: '#0A84FF',
-      urgent: true,
-    };
-  }
-
+  // No "N photos syncing" rank here any more. A Home Screen widget that
+  // announces the upload queue turns a background detail into a standing
+  // obligation, and on a yard connection it was the widget's most common
+  // state — so the one surface meant to say "there is work waiting" spent most
+  // of its life reporting on plumbing instead.
   if (known(counts.active) && counts.active > 0) {
     return {
       ...base,

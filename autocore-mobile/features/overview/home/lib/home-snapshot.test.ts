@@ -119,7 +119,16 @@ function model(overrides: Partial<HomeViewModel> = {}): HomeViewModel {
         dismissible: false,
       },
     ],
-    quickActions: [{ id: 'scan', title: 'Scan', href: '/(tabs)/scan' }],
+    quickActions: [
+      {
+        id: 'scan',
+        title: 'Scan',
+        detail: null,
+        hint: 'Opens the camera to read a barcode, VIN, or serial',
+        command: { kind: 'capture', surface: 'scan' },
+        tone: 'default',
+      },
+    ],
     activity: [
       {
         id: 'w1',
@@ -151,7 +160,16 @@ function loading(permissions: HomePermissions = FULL_PERMISSIONS): HomeViewModel
     trendsAvailable: false,
     attention: [],
     activity: [],
-    quickActions: [{ id: 'new-order', title: 'New order', href: '/orders/new' }],
+    quickActions: [
+      {
+        id: 'order.new',
+        title: 'New order',
+        detail: null,
+        hint: 'Opens the work order composer',
+        command: { kind: 'compose', entity: 'order' },
+        tone: 'default',
+      },
+    ],
     permissions,
   });
 }
@@ -265,7 +283,7 @@ describe('restoring a brief', () => {
     // than showing one fewer shortcut.
     assert.deepEqual(
       restored.quickActions.map((action) => action.id),
-      ['new-order'],
+      ['order.new'],
     );
   });
 

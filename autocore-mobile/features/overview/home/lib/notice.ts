@@ -21,8 +21,8 @@ export function resolveHomeNotice(model: HomeViewModel): string | null {
   if (!model.meta.fromCache) return null;
 
   const savedAt = model.meta.lastSyncedAt;
-  if (savedAt === null) return 'Showing the last synced data';
+  if (savedAt === null) return 'Showing saved data';
 
   const age = formatDistanceToNow(new Date(savedAt), { addSuffix: true, locale: enUS });
-  return `Last synced ${age}`;
+  return `Updated ${age}`;
 }

@@ -39,8 +39,14 @@ function entry(
   recordType: RecordType,
   values: Partial<Record<CanonicalField, string>>,
   table = "Лист1",
+  extra?: { section?: string | null; locationPath?: string[] },
 ) {
-  return { row: classified(index, recordType, values), table };
+  return {
+    row: classified(index, recordType, values),
+    table,
+    section: extra?.section ?? null,
+    locationPath: extra?.locationPath,
+  };
 }
 
 describe("entityKeysFor", () => {
@@ -174,6 +180,22 @@ describe("relationships", () => {
       rows: [entry(0, "body", { vin: VIN_A, name: "Бампер", serial: "P-1" })],
     });
     assert.deepEqual(relationships, []);
+  });
+
+  it("hangs a box cell off the warehouse heading above the row", () => {
+    const { entities } = resolveEntities({
+      rows: [
+        entry(
+          1,
+          "engine",
+          { serial: "EJ251-1", location: "КОРОБКА 9" },
+          "Двигатели",
+          { section: "СКЛАД НА СВЕРДЛОВА", locationPath: ["СКЛАД НА СВЕРДЛОВА"] },
+        ),
+      ],
+    });
+    assert.equal(entities[0]!.values.location?.normalized, "СКЛАД НА СВЕРДЛОВА / КОРОБКА 9");
+    assert.equal(entities[0]!.recordType, "engine");
   });
 });
 

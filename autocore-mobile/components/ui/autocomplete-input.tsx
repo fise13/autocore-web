@@ -26,6 +26,7 @@ type AutocompleteInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 's
   debounceMs?: number;
   minQueryLength?: number;
   invalid?: boolean;
+  presentation?: AutocompleteConfig['presentation'];
 };
 
 /**
@@ -46,6 +47,7 @@ export const AutocompleteInput = memo(function AutocompleteInput({
   debounceMs,
   minQueryLength,
   invalid,
+  presentation = 'chips',
   onFocus,
   onBlur,
   onSubmitEditing,
@@ -65,6 +67,7 @@ export const AutocompleteInput = memo(function AutocompleteInput({
     matchMode,
     debounceMs,
     minQueryLength,
+    presentation,
   });
 
   const handleFocus = useCallback<NonNullable<TextInputProps['onFocus']>>(

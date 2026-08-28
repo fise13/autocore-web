@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { uniqueAutocompleteOptions } from '@/lib/autocomplete/filter-options';
+import { laborCatalogOptions, partCatalogOptions } from '@/lib/autocomplete/catalog';
 import type { AutocompleteOption } from '@/lib/autocomplete/types';
 import { formatMotorLineLabel } from '@/lib/motors/format-motor-display-name';
 import { vehicleMakeOptions, vehicleModelOptions } from '@/lib/vehicles/vehicle-catalog';
@@ -74,7 +75,14 @@ export function useWorkOrderComposerOptions({
   );
 
   const clientNameOptions = useMemo(
-    () => clients.map((client) => ({ value: client.fullName, label: client.phone || undefined })),
+    () =>
+      uniqueAutocompleteOptions(
+        clients.map((client) => ({
+          value: client.fullName,
+          label: client.phone || undefined,
+          keywords: client.phone,
+        })),
+      ),
     [clients],
   );
 
@@ -130,22 +138,17 @@ export function useWorkOrderComposerOptions({
   );
 
   const partSkuOptions = useMemo(
-    () =>
-      activeInventory.map((item) => ({
-        value: item.sku,
-        label: item.name,
-        keywords: `${item.name} ${item.sku}`,
-      })),
+    () => uniqueAutocompleteOptions(partCatalogOptions(activeInventory, 'sku')),
     [activeInventory],
   );
 
   const partNameOptions = useMemo(
-    () =>
-      activeInventory.map((item) => ({
-        value: item.name,
-        label: item.sku ? `${item.name} · ${item.sku}` : item.name,
-        keywords: `${item.name} ${item.sku}`,
-      })),
+    () => uniqueAutocompleteOptions(partCatalogOptions(activeInventory, 'name')),
+    [activeInventory],
+  );
+
+  const laborTitleOptions = useMemo(
+    () => uniqueAutocompleteOptions(laborCatalogOptions(activeInventory)),
     [activeInventory],
   );
 
@@ -176,6 +179,7 @@ export function useWorkOrderComposerOptions({
     vinOptions,
     partSkuOptions,
     partNameOptions,
+    laborTitleOptions,
     motorSerialOptions,
     activeInventory,
     availableMotors,

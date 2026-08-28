@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef } from 'react';
 
 import { useReducedMotion } from '@/hooks/use-accessibility';
+import { tokens } from '@/theme/tokens';
 import {
   autocoreEase,
   cardPress,
@@ -23,6 +24,13 @@ import {
   spring,
   staggerDelay,
 } from '@/theme/motion';
+
+/**
+ * Fading in must outrun the eye and fading out must not linger: a slow release
+ * is what made the old version feel like the tap had not registered.
+ */
+const PRESS_FADE_IN = { duration: 60, easing: autocoreEase } as const;
+const PRESS_FADE_OUT = { duration: 140, easing: autocoreEase } as const;
 import { screenMotion } from '@/theme/screen';
 
 type ScreenEnterConfig = {
@@ -200,14 +208,42 @@ export function useFadeIn(
   return { style, opacity, translateY };
 }
 
+/**
+ * Press feedback for a card or tile.
+ *
+ * This was a no-op for a while — it returned an undefined style and two empty
+ * handlers — because the original spring-scale version contended with
+ * NativeTabs and sheet gestures and read as tap lag. The stub fixed the lag and
+ * quietly took the feedback with it: five surfaces went on wiring up
+ * `onPressIn`/`onPressOut` and passing `style` to an `Animated.View`, and none
+ * of them responded to touch at all.
+ *
+ * Opacity rather than scale is what makes it safe to switch back on. A scale
+ * spring animates layout, competes with the gesture recognisers above it, and
+ * keeps running after the finger leaves; opacity is a compositor-only property
+ * with a fixed, short timing, so there is nothing left in flight for the tab
+ * bar or a sheet to fight with.
+ *
+ * `scale` is accepted for call-site compatibility and deliberately unused —
+ * see above for why nothing here scales.
+ */
 export function usePressAnimation(_scale: number = cardPress.scale) {
-  /** No-op — press springs contended with NativeTabs / sheets and felt like tap lag. */
-  return {
-    style: undefined as undefined,
-    onPressIn: () => {},
-    onPressOut: () => {},
-    pressed: { value: 1 },
+  const reduced = useReducedMotion();
+  const pressed = useSharedValue(0);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 1 - pressed.value * (1 - tokens.opacity.pressed),
+  }));
+
+  const onPressIn = () => {
+    pressed.value = reduced ? 1 : withTiming(1, PRESS_FADE_IN);
   };
+
+  const onPressOut = () => {
+    pressed.value = reduced ? 0 : withTiming(0, PRESS_FADE_OUT);
+  };
+
+  return { style, onPressIn, onPressOut, pressed };
 }
 
 export function useStaggerFadeIn(index: number, baseMs = 55) {

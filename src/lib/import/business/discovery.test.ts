@@ -64,6 +64,32 @@ describe("discoverSheet", () => {
     assert.equal(sheet.rows[0]!.role, "record");
   });
 
+  it("nests a box heading under the warehouse above it", () => {
+    const sheet = discoverSheet(
+      table(HEADERS, [
+        row("СКЛАД НА СВЕРДЛОВА"),
+        row("КОРОБКА 1"),
+        row("EJ251- 736084", "полная", "180000"),
+        row("КОРОБКА 2"),
+        row("EJ253- 544006", "полная", "195000"),
+      ]),
+    );
+    assert.deepEqual(sheet.rows[2]!.locationPath, ["СКЛАД НА СВЕРДЛОВА", "КОРОБКА 1"]);
+    assert.deepEqual(sheet.rows[4]!.locationPath, ["СКЛАД НА СВЕРДЛОВА", "КОРОБКА 2"]);
+  });
+
+  it("does not treat a batch heading as a warehouse box", () => {
+    const sheet = discoverSheet(
+      table(HEADERS, [
+        row("СКЛАД НА СВЕРДЛОВА"),
+        row("ПАРТИЯ ЯНВАРЬ"),
+        row("EJ251- 736084", "полная", "180000"),
+      ]),
+    );
+    assert.equal(sheet.rows[2]!.section, "ПАРТИЯ ЯНВАРЬ");
+    assert.deepEqual(sheet.rows[2]!.locationPath, ["СКЛАД НА СВЕРДЛОВА"]);
+  });
+
   it("drops a header row repeated in the middle of the sheet", () => {
     const sheet = discoverSheet(
       table(HEADERS, [

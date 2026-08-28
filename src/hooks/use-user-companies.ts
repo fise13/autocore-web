@@ -9,13 +9,15 @@ import {
   subscribeUserCompanyMemberships,
   type UserCompanyMembership,
 } from "@/infrastructure/firestore/user-company-membership-service";
-import { normalizeCompanyId } from "@/lib/company-id";
+import { isUnassignedCompanyId, normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 
 export function useUserCompanies() {
   const { profile } = useAuth();
   const userId = profile?.id ?? "";
-  const activeCompanyId = normalizeCompanyId(profile?.companyId);
+  const activeCompanyId = isUnassignedCompanyId(profile?.companyId)
+    ? ""
+    : normalizeCompanyId(profile?.companyId);
   const { name: activeCompanyName } = useCompanyProfile(activeCompanyId);
   const [memberships, setMemberships] = useState<UserCompanyMembership[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   EngineIntakeJob,
   EngineIntakeSession,
@@ -9,14 +9,13 @@ import type {
 
 import { getJson, setJson } from '@/lib/storage/kv';
 import {
-  subscribeEngineIntakeEvents,
   subscribeEngineIntakeJobs,
   subscribeEngineIntakePhotos,
-  subscribeEngineIntakeReworkRequests,
   subscribeEngineIntakeSessions,
 } from '@/services/firestore/engine-intake-repository';
 
 import {
+  applyIdentityOverrides,
   applyReadyJobOverrides,
   mergeIntakeJobs,
   mergeIntakeSessions,
@@ -30,11 +29,20 @@ function jobsCacheKey(companyId: string): string {
   return `engine-intake:jobs:${companyId}`;
 }
 
+function detailCacheKey(companyId: string, jobId: string): string {
+  return `engine-intake:detail:${companyId}:${jobId}`;
+}
+
 type JobsState = {
   companyId: string | null;
   jobs: EngineIntakeJob[];
   loading: boolean;
   error: string | null;
+};
+
+type CachedJobDetail = {
+  sessions: EngineIntakeSession[];
+  photos: IntakePhoto[];
 };
 
 type JobDetailState = {
@@ -53,6 +61,20 @@ const EMPTY_JOB_DETAIL: Omit<JobDetailState, 'scope'> = {
   reworkRequests: [],
   error: null,
 };
+
+export type EngineIntakeDetailListen = {
+  sessions?: boolean;
+  photos?: boolean;
+};
+
+function readCachedDetail(companyId: string, jobId: string): CachedJobDetail {
+  return (
+    getJson<CachedJobDetail>(detailCacheKey(companyId, jobId)) ?? {
+      sessions: [],
+      photos: [],
+    }
+  );
+}
 
 export function useEngineIntakeJobs(companyId: string | null) {
   const overlay = useIntakeOverlay(companyId);
@@ -94,14 +116,21 @@ export function useEngineIntakeJobs(companyId: string | null) {
     : companyId
       ? (getJson<EngineIntakeJob[]>(jobsCacheKey(companyId)) ?? [])
       : [];
-  const jobs = applyReadyJobOverrides(
-    mergeIntakeJobs(
-      serverJobs,
-      overlay.jobs,
-      overlay.cancelledJobIds,
-      overlay.verifiedJobIds,
-    ),
-    overlay.readyJobIds,
+  const jobs = useMemo(
+    () =>
+      applyReadyJobOverrides(
+        applyIdentityOverrides(
+          mergeIntakeJobs(
+            serverJobs,
+            overlay.jobs,
+            overlay.cancelledJobIds,
+            overlay.verifiedJobIds,
+          ),
+          overlay.identityByJobId,
+        ),
+        overlay.readyJobIds,
+      ),
+    [overlay, serverJobs],
   );
   return {
     companyId,
@@ -114,16 +143,38 @@ export function useEngineIntakeJobs(companyId: string | null) {
 export function useEngineIntakeJobDetail(
   companyId: string | null,
   jobId: string | null,
+  listen: EngineIntakeDetailListen = {},
 ) {
+  const listenSessions = listen.sessions !== false;
+  const listenPhotos = listen.photos !== false;
   const scope = companyId && jobId ? `${companyId}:${jobId}` : null;
-  const [state, setState] = useState<JobDetailState>({
-    scope,
-    ...EMPTY_JOB_DETAIL,
+  const [state, setState] = useState<JobDetailState>(() => {
+    if (!companyId || !jobId) return { scope, ...EMPTY_JOB_DETAIL };
+    const cached = readCachedDetail(companyId, jobId);
+    return {
+      scope,
+      ...EMPTY_JOB_DETAIL,
+      sessions: cached.sessions,
+      photos: cached.photos,
+    };
   });
 
   useEffect(() => {
     if (!companyId || !jobId) return;
     const nextScope = `${companyId}:${jobId}`;
+    const cached = readCachedDetail(companyId, jobId);
+    setState({
+      scope: nextScope,
+      ...EMPTY_JOB_DETAIL,
+      sessions: cached.sessions,
+      photos: cached.photos,
+    });
+
+    const persist = (partial: Partial<CachedJobDetail>) => {
+      const current = readCachedDetail(companyId, jobId);
+      setJson(detailCacheKey(companyId, jobId), { ...current, ...partial });
+    };
+
     const update = (
       updater: (current: Omit<JobDetailState, 'scope'>) => Omit<JobDetailState, 'scope'>,
     ) => {
@@ -134,41 +185,35 @@ export function useEngineIntakeJobDetail(
     };
     const onError = (snapshotError: Error) =>
       update((current) => ({ ...current, error: snapshotError.message }));
-    const unsubscribeSessions = subscribeEngineIntakeSessions(
-      companyId,
-      jobId,
-      (sessions) => {
-        pruneIntakeOverlay(companyId, [], { jobId, sessions });
-        update((current) => ({ ...current, sessions, error: null }));
-      },
-      onError,
-    );
-    const unsubscribePhotos = subscribeEngineIntakePhotos(
-      companyId,
-      jobId,
-      (photos) => update((current) => ({ ...current, photos, error: null })),
-      onError,
-    );
-    const unsubscribeEvents = subscribeEngineIntakeEvents(
-      companyId,
-      jobId,
-      (events) => update((current) => ({ ...current, events, error: null })),
-      onError,
-    );
-    const unsubscribeRework = subscribeEngineIntakeReworkRequests(
-      companyId,
-      jobId,
-      (reworkRequests) =>
-        update((current) => ({ ...current, reworkRequests, error: null })),
-      onError,
-    );
+
+    const unsubscribeSessions = listenSessions
+      ? subscribeEngineIntakeSessions(
+          companyId,
+          jobId,
+          (sessions) => {
+            pruneIntakeOverlay(companyId, [], { jobId, sessions });
+            persist({ sessions });
+            update((current) => ({ ...current, sessions, error: null }));
+          },
+          onError,
+        )
+      : () => undefined;
+    const unsubscribePhotos = listenPhotos
+      ? subscribeEngineIntakePhotos(
+          companyId,
+          jobId,
+          (photos) => {
+            persist({ photos });
+            update((current) => ({ ...current, photos, error: null }));
+          },
+          onError,
+        )
+      : () => undefined;
     return () => {
       unsubscribeSessions();
       unsubscribePhotos();
-      unsubscribeEvents();
-      unsubscribeRework();
     };
-  }, [companyId, jobId]);
+  }, [companyId, jobId, listenPhotos, listenSessions]);
 
   const overlay = useIntakeOverlay(companyId);
   const base = state.scope === scope ? state : { scope, ...EMPTY_JOB_DETAIL };

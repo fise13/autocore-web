@@ -99,10 +99,15 @@ export function OrderCompositionStep({
               description="Hours or a fixed amount — assignee can be anyone on your team"
             >
               <CompositionField label="Description" required>
-                <Input
+                <AutocompleteInput
                   placeholder="Engine replacement"
                   value={composition.laborDraft.title}
-                  onChangeText={(value) => composition.patchLaborDraft({ title: value })}
+                  fieldKey="laborTitle"
+                  presentation="chips"
+                  matchMode="flexible"
+                  onValueChange={(value) => composition.patchLaborDraft({ title: value })}
+                  options={composerOptions.laborTitleOptions}
+                  onOptionSelect={composition.fillLaborFromCatalog}
                 />
               </CompositionField>
 
@@ -201,6 +206,7 @@ export function OrderCompositionStep({
                   placeholder="SKU-001"
                   value={composition.partSku}
                   fieldKey="partSku"
+                  presentation="chips"
                   onValueChange={composition.setPartSku}
                   options={composerOptions.partSkuOptions}
                   matchMode="flexible"
@@ -214,6 +220,7 @@ export function OrderCompositionStep({
                     placeholder="Mann oil filter"
                     value={composition.partName}
                     fieldKey="partName"
+                    presentation="chips"
                     onValueChange={composition.setPartName}
                     options={composerOptions.partNameOptions}
                     matchMode="flexible"

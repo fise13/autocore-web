@@ -1,7 +1,8 @@
 import { memo, useCallback, type ComponentType } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 
 import {
+  AlertTriangleIcon,
   BoxIcon,
   CameraIcon,
   ClipboardListIcon,
@@ -14,7 +15,7 @@ import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { tokens } from '@/theme/tokens';
 
-import type { HomeQuickAction } from '../types';
+import type { HomeQuickAction, HomeQuickActionId } from '../types';
 import { home, HomeRow, HomeSection } from './home-primitives';
 
 type ActionIcon = ComponentType<{
@@ -24,18 +25,19 @@ type ActionIcon = ComponentType<{
 }>;
 
 /**
- * Icons for the shell's action catalog. The catalog carries SF Symbol names for
- * the iOS action sheet; the strip uses the shared stroke set so a Home control
- * looks like every other control in the app on both platforms.
+ * One glyph per command, using the shared stroke set so a Home control looks
+ * like every other control in the app on both platforms. Continue takes the
+ * camera because that is literally where the tap lands.
  */
-const ACTION_ICONS: Record<string, ActionIcon> = {
+const ACTION_ICONS: Record<HomeQuickActionId, ActionIcon> = {
+  'intake.retry-photos': AlertTriangleIcon,
+  'intake.resume': CameraIcon,
   scan: ScanLineIcon,
-  'receive-engine': PackageIcon,
-  photograph: CameraIcon,
-  'new-order': ClipboardListIcon,
-  'add-item': BoxIcon,
-  'new-transaction': CoinsIcon,
-  'import-document': FileTextIcon,
+  'engine.receive': PackageIcon,
+  'order.new': ClipboardListIcon,
+  'part.new': BoxIcon,
+  'transaction.new': CoinsIcon,
+  'document.capture': FileTextIcon,
 };
 
 /**
@@ -45,19 +47,27 @@ const ACTION_ICONS: Record<string, ActionIcon> = {
  * make four shortcuts look like a fifth data section, and equal-width columns
  * broke "Receive engine" across two lines to fit a grid nothing needed. Pills
  * size to their own labels and scroll when there are more of them, which is what
- * lets the section stay one line tall no matter how many actions a role has.
+ * lets the section stay one line tall no matter how many commands a role has.
+ *
+ * Two of the pills are about a specific thing rather than a kind of thing —
+ * *Continue U398539*, *Retry photos 3* — so a pill can carry live detail
+ * alongside its verb, and takes tone when the state warrants one. Colour is
+ * never the only signal: the verb, the glyph and the detail all say it too.
  *
  * The dock's (+) still owns the full New sheet; these are shortcuts past it.
  */
 export const HomeQuickActions = memo(function HomeQuickActions({
   actions,
-  onOpen,
+  busyId,
+  onRun,
 }: {
   actions: HomeQuickAction[];
-  onOpen: (action: HomeQuickAction) => void;
+  /** The command working in place right now, if any. */
+  busyId?: HomeQuickActionId | null;
+  onRun: (action: HomeQuickAction) => void;
 }) {
   const { colors } = useTheme();
-  const handleOpen = useCallback((action: HomeQuickAction) => () => onOpen(action), [onOpen]);
+  const handleRun = useCallback((action: HomeQuickAction) => () => onRun(action), [onRun]);
 
   if (actions.length === 0) return null;
 
@@ -73,12 +83,27 @@ export const HomeQuickActions = memo(function HomeQuickActions({
       >
         {actions.map((action) => {
           const Icon = ACTION_ICONS[action.id];
+          const busy = busyId === action.id;
+
+          const surface =
+            action.tone === 'blocked'
+              ? { fill: colors.dangerSubtle, border: colors.dangerBorder, ink: colors.dangerOnSubtle }
+              : action.tone === 'continue'
+                ? {
+                    fill: colors.primarySubtle,
+                    border: colors.primaryBorder,
+                    ink: colors.primaryOnSubtle,
+                  }
+                : { fill: colors.card, border: colors.borderMuted, ink: colors.primary };
+
+          const label = action.detail ? `${action.title} ${action.detail}` : action.title;
+
           return (
             <HomeRow
               key={action.id}
-              accessibilityLabel={action.title}
-              accessibilityHint={action.subtitle}
-              onPress={handleOpen(action)}
+              accessibilityLabel={label}
+              accessibilityHint={action.hint}
+              onPress={busy ? undefined : handleRun(action)}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -87,20 +112,44 @@ export const HomeQuickActions = memo(function HomeQuickActions({
                 paddingVertical: 0,
                 height: tokens.control.hitTarget,
                 borderRadius: tokens.radius.full,
-                backgroundColor: colors.card,
+                backgroundColor: surface.fill,
                 borderWidth: home.hairline,
-                borderColor: colors.borderMuted,
+                borderColor: surface.border,
+                opacity: busy ? 0.72 : 1,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: home.micro + 2 }}>
-                {Icon ? <Icon size={17} color={colors.primary} strokeWidth={2} /> : null}
+                {busy ? (
+                  <ActivityIndicator size="small" color={surface.ink} />
+                ) : Icon ? (
+                  <Icon size={17} color={surface.ink} strokeWidth={2} />
+                ) : null}
+
                 <Text
                   variant="subheadline"
                   numberOfLines={1}
-                  style={{ fontWeight: '500', color: colors.foreground }}
+                  style={{
+                    fontWeight: '500',
+                    color: action.tone === 'default' ? colors.foreground : surface.ink,
+                  }}
                 >
                   {action.title}
                 </Text>
+
+                {action.detail ? (
+                  <Text
+                    variant="subheadline"
+                    numberOfLines={1}
+                    style={{
+                      fontWeight: '600',
+                      color: surface.ink,
+                      maxWidth: 132,
+                      fontVariant: ['tabular-nums'],
+                    }}
+                  >
+                    {action.detail}
+                  </Text>
+                ) : null}
               </View>
             </HomeRow>
           );

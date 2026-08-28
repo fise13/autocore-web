@@ -50,7 +50,8 @@ const plugins: ExpoConfig['plugins'] = [
   [
     'expo-camera',
     {
-      cameraPermission: 'AutoCore uses the camera to scan barcodes.',
+      cameraPermission:
+        'AutoCore uses the camera to scan barcodes and photograph engines during intake inspection.',
       // Scanning and stills only — no audio is ever recorded, so the app should
       // not ask for the microphone or ship a permission it cannot justify.
       microphonePermission: false,

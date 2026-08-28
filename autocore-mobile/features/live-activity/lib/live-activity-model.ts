@@ -1,95 +1,83 @@
 /**
- * The Live Activity is a *view* of sync state, never its own source of truth.
+ * The Live Activity is a view of *how many intake photos have synced*.
  *
- * Everything the Dynamic Island, the Lock Screen banner and the widgets render
- * is derived here from the same `resolveSyncSummary` the in-app banner uses, so
- * a queue that reads "Waiting for connection" in the app can never read "Sync
- * failed" on the Lock Screen.
+ * It is not a documenting session. An open camera with nothing in the outbox
+ * is not news — a permanent Island is the fastest way to teach someone to
+ * ignore it. The frame exists only while photos still need to leave this
+ * phone, and it says one thing: `3/8`.
+ *
+ * `title` is a fixed noun for the surfaces that have room for one — the Lock
+ * Screen banner and the expanded Island. A bare `3/8` sitting between a text
+ * message and a calendar alert is not information; nothing on that screen says
+ * what was counted. It is deliberately a label and never a status narration:
+ * no "waiting", no "connection", no sentence about the queue.
+ *
+ * Offline is the same frame. Parked photos are not a failure; they are still
+ * on the device and still count in the denominator. Do not paint
+ * "Waiting for connection" and do not read NetInfo — iOS lies about that
+ * the moment the process backgrounds.
+ *
+ * Person-needed failures (missing file, auth) are the only exception: a quiet
+ * fail accent, still as `N/M`, never a paragraph about the queue.
+ *
+ * A finished wave is the other exception. The resolver itself goes idle — an
+ * empty outbox is not a standing activity — and the pusher paints one Watch-
+ * style success frame (green check, "Sync complete") from the last syncing
+ * counts before it dismisses.
+ *
+ * JS freeze after leave can leave the last count stuck. That number was true
+ * when the runtime last ran, which is the honest thing an Island can say.
  *
  * This module is pure and runs under the root Node test runner — relative
  * imports only, and nothing that pulls React Native.
  *
- * The design tokens (accent, symbol, caption) are resolved *here* rather than in
- * the widget body on purpose: the widget function is serialized on its own and
- * cannot see module scope, so anything it needs has to arrive as a prop.
+ * Accents, symbols and copy are resolved *here*: the widget function is
+ * serialized on its own and cannot see module scope.
  */
-import type { SyncErrorCode } from '../../engine-intake/lib/sync-errors';
-import type { SyncJobStatus } from '../../engine-intake/lib/sync-schedule';
-import {
-  resolveSyncSummary,
-  type SyncCounts,
-  type SyncStatus,
-  type SyncSummary,
-} from '../../engine-intake/lib/sync-status';
 
-/** The subset of an outbox row this module needs. */
-export type SyncJobLike = {
-  status: SyncJobStatus;
-  nextRetryAt?: string | null;
-  errorInfo?: { code: SyncErrorCode } | null;
+/** One Live Activity — photos leaving the phone. */
+export type LiveActivityMode = 'sync';
+
+/** Counts from the intake outbox wave. All integers ≥ 0. */
+export type LiveActivityQueue = {
+  /** Photos confirmed on the server in this wave. */
+  done: number;
+  /** Wave size (synced + still pending). */
+  total: number;
+  /** Photos the queue is still working on (includes parked / no-signal). */
+  pending: number;
+  /** Failed photos that need the person (file missing, auth) — never transport. */
+  blocked: number;
+  /** Photos with bytes on the wire right now. */
+  uploading: number;
+  /** 0–1 across those uploads; null when native progress has no totals. */
+  uploadRatio: number | null;
 };
 
 export type LiveActivityInput = {
   /** Signed-in company with intake permission. Otherwise never present anything. */
   enabled: boolean;
-  online: boolean;
-  /** Photo rows only — command heartbeats must not inflate the denominator. */
-  photos: readonly SyncJobLike[];
-  /** Photos confirmed uploaded in the current wave. */
-  completedInWave: number;
-  /** Wave size — completed plus everything still outstanding. */
-  waveTotal: number;
-  /** What is being uploaded, e.g. "Bay 3" — shown as the Island's second line. */
-  subject?: string | null;
-  /**
-   * In-session / paused intake on this device. Outranked by a blocked upload,
-   * outranks a healthy upload.
-   */
-  session?: LiveActivitySession | null;
-};
-
-/** One Live Activity — `sync` is the upload queue, `session` is documenting. */
-export type LiveActivityMode = 'sync' | 'session';
-
-export type LiveActivitySession = {
-  paused: boolean;
-  /** Serial, location code, or VIN — never a raw job id. */
-  subject: string;
-  captured: number;
-  required: number;
-};
-
-/** Slim job glance so the model stays free of the engine-intake package. */
-export type IntakeJobGlance = {
-  state: string;
-  locationCode?: string | null;
-  serialCode?: string | null;
-  donorVin?: string | null;
-  capturedCount?: number;
-  requiredCount?: number;
+  queue?: LiveActivityQueue | null;
 };
 
 /**
  * Flat, JSON-safe props. These cross into the widget extension through App Group
  * storage, so every field is a primitive.
+ *
+ * Field names are the Live Activity contract — the widget body reads these
+ * keys. Unused slots stay as their neutral values rather than disappearing.
  */
 export type LiveActivityProps = {
-  status: SyncStatus;
-  /** `sync` = photo queue. `session` = documenting an engine. */
+  status: LiveActivityStatus;
   mode: LiveActivityMode;
-  /** Headline — "Syncing 8 of 18". */
+  /** Two-word label next to the numeral. Names the subject, never the state. */
   title: string;
-  /** Supporting line — "10 photos left". */
   detail: string;
-  /** What the work belongs to. Empty string when unknown. */
   subject: string;
-  /** Big numeral — "8/18" while syncing, "3" when blocked. */
+  /** Big numeral — synced/total. */
   headline: string;
-  /** Word under the numeral — "photos" / "queued" / "blocked". */
   caption: string;
-  /** SF Symbol name. Typed as literals so it stays assignable to `Image systemName`. */
   symbol: LiveActivitySymbol;
-  /** Accent hex. */
   accent: string;
   done: number;
   total: number;
@@ -97,30 +85,18 @@ export type LiveActivityProps = {
   progress: number;
   pending: number;
   blocked: number;
-  /** Epoch ms of the next scheduled retry, or 0 when nothing is scheduled. */
+  /** Retained for the widget contract; this frame never counts down. */
   retryAtMs: number;
-  /** Whether the progress bar has a meaningful value. */
   determinate: boolean;
   /** file:// URI of the app icon inside widgetsDirectory. Empty when unavailable. */
   iconUri: string;
 };
 
+export type LiveActivityStatus = 'SYNCING' | 'FAILED' | 'SUCCEEDED';
+
 export type DesiredLiveActivity =
   | { kind: 'idle' }
   | { kind: 'active'; props: LiveActivityProps };
-
-/**
- * Apple's system accents rather than the AutoCore brand palette: the Island sits
- * in the system's chrome, not in the app, and a brand blue reads as a bug there.
- */
-const ACCENTS: Record<SyncStatus, string> = {
-  SYNCED: '#30D158',
-  SYNCING: '#0A84FF',
-  WAITING_FOR_NETWORK: '#8E8E93',
-  RETRYING: '#FF9F0A',
-  ACTION_REQUIRED: '#FF9F0A',
-  FAILED: '#FF453A',
-};
 
 /**
  * Deliberately a literal union rather than `string`: `Image systemName` is typed
@@ -128,262 +104,170 @@ const ACCENTS: Record<SyncStatus, string> = {
  * a silently blank glyph on someone's Lock Screen.
  */
 export type LiveActivitySymbol =
-  | 'checkmark.circle.fill'
-  | 'icloud.and.arrow.up.fill'
-  | 'wifi.slash'
-  | 'arrow.clockwise'
-  | 'exclamationmark.circle.fill'
+  | 'arrow.triangle.2.circlepath'
   | 'exclamationmark.triangle.fill'
-  | 'camera.fill';
-
-const SYMBOLS: Record<SyncStatus, LiveActivitySymbol> = {
-  SYNCED: 'checkmark.circle.fill',
-  SYNCING: 'icloud.and.arrow.up.fill',
-  WAITING_FOR_NETWORK: 'wifi.slash',
-  RETRYING: 'arrow.clockwise',
-  ACTION_REQUIRED: 'exclamationmark.circle.fill',
-  FAILED: 'exclamationmark.triangle.fill',
-};
-
-export function pickActiveIntakeSession(
-  jobs: readonly IntakeJobGlance[],
-): LiveActivitySession | null {
-  const live =
-    jobs.find((job) => job.state === 'in_session') ??
-    jobs.find((job) => job.state === 'paused');
-  if (!live) return null;
-  const subject =
-    live.locationCode?.trim() ||
-    live.serialCode?.trim() ||
-    live.donorVin?.trim() ||
-    '';
-  return {
-    paused: live.state === 'paused',
-    subject,
-    captured: Math.max(0, live.capturedCount ?? 0),
-    required: Math.max(0, live.requiredCount ?? 0),
-  };
-}
-
-export function liveActivityAccent(status: SyncStatus): string {
-  return ACCENTS[status] ?? ACCENTS.SYNCING;
-}
-
-export function liveActivitySymbol(status: SyncStatus): LiveActivitySymbol {
-  return SYMBOLS[status] ?? SYMBOLS.SYNCING;
-}
-
-/** Counting is deliberately not `Object.groupBy` — this file targets Node 20 too. */
-export function syncCountsFromJobs(input: LiveActivityInput): SyncCounts {
-  const byStatus: Record<SyncJobStatus, number> = {
-    queued: 0,
-    uploading: 0,
-    waiting_for_network: 0,
-    retry_scheduled: 0,
-    failed: 0,
-    completed: 0,
-  };
-
-  let soonestRetry: number | null = null;
-  const blockingCodes: SyncErrorCode[] = [];
-
-  for (const job of input.photos) {
-    if (job.status in byStatus) byStatus[job.status] += 1;
-
-    if (job.status === 'retry_scheduled' && job.nextRetryAt) {
-      const due = Date.parse(job.nextRetryAt);
-      if (Number.isFinite(due) && (soonestRetry === null || due < soonestRetry)) {
-        soonestRetry = due;
-      }
-    }
-
-    const code = job.status === 'failed' ? job.errorInfo?.code : undefined;
-    if (code && !blockingCodes.includes(code)) blockingCodes.push(code);
-  }
-
-  return {
-    online: input.online,
-    byStatus,
-    completedInWave: Math.max(0, input.completedInWave),
-    waveTotal: Math.max(0, input.waveTotal),
-    nextRetryAt: soonestRetry === null ? null : new Date(soonestRetry).toISOString(),
-    blockingCodes,
-  };
-}
-
-function captionFor(status: SyncStatus): string {
-  if (status === 'SYNCED') return 'synced';
-  if (status === 'FAILED') return 'blocked';
-  if (status === 'ACTION_REQUIRED') return 'needs you';
-  if (status === 'WAITING_FOR_NETWORK') return 'queued';
-  if (status === 'RETRYING') return 'retrying';
-  return 'photos';
-}
+  | 'checkmark.circle.fill';
 
 /**
- * A blocked queue shows the blocked count on its own. "0/3" reads like progress
- * that stalled at zero, which is a different — and wrong — story.
+ * Apple's system accents rather than the AutoCore brand palette: the Island sits
+ * in the system's chrome, not in the app, and a brand blue reads as a bug there.
  */
-function headlineFor(status: SyncStatus, summary: SyncSummary): string {
-  if (status === 'SYNCED') return 'Done';
-  if (status === 'FAILED' || status === 'ACTION_REQUIRED') return String(summary.blocked);
-  if (status === 'WAITING_FOR_NETWORK') return String(summary.pending);
-  return summary.progressLabel;
+const SYNC_ACCENT = '#0A84FF';
+const FAIL_ACCENT = '#FF453A';
+/** iOS system green — the Watch "sync complete" check lives in this, not brand. */
+const SUCCESS_ACCENT = '#30D158';
+
+/**
+ * The whole vocabulary of this activity.
+ *
+ * `Engine photos` names what the numeral counts and nothing else — it stays
+ * identical while the queue is parked offline, because a photo sitting on the
+ * phone with no signal is still an engine photo and the count is still true.
+ * The failure label borrows the app's existing "Needs you" phrasing, which is
+ * the one case where a person has to do something.
+ */
+const SYNC_TITLE = 'Engine photos';
+const FAIL_TITLE = 'Photos need you';
+const SUCCESS_TITLE = 'Sync complete';
+
+function clampCount(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.floor(value);
 }
 
-export function buildLiveActivityProps(
-  summary: SyncSummary,
-  options: { subject?: string | null; iconUri?: string } = {},
+export function normalizeLiveActivityQueue(queue: LiveActivityQueue): {
+  done: number;
+  total: number;
+  pending: number;
+  blocked: number;
+  uploading: number;
+  uploadRatio: number | null;
+} {
+  const done = clampCount(queue.done);
+  const pending = clampCount(queue.pending);
+  const blocked = clampCount(queue.blocked);
+  const uploading = clampCount(queue.uploading);
+  const total = Math.max(clampCount(queue.total), done + pending + blocked);
+  const rawRatio = queue.uploadRatio;
+  const uploadRatio =
+    rawRatio == null || !Number.isFinite(rawRatio)
+      ? null
+      : Math.max(0, Math.min(1, rawRatio));
+  return { done, total, pending, blocked, uploading, uploadRatio };
+}
+
+function syncProgress(queue: ReturnType<typeof normalizeLiveActivityQueue>): number {
+  const { done, total, uploading, uploadRatio } = queue;
+  if (total <= 0) return 0;
+  const uploadWeight = uploading > 0 && uploadRatio != null ? uploading * uploadRatio : 0;
+  return Math.max(0, Math.min(1, (done + uploadWeight) / total));
+}
+
+function buildSyncLiveActivityProps(
+  queue: ReturnType<typeof normalizeLiveActivityQueue>,
+  options: { failed: boolean; iconUri?: string } = { failed: false },
 ): LiveActivityProps {
+  const { done, total, pending, blocked } = queue;
+  const determinate = total > 0;
+  const headline = determinate ? `${done}/${total}` : '0/0';
+  const failed = options.failed;
+  const progress = syncProgress(queue);
   return {
-    status: summary.status,
+    status: failed ? 'FAILED' : 'SYNCING',
     mode: 'sync',
-    // A retry headline carries a number ("Retrying in 30s") that is correct for
-    // exactly one second. The Island renders a real countdown from `retryAtMs`,
-    // so the title stays timeless and the timer does the counting.
-    title: summary.status === 'RETRYING' ? 'Waiting to retry' : summary.headline,
-    detail: summary.detail ?? '',
-    subject: options.subject?.trim() ?? '',
-    headline: headlineFor(summary.status, summary),
-    caption: captionFor(summary.status),
-    symbol: liveActivitySymbol(summary.status),
-    accent: liveActivityAccent(summary.status),
-    done: summary.done,
-    total: summary.total,
-    progress: summary.progress,
-    pending: summary.pending,
-    blocked: summary.blocked,
-    retryAtMs: summary.nextRetryAt ? parseEpoch(summary.nextRetryAt) : 0,
-    determinate: summary.status === 'SYNCING' && summary.total > 0,
-    iconUri: options.iconUri ?? '',
-  };
-}
-
-export function buildSessionLiveActivityProps(
-  session: LiveActivitySession,
-  options: { iconUri?: string } = {},
-): LiveActivityProps {
-  const required = session.required;
-  const captured = session.captured;
-  const determinate = required > 0;
-  return {
-    status: 'SYNCING',
-    mode: 'session',
-    title: session.paused ? 'Intake paused' : 'Documenting',
-    detail: session.paused ? 'Paused' : 'In session',
-    subject: session.subject,
-    headline: determinate ? `${captured}/${required}` : String(captured),
-    caption: 'photos',
-    symbol: 'camera.fill',
-    accent: session.paused ? '#FF9F0A' : '#0A84FF',
-    done: captured,
-    total: Math.max(required, captured),
-    progress: determinate ? Math.min(1, captured / required) : 0,
-    pending: 0,
-    blocked: 0,
+    title: failed ? FAIL_TITLE : SYNC_TITLE,
+    detail: '',
+    subject: '',
+    headline,
+    caption: '',
+    symbol: failed ? 'exclamationmark.triangle.fill' : 'arrow.triangle.2.circlepath',
+    accent: failed ? FAIL_ACCENT : SYNC_ACCENT,
+    done,
+    total,
+    progress,
+    pending,
+    blocked,
     retryAtMs: 0,
     determinate,
     iconUri: options.iconUri ?? '',
   };
 }
 
-function parseEpoch(value: string): number {
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 /**
- * Present ONLY when there is something a person would want to glance at. An
- * empty queue is not news, and a permanent Island is the fastest way to teach
- * someone to ignore it.
+ * The Watch-style final frame: green check, filled count, "Sync complete".
+ *
+ * Built from the last syncing props because the outbox resets the wave on the
+ * same tick the last photo settles — the resolver then sees an empty queue
+ * and would otherwise tear the Island down with no success beat.
  */
-export function resolveDesiredLiveActivity(
-  input: LiveActivityInput,
-  now = new Date(),
-): DesiredLiveActivity {
-  if (!input.enabled) return { kind: 'idle' };
-
-  const summary = resolveSyncSummary(syncCountsFromJobs(input), now);
-  const blocked =
-    summary.status === 'FAILED' || summary.status === 'ACTION_REQUIRED';
-
-  // Fail / blocked outranks a live session so a person sees the thing they
-  // must fix. A healthy upload yields to documenting — the Island is one slot.
-  if (blocked) {
-    return {
-      kind: 'active',
-      props: buildLiveActivityProps(summary, { subject: input.subject }),
-    };
-  }
-
-  if (input.session) {
-    return {
-      kind: 'active',
-      props: buildSessionLiveActivityProps(input.session),
-    };
-  }
-
-  if (summary.status === 'SYNCED') return { kind: 'idle' };
-
-  return {
-    kind: 'active',
-    props: buildLiveActivityProps(summary, { subject: input.subject }),
-  };
-}
-
-/**
- * The frame the Island shows for a few seconds as it ends. Apple's own pattern —
- * a queue that vanishes mid-upload reads as a crash, not as success.
- */
-export function buildCompletionProps(
-  synced: number,
-  options: { subject?: string | null; iconUri?: string } = {},
+export function succeededLiveActivityProps(
+  from: LiveActivityProps,
+  iconUri?: string,
 ): LiveActivityProps {
-  const total = Math.max(0, synced);
+  const total = Math.max(clampCount(from.total), clampCount(from.done), 1);
   return {
-    status: 'SYNCED',
-    mode: 'sync',
-    title: total === 1 ? '1 photo synced' : `${total} photos synced`,
-    detail: 'Everything on this iPhone is backed up.',
-    subject: options.subject?.trim() ?? '',
-    headline: 'Done',
-    caption: 'synced',
-    symbol: liveActivitySymbol('SYNCED'),
-    accent: liveActivityAccent('SYNCED'),
+    ...from,
+    status: 'SUCCEEDED',
+    title: SUCCESS_TITLE,
+    detail: '',
+    subject: '',
+    headline: `${total}/${total}`,
+    caption: '',
+    symbol: 'checkmark.circle.fill',
+    accent: SUCCESS_ACCENT,
     done: total,
     total,
-    progress: 1,
     pending: 0,
     blocked: 0,
-    retryAtMs: 0,
+    progress: 1,
     determinate: true,
-    iconUri: options.iconUri ?? '',
+    iconUri: iconUri ?? from.iconUri,
   };
+}
+
+/**
+ * The Island was showing a live wave, and the queue just went empty.
+ * Cancel-before-anything-moved is not a success; a wave that had counts is.
+ */
+export function shouldCelebrateSyncSuccess(last: LiveActivityProps | null): boolean {
+  if (!last) return false;
+  if (last.status !== 'SYNCING') return false;
+  if (last.total <= 0) return false;
+  return last.done > 0 || last.progress > 0 || last.pending > 0;
+}
+
+/**
+ * Present ONLY while photos still need to leave this phone.
+ *
+ * An empty queue is not news. A documenting session with nothing to upload
+ * is not news either. The success frame is not returned here — it is a
+ * one-shot painted by the pusher as it dismisses.
+ */
+export function resolveDesiredLiveActivity(input: LiveActivityInput): DesiredLiveActivity {
+  if (!input.enabled) return { kind: 'idle' };
+  if (!input.queue) return { kind: 'idle' };
+  const queue = normalizeLiveActivityQueue(input.queue);
+  if (queue.pending <= 0 && queue.blocked <= 0) return { kind: 'idle' };
+  if (queue.blocked > 0 && queue.pending <= 0) {
+    return { kind: 'active', props: buildSyncLiveActivityProps(queue, { failed: true }) };
+  }
+  return { kind: 'active', props: buildSyncLiveActivityProps(queue, { failed: false }) };
 }
 
 /**
  * Stable identity for skip-redundant updates. ActivityKit throttles updates
  * hard, so spending one on an identical frame costs a real update later.
- *
- * `retryAtMs` is deliberately included: the Island renders a live countdown from
- * it, and a rescheduled retry has to reach the widget even when nothing else moved.
  */
 export function liveActivityContentKey(desired: DesiredLiveActivity): string {
   if (desired.kind === 'idle') return 'idle';
-  const {
-    status,
+  const { mode, status, headline, determinate, progress, pending, blocked } = desired.props;
+  return [
     mode,
-    done,
-    total,
-    pending,
-    blocked,
-    retryAtMs,
-    title,
-    detail,
-    subject,
+    status,
     headline,
-  } = desired.props;
-  return [status, mode, done, total, pending, blocked, retryAtMs, title, detail, subject, headline].join(
-    '|',
-  );
+    determinate ? '1' : '0',
+    determinate ? progress.toFixed(2) : '0',
+    String(pending),
+    String(blocked),
+  ].join('|');
 }

@@ -26,6 +26,7 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/r
 import { EnterpriseAnimatedPanel } from "@/components/layout/enterprise-animated-panel";
 import { EnterprisePanelCard } from "@/components/layout/enterprise-panel-card";
 import { EnterpriseWorkspaceShell } from "@/components/layout/enterprise-workspace-shell";
+import { HelpFeedbackForm } from "@/components/product/help-feedback-form";
 import {
   Accordion,
   AccordionContent,
@@ -465,6 +466,8 @@ export function HelpWorkspace() {
               />
             ) : null}
           </EnterpriseAnimatedPanel>
+
+          <HelpFeedbackForm supportEmail={contacts.email} />
 
           <EnterprisePanelCard
             title={userCopy.help.needHelpTitle}

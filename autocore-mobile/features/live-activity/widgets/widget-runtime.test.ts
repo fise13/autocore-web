@@ -191,44 +191,46 @@ const WIDGET_ENVIRONMENTS: Record<string, unknown>[] = WIDGET_FAMILIES.flatMap((
   },
 ]);
 
+/**
+ * Every frame the Live Activity can now produce, plus payloads a device may
+ * still be holding from an older build.
+ *
+ * The Island is a sync count. `legacySession` and `empty` stay because
+ * ActivityKit can restore an activity started by a previous binary, and the
+ * widget body has to survive whatever shape that payload has.
+ */
 const ISLAND_STATES: Record<string, Record<string, unknown>> = {
   syncing: {
-    status: 'SYNCING', title: 'Syncing 8 of 18', detail: '10 photos left.', subject: 'Bay 3',
-    headline: '8/18', caption: 'photos', symbol: 'icloud.and.arrow.up.fill', accent: '#0A84FF',
-    done: 8, total: 18, progress: 0.444, pending: 10, blocked: 0, retryAtMs: 0,
-    determinate: true, iconUri: 'file:///icon.png', mode: 'sync',
+    status: 'SYNCING', title: 'Engine photos', detail: '', subject: '',
+    headline: '3/8', caption: '', symbol: 'arrow.triangle.2.circlepath', accent: '#0A84FF',
+    done: 3, total: 8, progress: 3 / 8, pending: 5, blocked: 0, retryAtMs: 0,
+    determinate: true, iconUri: '', mode: 'sync',
   },
-  offline: {
-    status: 'WAITING_FOR_NETWORK', title: 'Waiting for connection',
-    detail: '3 photos are saved on this iPhone.', subject: '', headline: '3', caption: 'queued',
-    symbol: 'wifi.slash', accent: '#8E8E93', done: 0, total: 3, progress: 0, pending: 3,
-    blocked: 0, retryAtMs: 0, determinate: false, iconUri: '',
+  parked: {
+    status: 'SYNCING', title: 'Engine photos', detail: '', subject: '',
+    headline: '0/6', caption: '', symbol: 'arrow.triangle.2.circlepath', accent: '#0A84FF',
+    done: 0, total: 6, progress: 0, pending: 6, blocked: 0, retryAtMs: 0,
+    determinate: true, iconUri: '', mode: 'sync',
   },
-  retrying: {
-    status: 'RETRYING', title: 'Waiting to retry', detail: '2 photos are safe on this iPhone.',
-    subject: '', headline: '0/2', caption: 'retrying', symbol: 'arrow.clockwise',
-    accent: '#FF9F0A', done: 0, total: 2, progress: 0, pending: 2, blocked: 0,
-    retryAtMs: 1_770_000_030_000, determinate: false, iconUri: 'file:///icon.png',
+  failed: {
+    status: 'FAILED', title: 'Photos need you', detail: '', subject: '',
+    headline: '4/6', caption: '', symbol: 'exclamationmark.triangle.fill', accent: '#FF453A',
+    done: 4, total: 6, progress: 4 / 6, pending: 0, blocked: 2, retryAtMs: 0,
+    determinate: true, iconUri: '', mode: 'sync',
   },
-  blocked: {
-    status: 'FAILED', title: '3 photos could not sync', detail: 'They are still on this iPhone.',
-    subject: '', headline: '3', caption: 'blocked', symbol: 'exclamationmark.triangle.fill',
-    accent: '#FF453A', done: 0, total: 3, progress: 0, pending: 0, blocked: 3, retryAtMs: 0,
-    determinate: false, iconUri: '',
+  succeeded: {
+    status: 'SUCCEEDED', title: 'Sync complete', detail: '', subject: '',
+    headline: '3/3', caption: '', symbol: 'checkmark.circle.fill', accent: '#30D158',
+    done: 3, total: 3, progress: 1, pending: 0, blocked: 0, retryAtMs: 0,
+    determinate: true, iconUri: '', mode: 'sync',
   },
-  completed: {
-    status: 'SYNCED', title: '18 photos synced', detail: 'Everything on this iPhone is backed up.',
-    subject: '', headline: 'Done', caption: 'synced', symbol: 'checkmark.circle.fill',
-    accent: '#30D158', done: 18, total: 18, progress: 1, pending: 0, blocked: 0, retryAtMs: 0,
-    determinate: true, iconUri: 'file:///icon.png', mode: 'sync',
-  },
-  session: {
+  // Restored from a build that still shipped the documenting session frame.
+  legacySession: {
     status: 'SYNCING', title: 'Documenting', detail: 'In session', subject: '1NZ-FE',
     headline: '4/12', caption: 'photos', symbol: 'camera.fill', accent: '#0A84FF',
     done: 4, total: 12, progress: 4 / 12, pending: 0, blocked: 0, retryAtMs: 0,
     determinate: true, iconUri: 'file:///icon.png', mode: 'session',
   },
-  // A activity restored from a previous build, or a truncated payload.
   empty: {},
 };
 
@@ -258,7 +260,7 @@ const INTAKE_WIDGET_STATES: Record<string, Record<string, unknown>> = {
     accent: '#30D158', urgent: true, updatedAtMs: 1_770_000_000_000,
   },
   syncing: {
-    active: 2, ready: 0, syncing: 4, headline: '4', title: '4 photos syncing',
+    active: 2, ready: 0, syncing: 4, headline: '2', title: '2 engines documenting',
     detail: '2 engines documenting', eyebrow: 'Intake', readyLabel: 'Ready', activeLabel: 'Active',
     lockLine: '0 Ready · 2 documenting', openReadyLabel: 'Open Ready', continueLabel: 'Continue',
     link: 'autocoremobile://intake', symbol: 'arrow.triangle.2.circlepath',
@@ -328,61 +330,93 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       }
     }
 
-    it('does not draw an upload Gauge for an active intake session', () => {
-      const session = render(context, layout, ISLAND_STATES.session, { colorScheme: 'dark' });
-      assert.ok(
-        !typeNames(session.expandedLeading).includes('GaugeView'),
-        'session frame must not look like an upload',
-      );
-      assert.ok(
-        !typeNames(session.banner).includes('ProgressView'),
-        'session banner must not spin a progress bar',
-      );
-      assert.ok(!typeNames(session.expandedBottom).includes('ProgressView'));
-      assert.ok(typeNames(session.expandedBottom).includes('CapsuleView'));
-      assert.match(JSON.stringify(session.expandedCenter), /Documenting/);
-      assert.match(JSON.stringify(session.expandedTrailing), /4\/12/);
-    });
-
-    it('draws a real progress ring only when there is progress to draw', () => {
-      const syncing = render(context, layout, ISLAND_STATES.syncing, { colorScheme: 'dark' });
-      assert.ok(typeNames(syncing.expandedLeading).includes('GaugeView'));
-
-      const parked = render(context, layout, ISLAND_STATES.offline, { colorScheme: 'dark' });
-      assert.ok(
-        !typeNames(parked.expandedLeading).includes('GaugeView'),
-        'a ring parked at zero reads as a stalled upload',
-      );
-    });
-
-    it('never spins a bar for a queue that is deliberately parked', () => {
-      const parked = render(context, layout, ISLAND_STATES.offline, { colorScheme: 'dark' });
-      assert.ok(
-        !typeNames(parked.banner).includes('ProgressView'),
-        'an indeterminate bar claims work is happening while offline',
-      );
-      assert.ok(typeNames(parked.banner).includes('CapsuleView'), 'expected a flat rail instead');
-    });
-
-    it('hands the retry countdown to SwiftUI as an ascending epoch range', () => {
-      const result = render(context, layout, ISLAND_STATES.retrying, { colorScheme: 'dark' });
-      let range: { lower?: unknown; upper?: unknown } | null = null;
-      walk(result.compactTrailing, (element) => {
-        const candidate = element.props?.timerInterval as { lower: number; upper: number } | undefined;
-        if (candidate) range = candidate;
+    it('leads with the synced fraction, never Documenting', () => {
+      const syncing = render(context, layout, ISLAND_STATES.syncing, {
+        colorScheme: 'dark',
       });
+      assert.match(JSON.stringify(syncing.compactTrailing), /3\/8/);
+      assert.match(JSON.stringify(syncing.expandedTrailing), /3\/8/);
+      assert.doesNotMatch(JSON.stringify(syncing), /Documenting/);
+      assert.ok(
+        !typeNames(syncing.expandedLeading).includes('GaugeView'),
+        'compact Island must not spend a slot on a progress ring',
+      );
+      assert.ok(typeNames(syncing.banner).includes('ProgressView'));
+      assert.ok(typeNames(syncing.expandedBottom).includes('ProgressView'));
+    });
 
-      assert.ok(range, 'the retry state must render a live timer, not a frozen string');
-      const { lower, upper } = range as { lower: number; upper: number };
-      assert.equal(typeof lower, 'number');
-      assert.equal(typeof upper, 'number');
-      assert.ok(lower < upper, 'SwiftUI drops a timer whose range is not ascending');
-      assert.equal(upper, ISLAND_STATES.retrying.retryAtMs);
+    it('prints the count once when the Island is expanded', () => {
+      // Leading glyph, centre subject, trailing count. The centre used to
+      // repeat the trailing numeral, which read as a rendering bug.
+      const syncing = render(context, layout, ISLAND_STATES.syncing, {
+        colorScheme: 'dark',
+      });
+      const expanded = [
+        syncing.expandedLeading,
+        syncing.expandedCenter,
+        syncing.expandedTrailing,
+        syncing.expandedBottom,
+      ];
+      const counts = expanded.filter((slot) => /3\/8/.test(JSON.stringify(slot)));
+      assert.equal(counts.length, 1);
+      assert.match(JSON.stringify(syncing.expandedCenter), /Engine photos/);
+    });
+
+    it('names the subject on the Lock Screen so the numeral means something', () => {
+      const syncing = render(context, layout, ISLAND_STATES.syncing, {
+        colorScheme: 'dark',
+      });
+      assert.match(JSON.stringify(syncing.banner), /Engine photos/);
+      assert.match(JSON.stringify(syncing.banner), /3\/8/);
+
+      const failed = render(context, layout, ISLAND_STATES.failed, { colorScheme: 'dark' });
+      assert.match(JSON.stringify(failed.banner), /Photos need you/);
+
+      const succeeded = render(context, layout, ISLAND_STATES.succeeded, {
+        colorScheme: 'dark',
+      });
+      assert.match(JSON.stringify(succeeded.banner), /Sync complete/);
+      assert.match(JSON.stringify(succeeded.expandedCenter), /Sync complete/);
+      assert.match(JSON.stringify(succeeded.compactLeading), /checkmark\.circle\.fill/);
+      assert.match(JSON.stringify(succeeded.banner), /3\/3/);
+    });
+
+    it('keeps text out of the slots too small to hold it', () => {
+      // `minimal` is roughly a 20pt circle when two activities share the
+      // Island; `3/8` was scaled through it into a smear.
+      const syncing = render(context, layout, ISLAND_STATES.syncing, {
+        colorScheme: 'dark',
+      });
+      assert.ok(!typeNames(syncing.minimal).some((name) => name.includes('Text')));
+      assert.ok(typeNames(syncing.minimal).some((name) => name.includes('Image')));
+      assert.doesNotMatch(JSON.stringify(syncing.compactLeading), /Engine photos/);
+      assert.doesNotMatch(JSON.stringify(syncing.compactTrailing), /Engine photos/);
+    });
+
+    it('refuses the abandoned session copy carried by a restored activity', () => {
+      const legacy = render(context, layout, ISLAND_STATES.legacySession, {
+        colorScheme: 'dark',
+      });
+      assert.doesNotMatch(JSON.stringify(legacy), /Documenting|1NZ-FE|In session/);
+      assert.match(JSON.stringify(legacy.banner), /Engine photos/);
+    });
+
+    it('never renders a countdown — the count is not a timer', () => {
+      for (const props of Object.values(ISLAND_STATES)) {
+        const result = render(context, layout, props, { colorScheme: 'dark' });
+        let range: unknown = null;
+        walk(result.compactTrailing, (element) => {
+          if (element.props?.timerInterval) range = element.props.timerInterval;
+        });
+        assert.equal(range, null);
+      }
     });
 
     it('drops colour on the Always-On display instead of burning an accent in', () => {
-      const normal = render(context, layout, ISLAND_STATES.blocked, { colorScheme: 'dark' });
-      const dimmed = render(context, layout, ISLAND_STATES.blocked, {
+      const normal = render(context, layout, ISLAND_STATES.failed, {
+        colorScheme: 'dark',
+      });
+      const dimmed = render(context, layout, ISLAND_STATES.failed, {
         colorScheme: 'dark',
         isLuminanceReduced: true,
       });
@@ -461,7 +495,7 @@ describe('widget runtime', { skip: runtimeAvailable ? false : 'expo-widgets runt
       assert.match(JSON.stringify(result), /autocoremobile:\/\/intake\?filter=ready/);
     });
 
-    it('spends the Lock circular numeral on Ready, not on photos syncing', () => {
+    it('spends the Lock circular numeral on Ready, not on engines still open', () => {
       const circular = render(context, layout, INTAKE_WIDGET_STATES.syncing, {
         widgetFamily: 'accessoryCircular',
         colorScheme: 'dark',

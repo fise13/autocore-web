@@ -19,13 +19,20 @@ export function isNetworkError(error: unknown): boolean {
   }
   const text = String(candidate.message ?? '').toLowerCase();
   return (
-    text.includes('network request failed') ||
+    text.includes('fetch failed') ||
     text.includes('failed to fetch') ||
+    text.includes('network request failed') ||
     text.includes('the internet connection appears to be offline') ||
+    text.includes('the network connection was lost') ||
+    text.includes('connection was lost') ||
+    text.includes('connection lost') ||
+    text.includes('соединение потерян') ||
+    text.includes('сетевое соединение') ||
     text.includes('offline') ||
     text.includes('econnrefused') ||
     text.includes('enotfound') ||
     text.includes('software caused connection abort') ||
-    text.includes('no internet')
+    text.includes('no internet') ||
+    text.includes('nsurlerror')
   );
 }

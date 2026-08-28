@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks';
 import { haptics, layout, radius } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 type FloatingButtonProps = {
   onPress: () => void;
@@ -38,7 +39,7 @@ export function FloatingButton({ onPress, children, bottomOffset = 16 }: Floatin
         backgroundColor: colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? tokens.opacity.pressed : 1,
         ...shadows.elevated,
       }}
     >

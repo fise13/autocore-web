@@ -2,7 +2,7 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { AutocompleteInput, Button, Dropdown, Input, Text } from '@/components/ui';
@@ -41,6 +41,20 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
     const sheetRef = useRef<BottomSheetModal>(null);
 
     const { clients } = useClientsRealtime(companyId);
+
+    const clientNameOptions = useMemo(
+      () => clients.map((client) => ({ value: client.fullName, label: client.phone || undefined })),
+      [clients],
+    );
+    const clientPhoneOptions = useMemo(
+      () =>
+        clients.map((client) => ({
+          value: client.phone,
+          label: client.fullName,
+          keywords: `${client.fullName} ${client.phone}`,
+        })),
+      [clients],
+    );
 
     const [motor, setMotor] = useState<MotorEntity | null>(null);
     const [amount, setAmount] = useState('');
@@ -217,6 +231,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
               value={clientName}
               source="customer"
               context={{ field: 'name' }}
+              options={clientNameOptions}
               onValueChange={(value) => {
                 setClientName(value);
                 setClientId(undefined);
@@ -235,6 +250,7 @@ export const SellMotorSheet = forwardRef<SellMotorSheetRef, SellMotorSheetProps>
               value={clientPhone}
               source="customer"
               context={{ field: 'phone' }}
+              options={clientPhoneOptions}
               onValueChange={(value) => {
                 setClientPhone(value);
                 setClientId(undefined);

@@ -47,6 +47,8 @@ export function orderIntakeDrainWork<T extends DrainWorkItem>(items: T[]): T[] {
         item.jobId &&
         (completingJobs.has(item.jobId) || jobsWithPhotos.has(item.jobId))
       ) {
+        // Kill never sends pause, so photos ride the background URLSession
+        // immediately. A queued pause must wait until those files are gone.
         return false;
       }
       return true;

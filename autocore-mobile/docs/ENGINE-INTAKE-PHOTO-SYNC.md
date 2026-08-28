@@ -10,11 +10,17 @@ CameraView.takePictureAsync
   → saveIntakePhotoLocally()        Documents/engine-intake/{companyId}/{jobId}/{photoId}.jpg
   → outbox row (persisted, MMKV)    engine-intake:outbox:v2
   → optimizeQueuedPhoto()           best-effort, only while status === 'queued'
-  → drain()
-      → POST /photos/prepare        Firestore row + signed upload URL
-      → PUT  signed URL             iOS background URLSession, file-based
-      → POST /photos/finalize       syncState → synced, job progress recomputed
+  → primeAndStartUpload()           immediately, on a 4-slot gate shared with drain
+      → primePhoto()                POST /photos/prepare — Firestore row, signed URL,
+                                    credentials persisted on the outbox row
+      → startPreparedPut()          PUT signed URL, iOS background URLSession, file-based
+      → finalizeOrSettle()          POST /photos/finalize, or accept an already-closed row
   → local file deleted              only after the server confirms a URL
+
+  meanwhile, whatever the app is doing:
+  Storage object finalized → onIntakePhotoUploaded (Firebase)
+      → POST /api/engine-intake/photos/auto-finalize
+      → syncState → synced, job progress recomputed
 ```
 
 The capture is durable and queued before anything else happens. Every later
@@ -57,6 +63,50 @@ second later.
 What the background session does **not** give back is the JS promise. After a
 relaunch the transfer may already have completed with no JS alive to see it —
 handled by the resume path below.
+
+## Leaving the app
+
+The guarantee is that a worker who shoots an engine and puts the phone in their
+pocket ends up with the photos in Firebase, at network speed, without ever
+reopening the app. Getting there means being honest about which of the three
+steps can outlive the JS runtime — only one of them can — and moving the other
+two out of the way of the leave.
+
+| Step | Who has to finish it after a leave |
+| --- | --- |
+| optimize + prepare | JS, **before** the leave (eager prime), else the `beginBackgroundTask` window |
+| PUT bytes | iOS background URLSession — survives suspend and termination |
+| Firestore finalize | **the server**, on the Storage object-finalize trigger |
+| local outbox settle | JS on any later wake; `prepare` answers `alreadyFinalized` |
+
+Three things make that hold:
+
+- **Eager prime.** A photo is prepared and its PUT started the moment it is
+  captured, not when the next drain wave reaches it. Waves are bounded, so on a
+  twelve-shot bay walk the last photos used to still be sitting untouched on the
+  phone when the person swiped the app away.
+- **Persisted prepare credentials.** `IntakeOutboxPhoto.prepared` holds the
+  signed URL, storage path, download token, content type and byte count, with
+  `putStartedAt` recording that the bytes are the daemon's problem. A photo that
+  was primed in the foreground can therefore be handed to the URLSession during
+  the leave window with **no network round-trip first** — which is the only
+  reason the window is worth anything. `leaveAppPhotoRank` orders the wave that
+  way: primed-but-unsent first, unprimed second, already-sent last.
+- **Server auto-finalize.** `onIntakePhotoUploaded` fires when the object lands
+  and calls `/api/engine-intake/photos/auto-finalize`, which runs the same
+  commit as a device finalize. Everything it needs was written by `prepare`, so
+  the request carries only the object path and a shared secret
+  (`INTAKE_PHOTO_WORKER_SECRET`). This is what closes the gap between "the bytes
+  are in the bucket" and "the business can see the engine": before it, a photo
+  uploaded after the app died stayed `syncing` in Firestore until the worker
+  next opened the app.
+
+Both finalize paths are the same transaction and both start by returning early
+on an already-synced row, so the trigger racing the device is a no-op rather
+than a double write.
+
+`BGProcessingTask` remains a safety net for the offline case, not the mechanism
+anything depends on: it is discretionary and its floor is 15 minutes.
 
 ## Resume after the app dies mid-upload
 
@@ -116,16 +166,26 @@ Watch Firestore at
 `companies/{companyId}/engineIntakeJobs/{jobId}/photos` and the bucket at
 `companies/{companyId}/engine-intake/{jobId}/`.
 
+The leave-app tests (1–4) must be judged **without reopening the app** —
+watching the console is the whole point, because "it syncs when I come back"
+is exactly the behaviour these replace.
+
 | # | Scenario | Pass condition |
 | --- | --- | --- |
-| 1 | Take 1 photo → Save → lock the iPhone immediately → wait 2 min | Object in Storage, row `syncState: synced` |
-| 2 | Take 10 photos → Save → swipe the app away at once | All 10 objects land; reopening shows no pending rows |
-| 3 | Take photos → Airplane Mode → Save → wait → re-enable network | Rows sit in `waiting_for_network`, then upload with no user action |
-| 4 | Take photo → upload starts → kill the app → reopen | Exactly one photo row; no duplicate; no second full upload (check egress) |
+| 1 | Take 1 photo → Save → lock the iPhone immediately | Object in Storage **and** row `syncState: synced` within one network round-trip, with the app never reopened |
+| 2 | Take 10 photos → Save → swipe the app away at once | All 10 objects land and all 10 rows reach `synced` without reopening; reopening afterwards shows no pending rows and no duplicates |
+| 3 | Take photo → PUT starts → kill the app mid-transfer | Object completes in Storage; the trigger flips the row to `synced`; reopening shows one row, no second upload (check egress) |
+| 4 | Airplane Mode → take photos → Save → leave the app → re-enable network | Rows upload with no user action; job progress on the web dashboard matches the photo count |
 | 5 | Point the API at a 500 | Row goes `retry_scheduled` with a growing `nextRetryAt`; no tight loop |
 | 6 | Force a 401 (revoke the token) | Row is `failed` with `AUTH_EXPIRED`, local file kept, retry after re-auth succeeds |
 | 7 | Replay the same prepare+finalize twice | One Firestore row, one Storage object |
-| 8 | Cancel the intake while photos are pending | Local files and rows dropped; see the known gap below |
+| 8 | Trigger and device finalize the same photo at once | One `photo.uploaded` event, one `revision` bump, `progress` counted once |
+| 9 | Cancel the intake while photos are pending | Local files and rows dropped; see the known gap below |
+
+Tests 1–4 and 8 depend on `INTAKE_PHOTO_WORKER_SECRET` being set on **both**
+Vercel and Firebase Functions. Without it the trigger logs
+`INTAKE_PHOTO_WORKER_SECRET is not set` and the build silently falls back to the
+old behaviour — the photo finalizes on the next foreground drain instead.
 
 ## Continue never blocks on the network
 
@@ -215,7 +275,7 @@ of `prepare` and `finalize` on a twelve-photo session.
 
 ## Known gaps
 
-- **Test 8 leaves server-side orphans.** `discardIntakeWorkForCancelledJob`
+- **Test 9 leaves server-side orphans.** `discardIntakeWorkForCancelledJob`
   deletes the local files and drops the queue rows, but photos that already
   reached `prepare` have a Firestore row and a Storage object that `cancel_job`
   does not clean up. Cleanup needs a product decision on whether a cancelled

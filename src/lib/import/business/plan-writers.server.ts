@@ -8,6 +8,7 @@ import { upsertInventoryItemSchema, upsertMotorSchema } from "@/domain/schemas";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { persistDonorAdmin } from "@/infrastructure/firestore/admin/donor-admin";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { createLocationPathEnsurer } from "@/lib/warehouse/ensure-location-path.server";
 import { normalizeInventoryTaxonomyInput } from "@/lib/warehouse/inventory-taxonomy-normalize";
 import { buildInventorySearchTokens } from "@/lib/warehouse/warehouse-search";
 
@@ -15,7 +16,12 @@ import {
   buildDonorInputFromMigrationRow,
   buildInventoryInputFromMigrationRow,
   buildMotorInputFromMigrationRow,
+  isMigrationCatalogRecordType,
 } from "../migration-row-builders";
+import {
+  createMigrationSpecificCategoryCache,
+  persistBusinessImportSpecificAdmin,
+} from "../migration-specific-commit.server";
 import type { RecordType } from "../types";
 import type { PlanWriters } from "./commit-plan";
 import { foldKey } from "./entity-resolution";
@@ -89,6 +95,19 @@ export async function createAdminPlanWriters(
   const usedLocalIds = new Set(
     motors.map((motor) => motor.localId ?? Number(motor.id)).filter(Number.isFinite),
   );
+  const locations = createLocationPathEnsurer({
+    companyId,
+    warehouseId: context.warehouseId,
+    actorUserId: context.uid,
+  });
+  const { cache: specificCategoryCache, categories: specificCategories } =
+    await createMigrationSpecificCategoryCache(companyId);
+
+  async function assignedPlace(values: Record<string, string | undefined>) {
+    const text = values.location?.trim() || values.warehouse?.trim();
+    if (!text) return null;
+    return locations.ensure(text);
+  }
 
   async function writeMotor(
     values: Record<string, string | undefined>,
@@ -120,6 +139,13 @@ export async function createAdminPlanWriters(
     // a partly-filled file would quietly strip the first one.
     if (validated.arrivalDate) payload.arrivalDate = validated.arrivalDate;
     if (validated.soldDate) payload.soldDate = validated.soldDate;
+
+    const place = await assignedPlace(values);
+    if (place) {
+      payload.warehouseLocation = place.displayCode;
+      payload.primaryLocationId = place.id;
+      payload.primaryLocationCode = place.displayCode;
+    }
 
     if (validated.status === "sold") {
       payload.status = "sold";
@@ -172,6 +198,12 @@ export async function createAdminPlanWriters(
     };
     if (parsed.brandName) payload.brandName = parsed.brandName;
     if (parsed.warehouseLocation) payload.warehouseLocation = parsed.warehouseLocation;
+    const place = await assignedPlace(values);
+    if (place) {
+      payload.warehouseLocation = place.displayCode;
+      payload.primaryLocationId = place.id;
+      payload.primaryLocationCode = place.displayCode;
+    }
     if (parsed.notes) payload.notes = parsed.notes;
     if (normalized.subcategoryId ?? parsed.subcategoryId) {
       payload.subcategoryId = normalized.subcategoryId ?? parsed.subcategoryId;
@@ -228,6 +260,58 @@ export async function createAdminPlanWriters(
       await writeInventoryItem(input.values, input.kind, input.entityId, existingId);
     },
 
+    createSpecificRecord: async (input) => {
+      if (!input.recordType || !isMigrationCatalogRecordType(input.recordType)) {
+        return writeInventoryItem(input.values, input.kind, input.entityId);
+      }
+      const place = await assignedPlace(input.values);
+      const id = await persistBusinessImportSpecificAdmin({
+        companyId,
+        recordType: input.recordType,
+        values: input.values,
+        entityId: input.entityId,
+        ...(place
+          ? {
+              location: {
+                warehouseLocation: place.displayCode,
+                primaryLocationId: place.id,
+                primaryLocationCode: place.displayCode,
+              },
+            }
+          : {}),
+        categoryCache: specificCategoryCache,
+        categories: specificCategories,
+      });
+      if (!id) throw new Error("Позиция без номера");
+      return id;
+    },
+
+    updateSpecificRecord: async (existingId, input) => {
+      if (!input.recordType || !isMigrationCatalogRecordType(input.recordType)) {
+        await writeInventoryItem(input.values, input.kind, input.entityId, existingId);
+        return;
+      }
+      const place = await assignedPlace(input.values);
+      await persistBusinessImportSpecificAdmin({
+        companyId,
+        recordType: input.recordType,
+        values: input.values,
+        entityId: input.entityId,
+        existingId,
+        ...(place
+          ? {
+              location: {
+                warehouseLocation: place.displayCode,
+                primaryLocationId: place.id,
+                primaryLocationCode: place.displayCode,
+              },
+            }
+          : {}),
+        categoryCache: specificCategoryCache,
+        categories: specificCategories,
+      });
+    },
+
     /**
      * Attach a part or an engine to its donor.
      *
@@ -266,10 +350,11 @@ export async function buildExistingIndex(params: {
   const db = getAdminFirestore();
   const companyId = normalizeCompanyId(params.companyId);
 
-  const [donorSnapshot, motorSnapshot, itemSnapshot] = await Promise.all([
+  const [donorSnapshot, motorSnapshot, itemSnapshot, specificSnapshot] = await Promise.all([
     db.collection("companies").doc(companyId).collection("donors").get(),
     db.collection("users").doc(params.uid).collection("motors").get(),
     db.collection("inventoryItems").where("companyId", "==", companyId).get(),
+    db.collection("specificRecords").where("companyId", "==", companyId).get(),
   ]);
 
   const donorVins = new Map<string, string>();
@@ -290,5 +375,18 @@ export async function buildExistingIndex(params: {
     if (sku) itemSkus.set(foldKey(sku), doc.id);
   }
 
-  return { donorVins, motorSerials, itemSkus };
+  const specificSerials = new Map<string, string>();
+  for (const doc of specificSnapshot.docs) {
+    const data = doc.data() as { data?: Record<string, unknown>; warehouseLocation?: unknown };
+    const row =
+      data.data && typeof data.data === "object" && !Array.isArray(data.data)
+        ? data.data
+        : {};
+    const serial = String(
+      row["Номер двигателя"] ?? row.serialCode ?? row.sku ?? "",
+    ).trim();
+    if (serial) specificSerials.set(foldKey(serial), doc.id);
+  }
+
+  return { donorVins, motorSerials, itemSkus, specificSerials };
 }

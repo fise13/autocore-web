@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { escapeHtml } from "@/lib/email/escape-html";
 import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import {
@@ -11,13 +12,6 @@ import {
 export const runtime = "nodejs";
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024; // 15 MB
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 export async function POST(request: NextRequest) {
   try {

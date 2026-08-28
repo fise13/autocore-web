@@ -12,7 +12,7 @@ import { ActivityIcon, ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui/text';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 
 import { workLayout } from '../layout';
@@ -39,7 +39,7 @@ export function WorkTodayCard({
 
   const accent = colors.primary;
   const interactive = Boolean(today.href);
-  const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
   const chevronColor = withAlpha(colors.mutedForeground, isDark ? 0.55 : 0.5);
   const divider = withAlpha(colors.border, isDark ? 1 : 0.85);
 

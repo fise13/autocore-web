@@ -79,6 +79,11 @@ export function resolveFailureTransition(input: {
   attemptCount: number;
   retryable: boolean;
   offline: boolean;
+  /**
+   * The failure was the link, not the request (see `isTransportSyncError`).
+   * Such a job never gives up: it holds at the ceiling delay indefinitely.
+   */
+  transport?: boolean;
   now?: Date;
 }): { status: SyncJobStatus; attemptCount: number; nextRetryAt: string | null } {
   const now = input.now ?? new Date();
@@ -93,6 +98,21 @@ export function resolveFailureTransition(input: {
 
   if (!input.retryable) {
     return { status: 'failed', attemptCount: input.attemptCount, nextRetryAt: null };
+  }
+
+  // A yard with no signal is not a broken job. Ten attempts is roughly twenty
+  // minutes of ceiling delay — a lunch break behind a steel wall used to be
+  // enough to exhaust the budget and turn a perfectly good photo red, with a
+  // "retry" the worker then had to find and press. Transport failures keep
+  // their place in the queue instead, and the attempt count stops climbing so
+  // the schedule holds at the ten-minute ceiling rather than growing forever.
+  if (input.transport) {
+    const held = Math.min(input.attemptCount, RETRY_DELAYS_MS.length);
+    return {
+      status: 'retry_scheduled',
+      attemptCount: held,
+      nextRetryAt: nextRetryAt(held, now),
+    };
   }
 
   if (input.attemptCount >= MAX_RETRY_ATTEMPTS) {

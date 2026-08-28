@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,7 +10,10 @@ import {
 import {
   KeyboardAwareScrollView,
   KeyboardStickyView,
+  type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
+
+import { useAutocompleteDockInset } from '@/providers/autocomplete-provider';
 
 type KeyboardFormShellProps = Omit<ScrollViewProps, 'children' | 'contentContainerStyle'> & {
   header?: ReactNode;
@@ -37,16 +40,23 @@ export function KeyboardFormShell({
   ...scrollProps
 }: KeyboardFormShellProps) {
   const [footerHeight, setFooterHeight] = useState(0);
+  const dockInset = useAutocompleteDockInset();
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
 
   const handleFooterLayout = (event: LayoutChangeEvent) => {
     const next = Math.round(event.nativeEvent.layout.height);
     setFooterHeight((current) => (current === next ? current : next));
   };
 
+  useEffect(() => {
+    if (dockInset <= 0) return;
+    scrollRef.current?.assureFocusedInputVisible();
+  }, [dockInset]);
+
   const flattenedContent = StyleSheet.flatten(contentContainerStyle) ?? {};
   const ownBottomPadding =
     typeof flattenedContent.paddingBottom === 'number' ? flattenedContent.paddingBottom : 0;
-  const contentBottom = ownBottomPadding + footerHeight;
+  const contentBottom = ownBottomPadding + footerHeight + dockInset;
 
   return (
     <View style={{ flex: 1, backgroundColor }}>
@@ -54,12 +64,13 @@ export function KeyboardFormShell({
       {/* `flex: 1` is load-bearing: without it the scroll view sizes to its
           content and pushes the sticky bar off the bottom of the screen. */}
       <KeyboardAwareScrollView
+        ref={scrollRef}
         style={[{ flex: 1 }, style]}
-        bottomOffset={bottomOffset + footerHeight}
+        bottomOffset={bottomOffset + footerHeight + dockInset}
+        extraKeyboardSpace={dockInset}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps}
         keyboardDismissMode={keyboardDismissMode}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-        automaticallyAdjustContentInsets={false}
         // The bar floats over the content, so the form reserves its measured
         // height — content scrolls underneath without ever hiding behind it.
         contentContainerStyle={[contentContainerStyle, { paddingBottom: contentBottom }]}

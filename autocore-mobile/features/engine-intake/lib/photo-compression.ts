@@ -1,43 +1,28 @@
 /**
- * How hard an intake photo may be squeezed before it is queued.
+ * How hard an intake photo is squeezed before it goes on the wire.
  *
- * Today nothing squeezes them at all. The camera is called with
- * `{ quality: 0.7, skipProcessing: true }`, and `skipProcessing` bypasses the
- * iOS re-encode that `quality` would have applied — so the full ~12 MP frame
- * (3–5 MB) is what lands on disk and what goes over the wire. That is not a
- * correctness bug, but on a bay walk of a dozen shots it is 40–60 MB of
- * cellular for images nothing needs at that size.
+ * The camera still uses `skipProcessing: true` so the shutter stays instant —
+ * the full sensor JPEG lands on disk first. This policy then replaces that
+ * file before Storage sees it. A dozen 12 MP frames used to be 40–60 MB of
+ * cellular; at 1920 px / 0.75 they are typically 2–4 MB for the whole walk.
  *
- * The constraint pulling the other way is that these photos feed AI Vision:
- * serial-plate OCR, engine identification, component detection, damage
- * inspection. Squeezing for the sake of a smaller number would cost the
- * product the thing the photos exist for. So the policy is deliberately
- * conservative:
+ * 1920 on the long edge is enough for bay review and Vision (serial plates
+ * remain legible at ~2× 1080p). Anything larger is wasted bandwidth.
  *
- *  - only ever downscale, never upscale;
- *  - keep the long edge at 3072 px, well above what OCR of a stamped serial
- *    needs and roughly 2.5x the long edge of a legible plate crop;
- *  - re-encode at 0.85 JPEG, above the 0.75–0.8 range where ringing starts to
- *    eat fine stamped characters;
- *  - leave anything already at or under the target completely untouched, so a
- *    small or already-processed file is never re-encoded a second time and
- *    made worse.
- *
- * Pure — no React Native, no image library — so the thresholds are reviewable
- * and testable on their own, and the I/O stays at the call site.
+ * Pure — no React Native — so the thresholds stay unit-testable.
  */
 
 /** Long edge, in pixels, an intake photo is reduced to. */
-export const MAX_PHOTO_LONG_EDGE = 3072;
+export const MAX_PHOTO_LONG_EDGE = 1920;
 
-/** JPEG quality used when a photo is re-encoded. */
-export const PHOTO_JPEG_QUALITY = 0.85;
+/** JPEG / WebP quality used when a photo is re-encoded. */
+export const PHOTO_JPEG_QUALITY = 0.75;
 
 /**
- * Below this, re-encoding cannot win enough to be worth the quality risk.
- * A 900 KB frame is already cheap to send.
+ * Below this, a second encode cannot win enough to be worth the CPU.
+ * A 200 KB frame is already cheap to send.
  */
-export const MIN_COMPRESSIBLE_BYTES = 900 * 1024;
+export const MIN_COMPRESSIBLE_BYTES = 200 * 1024;
 
 export type PhotoDimensions = {
   width: number;
@@ -45,45 +30,58 @@ export type PhotoDimensions = {
 };
 
 export type CompressionPlan =
-  | { action: 'keep'; reason: 'small-enough' | 'within-target' | 'unknown-dimensions' }
-  | { action: 'resize'; longEdge: number; quality: number; scale: number };
+  | { action: 'keep'; reason: 'small-enough' }
+  | { action: 'resize'; longEdge: number; quality: number; scale: number }
+  | { action: 'reencode'; quality: number };
 
 function usableDimension(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
 /**
- * What to do with a freshly captured frame.
+ * What to do with a captured frame.
  *
- * `sizeBytes` gates the work and `dimensions` decides the target, so a photo
- * that is already small in bytes is never touched however large its pixel
- * dimensions claim to be — re-encoding it could only lose detail.
+ * Pixel size always wins: a 12 MP file must be downscaled even if it is
+ * already small in bytes. A frame already inside 1920 px is re-encoded when
+ * it is still heavy (gallery HEIC/JPEG dumps). Tiny files are left alone.
  */
 export function planPhotoCompression(input: {
   sizeBytes: number;
   dimensions?: PhotoDimensions | null;
 }): CompressionPlan {
-  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes < MIN_COMPRESSIBLE_BYTES) {
+  const size = input.sizeBytes;
+  const dimensions = input.dimensions;
+  const hasDims =
+    Boolean(dimensions) &&
+    usableDimension(dimensions!.width) &&
+    usableDimension(dimensions!.height);
+  const longEdge = hasDims
+    ? Math.max(dimensions!.width, dimensions!.height)
+    : 0;
+
+  if (hasDims && longEdge > MAX_PHOTO_LONG_EDGE) {
+    return {
+      action: 'resize',
+      longEdge: MAX_PHOTO_LONG_EDGE,
+      quality: PHOTO_JPEG_QUALITY,
+      scale: MAX_PHOTO_LONG_EDGE / longEdge,
+    };
+  }
+
+  if (!Number.isFinite(size) || size < MIN_COMPRESSIBLE_BYTES) {
     return { action: 'keep', reason: 'small-enough' };
   }
 
-  const dimensions = input.dimensions;
-  if (!dimensions || !usableDimension(dimensions.width) || !usableDimension(dimensions.height)) {
-    // Without dimensions there is no safe target — a blind re-encode could
-    // shrink a photo that was already downscaled. Ship it as captured.
-    return { action: 'keep', reason: 'unknown-dimensions' };
+  if (hasDims) {
+    return { action: 'reencode', quality: PHOTO_JPEG_QUALITY };
   }
 
-  const longEdge = Math.max(dimensions.width, dimensions.height);
-  if (longEdge <= MAX_PHOTO_LONG_EDGE) {
-    return { action: 'keep', reason: 'within-target' };
-  }
-
+  // No pixel size, but the file is heavy — treat as a 12 MP dump and cap it.
   return {
     action: 'resize',
     longEdge: MAX_PHOTO_LONG_EDGE,
     quality: PHOTO_JPEG_QUALITY,
-    scale: MAX_PHOTO_LONG_EDGE / longEdge,
+    scale: 1,
   };
 }
 
@@ -106,9 +104,7 @@ export function resizeTarget(
 
 /**
  * Whether a re-encoded replacement is worth keeping over the captured
- * original. A re-encode that saves nothing is a quality loss for no gain, so
- * the original wins ties — and on photos that feed OCR and component
- * detection, a marginal shrink is never worth losing detail for.
+ * original. Ties go to the original.
  */
 export function isWorthReplacing(beforeBytes: number, afterBytes: number): boolean {
   if (!Number.isFinite(afterBytes) || afterBytes <= 0) return false;

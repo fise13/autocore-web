@@ -124,7 +124,7 @@ export const APP_CATEGORY_LABELS: Record<AppNotificationCategory, string> = {
   export: 'Export',
   documents: 'Documents',
   team: 'Team',
-  sync: 'Sync',
+  sync: 'Saved work',
   system: 'System',
   ai: 'AI',
   security: 'Security',

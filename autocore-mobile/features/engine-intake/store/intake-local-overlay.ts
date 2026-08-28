@@ -7,6 +7,7 @@ import {
   applyOptimisticClaim,
   buildOptimisticIntakeJob,
   buildOptimisticIntakeSession,
+  identityOverrideSettled,
   type OptimisticIntakeIdentity,
 } from '../lib/optimistic-intake-job';
 
@@ -18,6 +19,8 @@ type OverlayState = {
   readyJobIds: string[];
   /** Job ids just released to Motors Grid while Firestore still shows Ready. */
   verifiedJobIds: string[];
+  /** Serial edits that Firestore has not echoed yet. */
+  identityByJobId: Record<string, OptimisticIntakeIdentity>;
 };
 
 const listeners = new Set<() => void>();
@@ -33,6 +36,7 @@ const EMPTY_OVERLAY: OverlayState = {
   cancelledJobIds: [],
   readyJobIds: [],
   verifiedJobIds: [],
+  identityByJobId: {},
 };
 
 function emptyOverlay(): OverlayState {
@@ -46,6 +50,7 @@ function normalizeOverlay(value: OverlayState | null | undefined): OverlayState 
     cancelledJobIds: value?.cancelledJobIds ?? [],
     readyJobIds: value?.readyJobIds ?? [],
     verifiedJobIds: value?.verifiedJobIds ?? [],
+    identityByJobId: value?.identityByJobId ?? {},
   };
 }
 
@@ -101,6 +106,7 @@ export function seedOptimisticIntakeCreate(input: {
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
     readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
     verifiedJobIds: current.verifiedJobIds.filter((id) => id !== job.id),
+    identityByJobId: omitIdentity(current.identityByJobId, job.id),
   });
   return { job, session };
 }
@@ -135,8 +141,44 @@ export function seedOptimisticIntakeClaim(input: {
     cancelledJobIds: current.cancelledJobIds.filter((id) => id !== job.id),
     readyJobIds: current.readyJobIds.filter((id) => id !== job.id),
     verifiedJobIds: current.verifiedJobIds.filter((id) => id !== job.id),
+    identityByJobId: omitIdentity(current.identityByJobId, job.id),
   });
   return { job, session };
+}
+
+function omitIdentity(
+  patches: Record<string, OptimisticIntakeIdentity>,
+  jobId: string,
+): Record<string, OptimisticIntakeIdentity> {
+  if (!(jobId in patches)) return patches;
+  const { [jobId]: _dropped, ...rest } = patches;
+  return rest;
+}
+
+export function patchOptimisticIntakeIdentity(
+  companyId: string,
+  jobId: string,
+  identity: OptimisticIntakeIdentity,
+): void {
+  const current = readOverlay(companyId);
+  writeOverlay(companyId, {
+    ...current,
+    jobs: current.jobs.map((job) =>
+      job.id === jobId
+        ? {
+            ...job,
+            expectedIdentity: {
+              ...job.expectedIdentity,
+              serialCode: identity.serialCode,
+              brandName: identity.brandName,
+              engineCode: identity.engineCode,
+            },
+            updatedAt: new Date().toISOString(),
+          }
+        : job,
+    ),
+    identityByJobId: { ...current.identityByJobId, [jobId]: identity },
+  });
 }
 
 export function markIntakeJobCancelled(companyId: string, jobId: string): void {
@@ -150,6 +192,7 @@ export function markIntakeJobCancelled(companyId: string, jobId: string): void {
       : [...current.cancelledJobIds, jobId],
     readyJobIds: current.readyJobIds.filter((id) => id !== jobId),
     verifiedJobIds: current.verifiedJobIds.filter((id) => id !== jobId),
+    identityByJobId: omitIdentity(current.identityByJobId, jobId),
   });
 }
 
@@ -172,6 +215,7 @@ export function markIntakeJobVerified(companyId: string, jobId: string): void {
     verifiedJobIds: current.verifiedJobIds.includes(jobId)
       ? current.verifiedJobIds
       : [...current.verifiedJobIds, jobId],
+    identityByJobId: omitIdentity(current.identityByJobId, jobId),
   });
 }
 
@@ -222,6 +266,7 @@ export function dropOptimisticIntakeClaim(
     cancelledJobIds: current.cancelledJobIds,
     readyJobIds,
     verifiedJobIds: current.verifiedJobIds.filter((id) => id !== jobId),
+    identityByJobId: omitIdentity(current.identityByJobId, jobId),
   });
 }
 
@@ -247,8 +292,17 @@ export function pruneIntakeOverlay(
   serverSessions?: { jobId: string; sessions: EngineIntakeSession[] },
 ): void {
   const current = readOverlay(companyId);
-  const serverJobIds = new Set(serverJobs.map((job) => job.id));
-  const jobs = current.jobs.filter((job) => !serverJobIds.has(job.id));
+  const jobs = current.jobs.filter((job) => {
+    const server = serverJobs.find((item) => item.id === job.id);
+    if (!server) return true;
+    const localSession = job.assignment.activeSessionId;
+    // Keep the optimistic claim until Firestore names this session — pruning
+    // on job id alone made Continue look like a released claim.
+    if (localSession && server.assignment.activeSessionId !== localSession) {
+      return true;
+    }
+    return false;
+  });
   const sessions = { ...current.sessions };
 
   if (serverSessions) {
@@ -276,6 +330,13 @@ export function pruneIntakeOverlay(
       : current.readyJobIds.filter((jobId) => {
           const server = serverJobs.find((job) => job.id === jobId);
           if (!server) return true;
+          // The server has recorded a Finish for this engine, so it knows more
+          // about where the job stands than this guess does — including the case
+          // where it has since moved back out of review. Holding the override
+          // past that point is what let the phone offer a review of a job the
+          // server was no longer holding for review, and answer the tap with
+          // "Job is not ready for verification".
+          if (server.fieldCompletedAt) return false;
           return !READY_SETTLED_STATES.has(server.state);
         });
 
@@ -288,16 +349,35 @@ export function pruneIntakeOverlay(
           return !VERIFIED_SETTLED_STATES.has(server.state);
         });
 
+  const identityByJobId =
+    serverJobs.length === 0
+      ? current.identityByJobId
+      : Object.fromEntries(
+          Object.entries(current.identityByJobId).filter(([jobId, patch]) => {
+            const server = serverJobs.find((job) => job.id === jobId);
+            if (!server) return true;
+            return !identityOverrideSettled(server, patch);
+          }),
+        );
+
   if (
     jobs.length === current.jobs.length &&
     Object.keys(sessions).length === Object.keys(current.sessions).length &&
     cancelledJobIds.length === current.cancelledJobIds.length &&
     readyJobIds.length === current.readyJobIds.length &&
-    verifiedJobIds.length === current.verifiedJobIds.length
+    verifiedJobIds.length === current.verifiedJobIds.length &&
+    Object.keys(identityByJobId).length === Object.keys(current.identityByJobId).length
   ) {
     return;
   }
-  writeOverlay(companyId, { jobs, sessions, cancelledJobIds, readyJobIds, verifiedJobIds });
+  writeOverlay(companyId, {
+    jobs,
+    sessions,
+    cancelledJobIds,
+    readyJobIds,
+    verifiedJobIds,
+    identityByJobId,
+  });
 }
 
 export function getIntakeOverlay(companyId: string | null): OverlayState {

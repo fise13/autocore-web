@@ -5,6 +5,7 @@ import { PackageIcon } from '@/assets/icons';
 import { Badge, Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics, rhythm } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { toneBackground } from '@/theme/color-utils';
 import { isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
 import { resolveInventoryShelf } from '@/lib/inventory/resolve-shelf';
@@ -55,7 +56,7 @@ const StepperButton = memo(function StepperButton({
         backgroundColor: colors.sidebarAccent,
         borderWidth: wh.hairline,
         borderColor: colors.borderMuted,
-        opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
+        opacity: disabled ? 0.45 : pressed ? tokens.opacity.pressed : 1,
       }}
     >
       <Text variant="bodyStrong" style={{ fontSize: 18, lineHeight: 20, color: colors.foreground }}>

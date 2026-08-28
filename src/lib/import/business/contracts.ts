@@ -89,6 +89,12 @@ export type DiscoveredRow = {
    * Carries context a per-row view cannot see — a branch, a car, a date.
    */
   section: string | null;
+  /**
+   * Nested warehouse places implied by location-like headings above this row.
+   * A warehouse heading, then a box, becomes `["СКЛАД А", "КОРОБКА 1"]`.
+   * Empty when the headings are not places (a car, a batch, a date).
+   */
+  locationPath: string[];
   decision: Decision;
 };
 
@@ -168,6 +174,8 @@ export type SourceRef = {
   index: number;
   /** Section heading the row sat under, when there was one. */
   section?: string | null;
+  /** Nested warehouse places implied by headings above the row. */
+  locationPath?: string[];
 };
 
 /**
@@ -186,6 +194,8 @@ export type EntityDraft = {
   /** Stable within one import run. */
   id: string;
   kind: ImportEntityKind;
+  /** Original stock record type, when the row was one. Commit uses this to pick a writer. */
+  recordType?: RecordType;
   /** Canonical fields, each keeping its original text. */
   values: Partial<Record<CanonicalField, ImportValue>>;
   /** Every source row that contributed — more than one after resolution. */

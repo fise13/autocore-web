@@ -1,11 +1,21 @@
 /**
- * Sync error classification.
+ * Upload error classification.
  *
  * The outbox used to decide retryability by substring-matching humanised
  * English ("permission", "unauthor", /http 4\d\d/) and then *deleted the local
  * photo* for anything that matched. An expired token therefore destroyed the
  * file. Classification now happens once, on a code, and the code carries an
  * explicit `retryable` flag; deletion is never driven by it.
+ *
+ * The substring lists below are a *fast path*, never the decision. iOS hands
+ * back NSURL errors in the phone's own language — a Russian handset says
+ * "Сервер с указанным именем хоста не удалось найти" where an English one says
+ * "A server with the specified hostname could not be found" — and a yard worker
+ * saw four red "failed" photos purely because nobody had added that phrase to a
+ * list. The rule that actually decides is structural and needs no dictionary:
+ * **an error that carries no HTTP status never reached the server, so it is
+ * transport.** New phrases, new locales and new iOS releases fall into that
+ * bucket automatically.
  *
  * Pure — no React, no network, no `MobileApiError` import (that module pulls in
  * React Native and cannot load under the node test runner). Callers pass a
@@ -42,6 +52,16 @@ export type SyncErrorInfo = {
   retryable: boolean;
   /** HTTP status when the failure came from a response. */
   status?: number;
+  /**
+   * The untouched error text, kept for diagnostics only.
+   *
+   * `message` is what a person may read, and for a transport failure that is
+   * deliberately a calm sentence rather than the truth of the moment. Without
+   * this field the actual cause — a DNS miss, a torn TLS handshake — was gone
+   * the instant it was classified, which is exactly what made the localized
+   * NSURL bug so slow to find.
+   */
+  raw?: string;
   timestamp: string;
 };
 
@@ -50,6 +70,7 @@ export type ErrorLike = {
   status?: number;
   message?: string;
   name?: string;
+  code?: string | number;
 };
 
 const RETRYABLE: Record<SyncErrorCode, boolean> = {
@@ -63,38 +84,103 @@ const RETRYABLE: Record<SyncErrorCode, boolean> = {
   INVALID_REQUEST: false,
   FILE_TOO_LARGE: false,
   NOT_FOUND: false,
-  // Duplicate finalize / idempotency — retry until the server confirms synced.
+  // Duplicate finalize / idempotency — retry until the server confirms the photo.
   CONFLICT: true,
   // Session paused / Finish-before-photos — drain resume + photo order will clear it.
   PRECONDITION: true,
   FILE_MISSING: false,
   DEPLOY_REQUIRED: false,
+  // Unclassifiable *and* statusless is transport (see `classifySyncError`), so
+  // what is left here genuinely came back from a server that did not like the
+  // request. Another identical attempt will not change its mind.
   UNKNOWN: false,
 };
 
 /**
- * What the person reads. Every retryable message says the photo is safe,
- * because the single thing they care about is whether the work is lost.
+ * Failures the person is expected to see and act on.
+ *
+ * Everything else is AutoCore's problem, not the yard's. A dismantler works
+ * where the signal dies between two containers; telling them the radio is down
+ * is noise they can do nothing about, and after the third red card they stop
+ * reading all of them — including the one that mattered.
+ *
+ * So the rule is narrow: surface a failure only when a person can act on it
+ * *now*, on this phone. Photos are never lost either way — the queue keeps
+ * them and keeps trying.
+ */
+const NEEDS_PERSON: Record<SyncErrorCode, boolean> = {
+  NETWORK_UNAVAILABLE: false,
+  TIMEOUT: false,
+  SERVER_5XX: false,
+  RATE_LIMIT: false,
+  CONFLICT: false,
+  PRECONDITION: false,
+  NOT_FOUND: false,
+  UNKNOWN: false,
+  // Sign in again — the only fix is on this phone, by this person.
+  AUTH_EXPIRED: true,
+  // A wrong role: they need to ask, and no retry will help.
+  PERMISSION_DENIED: true,
+  // The bytes are gone; only a new shot brings the angle back.
+  FILE_MISSING: true,
+  FILE_TOO_LARGE: true,
+  // An operator problem, but it is silent otherwise and blocks the whole yard.
+  DEPLOY_REQUIRED: true,
+  INVALID_REQUEST: true,
+};
+
+/**
+ * What the person reads, on the rare occasion they read anything.
+ *
+ * No message here says "sync". The yard's model is simply: the photo is on the
+ * phone, and AutoCore puts it where it belongs. Naming the machinery invites
+ * them to manage it, and there is nothing for them to manage.
  */
 const USER_MESSAGE: Record<SyncErrorCode, string> = {
-  NETWORK_UNAVAILABLE: 'Saved on this iPhone. Will sync automatically when you are online.',
-  TIMEOUT: 'The upload timed out. Photos are safe on this iPhone and will retry.',
-  SERVER_5XX: 'Server temporarily unavailable. Photos are safe on this iPhone.',
-  RATE_LIMIT: 'The server is busy. Photos are safe on this iPhone and will retry shortly.',
-  AUTH_EXPIRED: 'Your session expired. Sign in again to continue syncing.',
-  PERMISSION_DENIED: 'Your role cannot upload intake photos.',
-  INVALID_REQUEST: 'The server rejected this upload. Support can see the details.',
+  NETWORK_UNAVAILABLE: 'Saved on this phone. It uploads by itself once there is signal.',
+  TIMEOUT: 'Saved on this phone. It uploads by itself once there is signal.',
+  SERVER_5XX: 'Saved on this phone. It uploads by itself in a moment.',
+  RATE_LIMIT: 'Saved on this phone. It uploads by itself in a moment.',
+  AUTH_EXPIRED: 'Sign in again to keep going. Your photos stay on this phone.',
+  PERMISSION_DENIED: 'Your role cannot add engine photos.',
+  INVALID_REQUEST: 'The server would not take this photo. Support can see why.',
   FILE_TOO_LARGE: 'This photo is too large to upload.',
   NOT_FOUND: 'This engine is no longer on the server.',
-  CONFLICT: 'This photo is already on the server. Finishing sync.',
-  PRECONDITION: 'Photos are safe on this iPhone and will retry.',
-  FILE_MISSING: 'That photo file is gone from this iPhone. Shoot it again.',
-  DEPLOY_REQUIRED: 'The upload API is missing on the server. Deploy the web app, then retry.',
-  UNKNOWN: 'Upload could not be completed. Photos are safe on this iPhone.',
+  CONFLICT: 'This photo is already on the server.',
+  PRECONDITION: 'Saved on this phone. It uploads by itself in a moment.',
+  FILE_MISSING: 'That photo is gone from this phone. Shoot the angle again.',
+  DEPLOY_REQUIRED: 'The server is missing the upload API. Ask your admin to deploy it.',
+  UNKNOWN: 'Saved on this phone. It uploads by itself in a moment.',
 };
 
 export function isRetryableSyncError(code: SyncErrorCode): boolean {
   return RETRYABLE[code];
+}
+
+/**
+ * Whether this failure is worth putting in front of the worker at all.
+ *
+ * Drives every failure surface: the camera card, the Engines banner, the OS
+ * notification. `false` means the queue handles it silently.
+ */
+export function syncErrorNeedsPerson(code: SyncErrorCode): boolean {
+  return NEEDS_PERSON[code];
+}
+
+/**
+ * A failure caused by the link, not by the request.
+ *
+ * These must never reach a terminal state: a photo that cannot be sent today
+ * is sent tomorrow, and a bay with no signal is the normal working condition
+ * here rather than an incident.
+ */
+export function isTransportSyncError(code: SyncErrorCode): boolean {
+  return (
+    code === 'NETWORK_UNAVAILABLE' ||
+    code === 'TIMEOUT' ||
+    code === 'SERVER_5XX' ||
+    code === 'RATE_LIMIT'
+  );
 }
 
 /**
@@ -144,20 +230,175 @@ export function syncErrorMessage(code: SyncErrorCode): string {
   return USER_MESSAGE[code];
 }
 
+/** Every sentence this module can produce — lets callers recognise their own copy. */
+export const SYNC_ERROR_MESSAGES: ReadonlySet<string> = new Set(Object.values(USER_MESSAGE));
+
 /**
- * `fetch` rejects with a bare TypeError when the radio is off, so offline is
- * detected from the message rather than a status.
+ * `fetch` rejects with a bare TypeError when the radio is off *or* when iOS
+ * tears the request down as the app leaves. RN prefixes that as
+ * `fetch failed: <localized NSURL error>` — on a Russian phone the body is
+ * "Сетевое соединение потеряно", which never contained the English words we
+ * used to look for, so the photo was marked FAILED.
  */
 function looksOffline(text: string): boolean {
   return (
-    text.includes('network request failed') ||
+    text.includes('fetch failed') ||
     text.includes('failed to fetch') ||
+    text.includes('network request failed') ||
     text.includes('the internet connection appears to be offline') ||
+    text.includes('the network connection was lost') ||
+    text.includes('connection was lost') ||
+    text.includes('connection lost') ||
+    // NSURLErrorCannotFindHost — a DNS miss on a yard Wi-Fi that has an IP
+    // lease but no working resolver. This is what a phone shows when it is
+    // "connected" to a router that is itself offline, which is the single most
+    // common shape of bad signal in a dismantling yard.
+    text.includes('could not be found') ||
+    text.includes('cannot find host') ||
+    text.includes('hostname could not be found') ||
+    // Russian NSURL strings, verbatim from iOS.
+    text.includes('соединение потерян') ||
+    text.includes('сетевое соединение') ||
+    text.includes('нет подключ') ||
+    text.includes('соединение с интернетом') ||
+    text.includes('не удалось найти') ||
+    text.includes('именем хоста') ||
+    text.includes('сервер не найден') ||
+    text.includes('превышено время ожидания') ||
     text.includes('offline') ||
     text.includes('econnrefused') ||
     text.includes('enotfound') ||
-    text.includes('software caused connection abort')
+    text.includes('eai_again') ||
+    text.includes('software caused connection abort') ||
+    text.includes('nsurlerror')
   );
+}
+
+/**
+ * An HTTP status the error actually carries, including one only spelled out in
+ * the message.
+ *
+ * The Storage PUT is raised by hand as `Photo upload failed (HTTP 503)` with no
+ * `status` field, so without this a perfectly ordinary 5xx from the bucket fell
+ * through to the statusless branch. That is now the transport branch, which
+ * would have been the right *outcome* by luck — but for the wrong reason, and
+ * it would have hidden a real 4xx from the bucket the same way.
+ */
+function httpStatusOf(candidate: ErrorLike): number | null {
+  if (typeof candidate.status === 'number' && Number.isFinite(candidate.status)) {
+    return candidate.status;
+  }
+  const match = /\bhttp[\s:]*(\d{3})\b/i.exec(String(candidate.message ?? ''));
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * NSURL error domain codes that mean "the link, not the request".
+ *
+ * -1001 timed out · -1003 cannot find host · -1004 cannot connect to host
+ * -1005 connection lost · -1009 not connected · -1200 / -1202 TLS failure
+ * -997 lost connection to background transfer service · -999 cancelled
+ */
+const OFFLINE_NSURL_CODES = new Set([
+  -1001, -1003, -1004, -1005, -1009, -1200, -1202, -997, -999,
+]);
+
+function errorCodeLooksOffline(code: string | number | undefined): boolean {
+  if (code == null || code === '') return false;
+  const numeric = Number(code);
+  if (Number.isFinite(numeric) && OFFLINE_NSURL_CODES.has(numeric)) return true;
+  const text = String(code).toLowerCase();
+  return text.includes('network') || text === 'unavailable';
+}
+
+/**
+ * iOS tears down in-flight JS fetch / URLSession callbacks the instant the
+ * app leaves the foreground. Those messages look like "offline" but the
+ * radios are still up — Live Activity + the background session own the PUT.
+ */
+export function isAppLifecycleTransportError(error: unknown): boolean {
+  const candidate = (error ?? {}) as ErrorLike;
+  const text = String(candidate.message ?? '').toLowerCase();
+  if (errorCodeLooksOffline(candidate.code) && Number(candidate.code) === -1005) return true;
+  if (errorCodeLooksOffline(candidate.code) && Number(candidate.code) === -999) return true;
+  if (!text) return false;
+  if (text.includes('already cancelled') || text.includes('cannot transition from cancelled')) {
+    return false;
+  }
+  return (
+    text.includes('fetch failed') ||
+    text.includes('network connection was lost') ||
+    text.includes('connection was lost') ||
+    text.includes('connection lost') ||
+    text.includes('соединение потерян') ||
+    text.includes('сетевое соединение') ||
+    text.includes('software caused connection abort') ||
+    text.includes('upload was cancelled') ||
+    text.includes('upload was canceled') ||
+    text.includes('the operation was aborted') ||
+    text.includes('cancelled') ||
+    text.includes('canceled') ||
+    text.includes('aborted') ||
+    text.includes('nsurlerrorcancelled') ||
+    text.includes('nsurlerrornetworkconnectionlost')
+  );
+}
+
+/**
+ * Leaving the app is not a radio-down. Requeue the row as `queued` instead of
+ * parking `waiting_for_network` (which painted "Waiting for connection" on
+ * the Island) or burning an attempt.
+ *
+ * iOS often tears the JS `fetch` down *before* `AppState` leaves `active`,
+ * so a connection-lost TypeError while the person is still "in" the app is
+ * still a leave-app abort — not a real outage.
+ */
+export function shouldRequeueAfterAppLeave(input: {
+  appState: string;
+  error: unknown;
+}): boolean {
+  if (isAppLifecycleTransportError(input.error)) return true;
+  if (input.appState === 'active') return false;
+  const code = classifySyncError(input.error);
+  return code === 'NETWORK_UNAVAILABLE' || code === 'TIMEOUT';
+}
+
+/** A torn-down fetch / timeout — retry, do not mark the photo failed. */
+export function isTransientTransportFailure(error: unknown): boolean {
+  if (isAppLifecycleTransportError(error)) return true;
+  const code = classifySyncError(error);
+  return code === 'NETWORK_UNAVAILABLE' || code === 'TIMEOUT';
+}
+
+/**
+ * Rows already persisted as `failed` from a leave-app TypeError (especially
+ * localized `fetch failed: …`) must go back on the queue. A dead file or a
+ * 4xx stays failed.
+ */
+export function shouldReviveFailedSyncRow(input: {
+  status: string;
+  errorInfo?: { code?: SyncErrorCode; message?: string } | null;
+  lastError?: string | null;
+}): boolean {
+  if (input.status !== 'failed') return false;
+  const stored = input.errorInfo?.code;
+  if (stored) {
+    // Anything the person cannot fix stays parked exactly as it is; every other
+    // dead row goes back on the queue.
+    //
+    // The breadth here is deliberate. Rows persist across app updates, so a row
+    // killed by a *server* bug — an endpoint that rejected a perfectly good
+    // photo — would otherwise stay dead on that phone forever, even after the
+    // fix shipped. Photos already on people's phones are the whole point of the
+    // queue; giving them one more attempt after every launch costs a request
+    // and can only ever recover work.
+    return !syncErrorNeedsPerson(stored);
+  }
+  return isTransientTransportFailure({
+    message: input.lastError ?? input.errorInfo?.message,
+  });
 }
 
 function isPreconditionMessage(text: string): boolean {
@@ -201,9 +442,12 @@ function codeFromStatus(status: number): SyncErrorCode {
 export function classifySyncError(error: unknown): SyncErrorCode {
   const candidate = (error ?? {}) as ErrorLike;
   const text = String(candidate.message ?? '').toLowerCase();
+  const status = httpStatusOf(candidate);
 
   // Message wins for cases a status cannot express.
-  if (looksOffline(text)) return 'NETWORK_UNAVAILABLE';
+  if (looksOffline(text) || errorCodeLooksOffline(candidate.code)) return 'NETWORK_UNAVAILABLE';
+  if (status === 0) return 'NETWORK_UNAVAILABLE';
+  if (isAppLifecycleTransportError(error)) return 'TIMEOUT';
   if (
     text.includes('web app needs to be deployed') ||
     text.includes('upload api is missing') ||
@@ -212,6 +456,10 @@ export function classifySyncError(error: unknown): SyncErrorCode {
   ) {
     return 'DEPLOY_REQUIRED';
   }
+  // A malformed body is a *server answer*, not a dead link — it just happens to
+  // be raised without a status. Letting it fall through to the transport branch
+  // would retry it forever at the ceiling interval.
+  if (text.includes('returned an invalid response')) return 'INVALID_REQUEST';
   if (isEmptyOrMissingFile(text)) return 'FILE_MISSING';
   if (text.includes('too large') || text.includes('25 mb')) return 'FILE_TOO_LARGE';
   if (
@@ -228,54 +476,57 @@ export function classifySyncError(error: unknown): SyncErrorCode {
     return 'TIMEOUT';
   }
 
-  if (typeof candidate.status === 'number' && Number.isFinite(candidate.status)) {
+  if (status != null) {
     // 409 body often means "already recorded" — but pause/finish preconditions
     // also use 409. Message check above already caught those.
-    return codeFromStatus(candidate.status);
+    return codeFromStatus(status);
   }
 
-  return 'UNKNOWN';
+  // No status means no server ever answered — the request died in the radio,
+  // the resolver, or the TLS handshake. Whatever iOS called it, and in whatever
+  // language, it is transport, and transport is a pause rather than a failure.
+  //
+  // This is what makes the classifier locale-proof: the substring lists above
+  // only exist to catch a *statusful* response that still describes a network
+  // problem. Anything they miss lands here and is retried, instead of turning
+  // into a red card the worker cannot act on.
+  return 'NETWORK_UNAVAILABLE';
 }
 
-/** Prefer a short, safe server/client message over the canned code copy. */
-function safeDisplayMessage(raw: string | undefined, code: SyncErrorCode): string {
-  const trimmed = raw?.trim() ?? '';
-  if (!trimmed) return syncErrorMessage(code);
-  // Never surface stacks or JSON blobs.
-  if (/stack|undefined|\[object|at\s+\S+\s+\(/i.test(trimmed)) {
-    return syncErrorMessage(code);
-  }
-  if (trimmed.length > 160) {
-    return `${trimmed.slice(0, 157)}…`;
-  }
-  // For codes with good canned copy that must reassure (offline / 5xx), keep it.
-  if (
-    code === 'NETWORK_UNAVAILABLE' ||
-    code === 'TIMEOUT' ||
-    code === 'SERVER_5XX' ||
-    code === 'RATE_LIMIT' ||
-    code === 'DEPLOY_REQUIRED' ||
-    code === 'AUTH_EXPIRED' ||
-    code === 'PERMISSION_DENIED' ||
-    code === 'FILE_MISSING' ||
-    code === 'FILE_TOO_LARGE' ||
-    code === 'CONFLICT'
-  ) {
-    return syncErrorMessage(code);
-  }
-  // INVALID_REQUEST / PRECONDITION / UNKNOWN — show the real reason.
-  return trimmed;
+/**
+ * The raw text, trimmed to something a log can hold. Never rendered.
+ *
+ * Kept apart from `message` on purpose: the previous version handed the raw
+ * string straight to the camera for `INVALID_REQUEST`, which is how a worker
+ * standing over an engine ended up reading "Invalid intake photo finalization"
+ * — a zod validation label from an API route, in a language the yard does not
+ * speak, about a photo that was already safely on the server.
+ */
+function diagnosticText(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 240 ? `${trimmed.slice(0, 237)}…` : trimmed;
 }
 
-/** Full record — user copy plus everything a developer needs in diagnostics. */
+/**
+ * Full record — the one sentence a person may read, plus everything a
+ * developer needs, kept strictly apart.
+ *
+ * `message` is always the canned copy for the code. Server prose is written for
+ * whoever wrote the endpoint, and it leaks internals, English, and HTTP
+ * vocabulary into a camera screen held in a glove.
+ */
 export function describeSyncError(error: unknown, now = new Date()): SyncErrorInfo {
   const code = classifySyncError(error);
   const candidate = (error ?? {}) as ErrorLike;
+  const raw = diagnosticText(candidate.message);
+  const status = httpStatusOf(candidate);
   return {
     code,
-    message: safeDisplayMessage(candidate.message, code),
+    message: syncErrorMessage(code),
     retryable: isRetryableSyncError(code),
-    ...(typeof candidate.status === 'number' ? { status: candidate.status } : {}),
+    ...(status != null ? { status } : {}),
+    ...(raw ? { raw } : {}),
     timestamp: now.toISOString(),
   };
 }

@@ -1,4 +1,5 @@
-import type { CanonicalField } from "../types";
+import type { CanonicalField, RecordType } from "../types";
+import { isMigrationCatalogRecordType } from "../migration-row-builders";
 import { runWithBudget } from "./ai-budget";
 import { actionFingerprint, committableActions } from "./import-plan";
 import type { EntityDraft, ImportEntityKind, ImportPlan, PlanAction } from "./contracts";
@@ -35,6 +36,9 @@ export type PlanWriters = {
   updateEngine: (existingId: string, input: EntityWriteInput) => Promise<void>;
   createInventoryItem: (input: EntityWriteInput) => Promise<string>;
   updateInventoryItem: (existingId: string, input: EntityWriteInput) => Promise<void>;
+  /** Transmissions, body parts and other unit catalogues. */
+  createSpecificRecord?: (input: EntityWriteInput) => Promise<string>;
+  updateSpecificRecord?: (existingId: string, input: EntityWriteInput) => Promise<void>;
   /** Attach a part or an engine to the donor it came off. */
   linkToDonor?: (input: { childId: string; donorId: string; kind: ImportEntityKind }) => Promise<void>;
 };
@@ -42,6 +46,7 @@ export type PlanWriters = {
 export type EntityWriteInput = {
   entityId: string;
   kind: ImportEntityKind;
+  recordType?: RecordType;
   /** Normalized values, flattened — the writer never sees the raw/normalized pair. */
   values: Partial<Record<CanonicalField, string>>;
   /** Every source row behind this record, for the audit trail. */
@@ -80,6 +85,10 @@ export type CommitPlanResult = {
   remaining: number;
 };
 
+function shouldWriteSpecific(input: EntityWriteInput): boolean {
+  return Boolean(input.recordType && isMigrationCatalogRecordType(input.recordType));
+}
+
 function flatten(entity: EntityDraft): Partial<Record<CanonicalField, string>> {
   const values: Partial<Record<CanonicalField, string>> = {};
   for (const [field, value] of Object.entries(entity.values) as Array<
@@ -110,12 +119,20 @@ async function writeAction(
       }
       return { recordId: await writers.createEngine(input), updated: false };
     case "usedPart":
-    case "stockItem":
+    case "stockItem": {
+      if (shouldWriteSpecific(input) && writers.createSpecificRecord) {
+        if (isUpdate && writers.updateSpecificRecord) {
+          await writers.updateSpecificRecord(action.existingId!, input);
+          return { recordId: action.existingId!, updated: true };
+        }
+        return { recordId: await writers.createSpecificRecord(input), updated: false };
+      }
       if (isUpdate) {
         await writers.updateInventoryItem(action.existingId!, input);
         return { recordId: action.existingId!, updated: true };
       }
       return { recordId: await writers.createInventoryItem(input), updated: false };
+    }
     default:
       // Nothing writes this kind yet. `committableActions` already filters
       // them out; this is the belt to that braces.
@@ -220,6 +237,7 @@ export async function commitImportPlan(options: CommitPlanOptions): Promise<Comm
         {
           entityId: entity.id,
           kind: entity.kind,
+          recordType: entity.recordType,
           values: flatten(entity),
           sources: entity.sources,
           fingerprint,
@@ -258,9 +276,17 @@ export async function commitImportPlan(options: CommitPlanOptions): Promise<Comm
   // reference, and there is no hurry: the next call does it.
   if (writers.linkToDonor && result.remaining === 0 && !cancelled) {
     const links = plan.relationships.filter((link) => {
+      const child = plan.entities[link.fromId];
+      if (
+        child?.recordType &&
+        isMigrationCatalogRecordType(child.recordType) &&
+        writers.createSpecificRecord
+      ) {
+        return false;
+      }
       const childId = result.recordIds[link.fromId];
       const donorId = result.recordIds[link.toId];
-      return Boolean(childId && donorId && plan.entities[link.fromId]?.kind);
+      return Boolean(childId && donorId && child?.kind);
     });
 
     await runWithBudget(

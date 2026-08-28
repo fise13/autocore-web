@@ -26,9 +26,8 @@ function node(id: string, domain: WorkspaceDomainId, subtitle: string): WorkNode
 
 const ORDERS = node('orders', 'sales', 'Work orders');
 const EARNINGS = node('earnings', 'sales', 'Shift and payouts');
-const ENGINES = node('engines', 'inventory', 'Serialized motors');
+const ENGINES = node('engines', 'inventory', 'Receive, photograph, catalog');
 const PARTS = node('parts', 'inventory', 'Inventory items');
-const INTAKE = node('intake', 'intake', 'Receive and photograph engines');
 const RECEIVING = node('receiving', 'warehouse', 'Scan and place stock');
 const LOCATIONS = node('locations', 'warehouse', 'Bins and racks');
 const DOCUMENTS = node('documents', 'operations', 'Capture and extract');
@@ -73,14 +72,14 @@ describe('isAwaitingPlacement', () => {
 describe('resolveWorkRowDetail', () => {
   it('falls back to the catalog description while counts are unknown', () => {
     const resolved = resolveWorkRowDetail(ENGINES, EMPTY_WORK_COUNTS);
-    assert.equal(resolved.detail, 'Serialized motors');
+    assert.equal(resolved.detail, 'Receive, photograph, catalog');
     assert.equal(resolved.detailKind, 'fallback');
   });
 
   it('states live inventory instead of the description', () => {
     assert.equal(
-      resolveWorkRowDetail(ENGINES, counts({ engines: { total: 248 } })).detail,
-      '248 serialized motors',
+      resolveWorkRowDetail(ENGINES, counts({ engines: { total: 248, incoming: 0, awaiting: 0 } })).detail,
+      '248 in yard',
     );
     assert.equal(
       resolveWorkRowDetail(PARTS, counts({ parts: { total: 1284, lowStock: 0 } })).detail,
@@ -144,27 +143,27 @@ describe('resolveWorkRowDetail', () => {
     assert.equal(clear.detailKind, 'clear');
   });
 
-  it('reads the intake bay by state priority', () => {
+  it('folds incoming work into the Engines row', () => {
     assert.equal(
       resolveWorkRowDetail(
-        INTAKE,
-        counts({ intake: { awaiting: 4, inProgress: 2, awaitingVerification: 1, total: 7 } }),
+        ENGINES,
+        counts({ engines: { total: 12, incoming: 3, awaiting: 4 } }),
       ).detail,
-      '4 awaiting inspection',
+      '3 incoming · 12 in yard',
     );
     assert.equal(
       resolveWorkRowDetail(
-        INTAKE,
-        counts({ intake: { awaiting: 0, inProgress: 2, awaitingVerification: 1, total: 3 } }),
+        ENGINES,
+        counts({ engines: { total: 0, incoming: 2, awaiting: 0 } }),
       ).detail,
-      '2 in progress',
+      '2 incoming',
     );
     assert.equal(
       resolveWorkRowDetail(
-        INTAKE,
-        counts({ intake: { awaiting: 0, inProgress: 0, awaitingVerification: 0, total: 5 } }),
+        ENGINES,
+        counts({ engines: { total: 0, incoming: 0, awaiting: 0 } }),
       ).detail,
-      'No engines waiting',
+      'Receive your first engine',
     );
   });
 
@@ -196,8 +195,8 @@ describe('resolveWorkRowDetail', () => {
 
   it('singularizes every live count', () => {
     assert.equal(
-      resolveWorkRowDetail(ENGINES, counts({ engines: { total: 1 } })).detail,
-      '1 serialized motor',
+      resolveWorkRowDetail(ENGINES, counts({ engines: { total: 1, incoming: 0, awaiting: 0 } })).detail,
+      '1 in yard',
     );
     assert.equal(
       resolveWorkRowDetail(PARTS, counts({ parts: { total: 1, lowStock: 0 } })).detail,
@@ -223,7 +222,6 @@ describe('resolveWorkRowDetail', () => {
 
 describe('buildWorkModel', () => {
   const grouped = [
-    { domain: 'intake' as const, title: 'Intake', nodes: [INTAKE] },
     { domain: 'inventory' as const, title: 'Inventory', nodes: [ENGINES, PARTS] },
     { domain: 'warehouse' as const, title: 'Warehouse', nodes: [RECEIVING, LOCATIONS] },
     { domain: 'sales' as const, title: 'Sales', nodes: [ORDERS, EARNINGS] },
@@ -234,7 +232,7 @@ describe('buildWorkModel', () => {
     const model = buildWorkModel(grouped, EMPTY_WORK_COUNTS);
     assert.deepEqual(
       model.sections.map((section) => section.id),
-      ['intake', 'inventory', 'warehouse', 'sales', 'operations'],
+      ['inventory', 'warehouse', 'sales', 'operations'],
     );
   });
 
@@ -243,13 +241,13 @@ describe('buildWorkModel', () => {
       grouped,
       counts({
         orders: { open: 12, attention: 2, total: 40 },
-        intake: { awaiting: 1, inProgress: 0, awaitingVerification: 0, total: 6 },
+        engines: { total: 12, incoming: 3, awaiting: 1 },
       }),
     );
 
     assert.equal(model.today.count, 3);
     assert.equal(model.today.title, 'Open work');
-    assert.equal(model.today.breakdown, '2 orders · 1 engine intake');
+    assert.equal(model.today.breakdown, '2 orders · 1 incoming');
     assert.equal(model.today.href, '/orders');
     assert.equal(model.today.segments.length, 2);
     assert.equal(model.today.segments[0]?.id, 'orders');
@@ -264,14 +262,14 @@ describe('buildWorkModel', () => {
       grouped,
       counts({
         orders: { open: 20, attention: 9, total: 40 },
-        intake: { awaiting: 7, inProgress: 0, awaitingVerification: 0, total: 9 },
+        engines: { total: 0, incoming: 9, awaiting: 7 },
         receiving: { awaitingPlacement: 5, total: 90 },
         parts: { total: 300, lowStock: 3 },
       }),
     );
 
     assert.equal(model.today.count, 24);
-    assert.equal(model.today.breakdown, '9 orders · 7 engine intakes · 5 to place');
+    assert.equal(model.today.breakdown, '9 orders · 7 incoming · 5 to place');
   });
 
   it('says nothing is waiting rather than showing a zero', () => {
@@ -320,7 +318,7 @@ describe('buildWorkModel', () => {
   it('reports bootstrapping only while every row is still on its fallback', () => {
     assert.equal(buildWorkModel(grouped, EMPTY_WORK_COUNTS).isBootstrapping, true);
     assert.equal(
-      buildWorkModel(grouped, counts({ engines: { total: 3 } })).isBootstrapping,
+      buildWorkModel(grouped, counts({ engines: { total: 3, incoming: 0, awaiting: 0 } })).isBootstrapping,
       false,
     );
     assert.equal(buildWorkModel([], EMPTY_WORK_COUNTS).isBootstrapping, false);

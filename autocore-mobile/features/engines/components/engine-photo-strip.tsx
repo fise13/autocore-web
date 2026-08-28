@@ -14,6 +14,7 @@ import { Skeleton, Text, toast } from '@/components/ui';
 import { presentNativeMenu } from '@/components/ui/native-context-menu';
 import { useTheme } from '@/hooks';
 import { haptics, spacing } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { withAlpha } from '@/theme/color-utils';
 
 import { shareEnginePhoto } from '../lib/engine-photo-file';
@@ -51,7 +52,7 @@ function PhotoTile({ url, onPress }: { url: string; onPress: () => void }) {
         backgroundColor: withAlpha(colors.muted, isDark ? 0.8 : 1),
         borderWidth: eng.hairline,
         borderColor: colors.border,
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed ? tokens.opacity.pressed : 1,
       }}
     >
       <Image

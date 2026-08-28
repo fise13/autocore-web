@@ -57,8 +57,9 @@ export function getFirebaseAuth(): FirebaseAuth.Auth {
 
 export function getFirebaseDb(): Firestore {
   if (!db) {
-    // Use default Firestore init — persistentLocalCache targets web IndexedDB and can
-    // stall listeners on React Native / Expo Go.
+    // Firestore JS persistence (IndexedDB) stalls listeners on React Native /
+    // Expo Go. Offline truth for Engine intake lives in MMKV (`engine-intake:jobs:*`
+    // + `engine-intake:detail:*`) and the local overlay / outbox — not IndexedDB.
     db = getFirestore(getFirebaseApp());
   }
   return db;

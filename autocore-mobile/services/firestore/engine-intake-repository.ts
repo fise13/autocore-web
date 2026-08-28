@@ -5,6 +5,7 @@ import {
   orderBy,
   query,
   type DocumentData,
+  type Query,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import type {
@@ -20,6 +21,7 @@ import {
   normalizeEngineIntakeProgress,
 } from '@autocore/engine-intake';
 
+import { queryDocsSignature } from '@/lib/firestore/query-docs-signature';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 
@@ -149,6 +151,50 @@ function mapReworkRequest(
   } as ReworkRequest;
 }
 
+function snapshotDocVersion(snapshot: QueryDocumentSnapshot<DocumentData>): number {
+  const data = snapshot.data() as Record<string, unknown>;
+  for (const key of ['updatedAt', 'capturedAt', 'serverAt', 'requestedAt'] as const) {
+    const value = data[key];
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    if (value && typeof value === 'object' && 'toMillis' in value) {
+      const millis = (value as { toMillis: () => number }).toMillis();
+      if (Number.isFinite(millis)) return millis;
+    }
+    if (value && typeof value === 'object' && 'seconds' in value) {
+      const seconds = Number((value as { seconds?: unknown }).seconds);
+      if (Number.isFinite(seconds)) return seconds * 1_000;
+    }
+  }
+  return 0;
+}
+
+function listenDistinctMapped<T>(
+  firestoreQuery: Query,
+  mapDoc: (snapshot: QueryDocumentSnapshot<DocumentData>) => T,
+  onData: (items: T[]) => void,
+  onError?: (error: Error) => void,
+): () => void {
+  let lastSignature = '';
+  return listenQuery(
+    firestoreQuery,
+    (snapshot) => {
+      const signature = queryDocsSignature(
+        snapshot.docs.map((docSnapshot) => ({
+          id: docSnapshot.id,
+          version: snapshotDocVersion(docSnapshot),
+        })),
+      );
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+      onData(snapshot.docs.map(mapDoc));
+    },
+    onError,
+  );
+}
+
 export function subscribeEngineIntakeJobs(
   companyId: string,
   onData: (jobs: EngineIntakeJob[]) => void,
@@ -159,11 +205,7 @@ export function subscribeEngineIntakeJobs(
     orderBy('updatedAt', 'desc'),
     limit(150),
   );
-  return listenQuery(
-    jobsQuery,
-    (snapshot) => onData(snapshot.docs.map(mapJob)),
-    onError,
-  );
+  return listenDistinctMapped(jobsQuery, mapJob, onData, onError);
 }
 
 export function subscribeEngineIntakeSessions(
@@ -177,11 +219,7 @@ export function subscribeEngineIntakeSessions(
     orderBy('startedAt', 'desc'),
     limit(30),
   );
-  return listenQuery(
-    sessionsQuery,
-    (snapshot) => onData(snapshot.docs.map(mapSession)),
-    onError,
-  );
+  return listenDistinctMapped(sessionsQuery, mapSession, onData, onError);
 }
 
 export function subscribeEngineIntakePhotos(
@@ -195,11 +233,7 @@ export function subscribeEngineIntakePhotos(
     orderBy('capturedAt', 'asc'),
     limit(200),
   );
-  return listenQuery(
-    photosQuery,
-    (snapshot) => onData(snapshot.docs.map(mapPhoto)),
-    onError,
-  );
+  return listenDistinctMapped(photosQuery, mapPhoto, onData, onError);
 }
 
 export function subscribeEngineIntakeEvents(
@@ -213,11 +247,7 @@ export function subscribeEngineIntakeEvents(
     orderBy('serverAt', 'desc'),
     limit(100),
   );
-  return listenQuery(
-    eventsQuery,
-    (snapshot) => onData(snapshot.docs.map(mapEvent)),
-    onError,
-  );
+  return listenDistinctMapped(eventsQuery, mapEvent, onData, onError);
 }
 
 export function subscribeEngineIntakeReworkRequests(
@@ -238,11 +268,7 @@ export function subscribeEngineIntakeReworkRequests(
     orderBy('requestedAt', 'desc'),
     limit(20),
   );
-  return listenQuery(
-    requestsQuery,
-    (snapshot) => onData(snapshot.docs.map(mapReworkRequest)),
-    onError,
-  );
+  return listenDistinctMapped(requestsQuery, mapReworkRequest, onData, onError);
 }
 
 export function engineIntakeJobDocument(companyId: string, jobId: string) {

@@ -39,6 +39,11 @@ export {
   type CatalogRowPosition,
   type CatalogRowProps,
 } from './catalog-list';
+export {
+  CATALOG_NAV_BAR_ROW,
+  CatalogNavBar,
+  useCatalogNavBarHeight,
+} from './catalog-nav-bar';
 export { ListRow } from './list-row';
 export {
   CollectionList,
@@ -66,6 +71,8 @@ export { DashboardCard } from './dashboard-card';
 export { FormField, FormHelper, FormLabel, FormStack } from './form';
 export { FormPanel } from './form-panel';
 export { AutocompleteInput } from './autocomplete-input';
+export { AutocompleteDock } from '../autocomplete/autocomplete-dock';
+export { AutocompleteChip } from '../autocomplete/autocomplete-chip';
 export { InlineAutocomplete, InlineAutocompleteEmpty } from '../autocomplete/inline-autocomplete';
 export { InlineAutocompleteRow } from '../autocomplete/inline-autocomplete-row';
 export { Input } from './input';

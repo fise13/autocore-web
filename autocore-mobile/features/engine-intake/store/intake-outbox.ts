@@ -1,21 +1,37 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { Platform } from 'react-native';
-import { Directory, File, Paths, UploadType } from 'expo-file-system';
+import { AppState, Platform } from 'react-native';
+import { Directory, File, Paths, UploadTask, UploadType } from 'expo-file-system';
 import type {
   EngineIntakeCommand,
   EngineIntakeCommandResult,
   IntakePhotoCategory,
   PrepareIntakePhotoRequest,
-  PrepareIntakePhotoResponse,
 } from '@autocore/engine-intake';
 
 import { MobileApiError } from '@/services/api/mobile-client';
+import { beginBackgroundExecution } from '@/lib/offline/background-execution';
 import { getJson, setJson } from '@/lib/storage/kv';
 import { engineIntakeId, getEngineIntakeDeviceId, getEngineIntakeDeviceName } from '../lib/device';
 import { commandFailureAbortsDrainWave, orderIntakeDrainWork } from '../lib/intake-drain-order';
-import { normalizeIntakePhotoPayload } from '../lib/intake-photo-payload';
+import {
+  LEAVE_INFLIGHT_PREPARE_WAIT_MS,
+  orderLeaveAppPhotoWork,
+  photoIsLeaveDrainWork,
+  photoNeedsLiveRuntime,
+  shouldContinueLeaveAppDrain,
+  shouldRunLeaveAppDrain,
+  shouldWaitForLeaveInflightPrepares,
+} from '../lib/leave-app-drain';
+import { fileNameForIntakePhoto, normalizeIntakePhotoPayload } from '../lib/intake-photo-payload';
 import { optimizeIntakePhotoFile } from '../lib/optimize-intake-photo';
 import { resolvePhotoUploadSession } from '../lib/photo-upload-session';
+import { resolvePreparedPhotoStep } from '../lib/prepared-photo-step';
+import {
+  isPreparedUploadUsable,
+  preparedUploadExpiresAt,
+  withPreparedUploadDefaults,
+  type PreparedIntakeUpload,
+} from '../lib/prepared-upload';
 import {
   isClaimGoneError,
   isClaimHeldByOtherMessage,
@@ -24,8 +40,9 @@ import {
 import {
   mapPool,
   PHOTO_UPLOAD_CONCURRENCY,
+  withPhotoUploadSlot,
 } from '../lib/intake-upload-pool';
-import { describeSyncError, isBenignCancelError, isBenignFieldCompleteError, isIdempotentPhotoSuccess, type SyncErrorInfo } from '../lib/sync-errors';
+import { classifySyncError, describeSyncError, isBenignCancelError, isBenignFieldCompleteError, isIdempotentPhotoSuccess, isTransportSyncError, shouldRequeueAfterAppLeave, shouldReviveFailedSyncRow, syncErrorMessage, syncErrorNeedsPerson, SYNC_ERROR_MESSAGES, type SyncErrorInfo } from '../lib/sync-errors';
 import {
   isJobRunnable,
   reconcileOnLaunch,
@@ -90,6 +107,27 @@ export type IntakeOutboxPhoto = {
   category: IntakePhotoCategory;
   localUri: string;
   capturedAt: string;
+  /**
+   * The server's photo id, once `prepare` has minted one.
+   *
+   * The server starts counting a photo at `prepare`, long before its bytes
+   * arrive, so without this the phone had no way to tell which of its rows the
+   * job document already included — and every screen that added the two
+   * together over-reported the shoot. Persisted, so a relaunch mid-upload does
+   * not lose the fact.
+   */
+  serverPhotoId: string | null;
+  /**
+   * What `prepare` handed back, so a PUT can be started without asking again.
+   *
+   * This is the whole reason a photo can reach Firebase while the person is
+   * away: handing bytes to the background URLSession is the only step that
+   * outlives the JS runtime, and until these credentials were persisted it
+   * could not happen without a live round-trip first.
+   */
+  prepared: PreparedIntakeUpload | null;
+  /** When the bytes were handed to the background URLSession (ISO). */
+  putStartedAt: string | null;
   /** @deprecated Mirror of `status` — read `status`. */
   state: 'pending' | 'syncing' | 'failed';
   /** @deprecated Mirror of `attemptCount`. */
@@ -135,14 +173,36 @@ function upgradeRow<T extends LegacyRow>(row: T): T & SyncJobFields {
   } as T & SyncJobFields;
 }
 
+function reviveIfTransient<T extends { status: SyncJobStatus; nextRetryAt?: string | null; errorInfo: SyncErrorInfo | null; lastError?: string | null }>(
+  row: T,
+): T {
+  if (
+    !shouldReviveFailedSyncRow({
+      status: row.status,
+      errorInfo: row.errorInfo,
+      lastError: row.lastError ?? null,
+    })
+  ) {
+    return row;
+  }
+  return { ...row, status: 'queued', nextRetryAt: null, errorInfo: null };
+}
+
 function loadPersisted(): PersistedOutbox {
   const current = getJson<PersistedOutbox>(STORAGE_KEY);
   const source = current ?? getJson<PersistedOutbox>(LEGACY_STORAGE_KEY) ?? { commands: [], photos: [] };
   return {
     // Launch reconcile: a row left `uploading` means the process died holding
     // it. That is not a failure and the file is still on disk — requeue it.
-    commands: reconcileOnLaunch((source.commands ?? []).map(upgradeRow)),
-    photos: reconcileOnLaunch((source.photos ?? []).map(upgradeRow)),
+    // Localized leave-app `fetch failed` used to land as UNKNOWN/failed.
+    commands: reconcileOnLaunch((source.commands ?? []).map(upgradeRow)).map(reviveIfTransient),
+    photos: reconcileOnLaunch((source.photos ?? []).map(upgradeRow))
+      .map(reviveIfTransient)
+      // Rows written before `serverPhotoId` existed: unknown, not "never
+      // prepared". Their next attempt fills it in, and until then counting them
+      // is the safe direction to be wrong in.
+      .map((row) => (row.serverPhotoId === undefined ? { ...row, serverPhotoId: null } : row))
+      .map(withPreparedUploadDefaults),
   };
 }
 
@@ -163,6 +223,9 @@ let sessionTotal = 0;
 let snapshot = buildSnapshot();
 const listeners = new Set<() => void>();
 let drainPromise: Promise<void> | null = null;
+/** A drain requested while one is running — retry once so leave-app fetch
+ *  failures that requeued as `queued` get a second pass on background time. */
+let drainAgain = false;
 
 function isNoiseCommand(command: EngineIntakeCommand): boolean {
   return command.type === 'heartbeat_session';
@@ -175,30 +238,65 @@ function isConflictPhoto(photo: IntakeOutboxPhoto): boolean {
 }
 
 function countPendingCommands(list: IntakeOutboxCommand[]): number {
-  return list.filter((item) => item.state !== 'failed' && !isNoiseCommand(item.command)).length;
-}
-
-function countPhotoPending(list: IntakeOutboxPhoto[]): number {
   return list.filter(
-    (item) =>
-      item.status !== 'failed' &&
-      item.status !== 'completed' &&
-      item.state !== 'failed' &&
-      !isConflictPhoto(item),
+    (item) => !commandNeedsPerson(item) && !isNoiseCommand(item.command),
   ).length;
 }
 
+/** Same rule as photos: only a person-blocking command counts as a failure. */
+function commandNeedsPerson(item: IntakeOutboxCommand): boolean {
+  if (item.status !== 'failed') return false;
+  const code = item.errorInfo?.code;
+  return code ? syncErrorNeedsPerson(code) : false;
+}
+
+function countFailedCommands(list: IntakeOutboxCommand[]): number {
+  return list.filter((item) => commandNeedsPerson(item) && !isNoiseCommand(item.command)).length;
+}
+
+/**
+ * A photo the queue is still working on.
+ *
+ * A row parked by a dead link counts here, not as a failure: from the yard's
+ * point of view nothing has gone wrong, the photo is simply not on the server
+ * yet, and it will be. Only a row waiting on a *person* leaves this count.
+ */
+function countPhotoPending(list: IntakeOutboxPhoto[]): number {
+  return list.filter(
+    (item) => item.status !== 'completed' && !isConflictPhoto(item) && !photoNeedsPerson(item),
+  ).length;
+}
+
+/**
+ * A photo that will not move until someone does something about it.
+ *
+ * Deliberately *not* "status === failed". The queue parks rows for reasons the
+ * worker has no part in — no signal, a busy server, a claim that has to be
+ * retaken — and every one of those used to light up the camera with a red
+ * "4 failed" pill over an engine the person had photographed perfectly well.
+ */
+export function photoNeedsPersonRow(item: IntakeOutboxPhoto): boolean {
+  return photoNeedsPerson(item);
+}
+
+function photoNeedsPerson(item: IntakeOutboxPhoto): boolean {
+  if (item.status !== 'failed') return false;
+  if (isConflictPhoto(item)) return false;
+  const code = item.errorInfo?.code;
+  // No stored code means a row from an older build; treat it as still working
+  // rather than as a failure — the launch revive puts it back on the queue.
+  return code ? syncErrorNeedsPerson(code) : false;
+}
+
 function countPhotoFailed(list: IntakeOutboxPhoto[]): number {
-  return list.filter((item) => item.state === 'failed' && !isConflictPhoto(item)).length;
+  return list.filter(photoNeedsPerson).length;
 }
 
 function buildSnapshot(): IntakeOutboxSnapshot {
   const photoPendingCount = countPhotoPending(photos);
   const photoFailedCount = countPhotoFailed(photos);
   const pendingCount = countPendingCommands(commands) + photoPendingCount;
-  const failedCount =
-    commands.filter((item) => item.state === 'failed' && !isNoiseCommand(item.command)).length +
-    photoFailedCount;
+  const failedCount = countFailedCommands(commands) + photoFailedCount;
   return {
     commands,
     photos,
@@ -234,12 +332,13 @@ function mirror<T extends SyncJobFields & { state: unknown; attempts: number; la
   return { ...row, state, attempts: row.attemptCount, lastError };
 }
 
-function publish(): void {
+function publish(): boolean {
   commands = commands.map(mirror);
   photos = photos.map(mirror);
-  setJson(STORAGE_KEY, { commands, photos });
+  const persisted = setJson(STORAGE_KEY, { commands, photos });
   snapshot = buildSnapshot();
   for (const listener of listeners) listener();
+  return persisted;
 }
 
 /** Serialize outbox mutations while photo PUTs run in parallel. */
@@ -254,47 +353,23 @@ function withOutboxMutation<T>(fn: () => T): Promise<T> {
   return run;
 }
 
-/** Short, actionable copy for camera / Warehouse sync failures. */
+/**
+ * One calm sentence for a failure the worker is actually being shown.
+ *
+ * This used to be a second, independent humaniser sitting on top of
+ * `describeSyncError` — a parallel list of substrings with its own opinions,
+ * its own English-only matching, and its own fallbacks. Where the two lists
+ * disagreed the camera and the Engines banner told the worker different stories
+ * about the same photo. `describeSyncError` now produces the only sentence, so
+ * this is the thin adapter for the places that still hold a bare string.
+ */
 export function humanizeIntakeOutboxError(message: string | null | undefined): string {
-  if (!message?.trim()) return 'Could not sync. Try again.';
-  const normalized = message.trim();
-  const lower = normalized.toLowerCase();
-
-  if (
-    lower.includes('web app needs to be deployed') ||
-    lower.includes('api not found') ||
-    lower.includes('returned html instead of json')
-  ) {
-    return 'Upload API is missing on the server. Deploy the web app, then retry.';
-  }
-  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('offline')) {
-    return 'No connection. Photos stay on this phone until you are online.';
-  }
-  if (lower.includes('authorization') || lower.includes('unauthor') || lower.includes('401')) {
-    return 'Sign-in expired. Open the app again, then retry.';
-  }
-  if (lower.includes('permission') || lower.includes('403')) {
-    return 'Your role cannot upload intake photos.';
-  }
-  if (
-    lower.includes('confirm the physical engine identity') ||
-    lower.includes('identity before taking photos')
-  ) {
-    return 'Outdated server check blocked upload. Redeploy web, then retry.';
-  }
-  if (lower.includes('local photo is missing') || lower.includes('retake')) {
-    return 'That photo file is gone. Shoot it again.';
-  }
-  if (lower.includes('empty')) {
-    return 'That photo was empty. Shoot it again.';
-  }
-  if (lower.includes('http 5') || lower.includes('server error')) {
-    return 'Server error. Photos stay on this phone — retry in a moment.';
-  }
-  if (normalized.length > 160) {
-    return `${normalized.slice(0, 157)}…`;
-  }
-  return normalized;
+  const normalized = message?.trim();
+  if (!normalized) return syncErrorMessage('UNKNOWN');
+  // Already one of ours — `describeSyncError` writes the canned copy into the
+  // row, so this is the ordinary path and there is nothing left to translate.
+  if (SYNC_ERROR_MESSAGES.has(normalized)) return normalized;
+  return syncErrorMessage(classifySyncError({ message: normalized }));
 }
 
 function isTerminalError(error: unknown): boolean {
@@ -343,6 +418,22 @@ function getSnapshot(): IntakeOutboxSnapshot {
 export const subscribeIntakeOutbox = subscribe;
 export const getIntakeOutboxSnapshot = getSnapshot;
 
+/** Company-scoped snapshot for Live Activity / widgets (no React). */
+export function getCompanyIntakeOutboxSnapshot(companyId: string): IntakeOutboxSnapshot {
+  return snapshotForCompanyCached(getSnapshot(), companyId);
+}
+
+function dropQueuedPauseForSession(sessionId: string, publishNow: boolean): void {
+  const next = commands.filter(
+    (item) =>
+      item.command.type !== 'pause_session' ||
+      item.command.payload.sessionId !== sessionId,
+  );
+  if (next.length === commands.length) return;
+  commands = next;
+  if (publishNow) publish();
+}
+
 export function enqueueIntakeCommand(
   companyId: string,
   command: EngineIntakeCommand,
@@ -360,6 +451,16 @@ export function enqueueIntakeCommand(
         item.command.type !== 'heartbeat_session' ||
         item.command.payload.sessionId !== command.payload.sessionId,
     );
+  }
+  if (command.type === 'pause_session') {
+    commands = commands.filter(
+      (item) =>
+        item.command.type !== 'pause_session' ||
+        item.command.payload.sessionId !== command.payload.sessionId,
+    );
+  }
+  if (command.type === 'resume_session') {
+    dropQueuedPauseForSession(command.payload.sessionId, false);
   }
   if (command.type === 'field_complete') {
     const finishJobId = command.payload.jobId;
@@ -430,7 +531,11 @@ export function saveIntakePhotoLocally(input: {
   try {
     source.moveSync(destination);
   } catch {
-    source.copySync(destination);
+    try {
+      source.copySync(destination);
+    } catch {
+      throw new Error('Storage full — this photo could not be saved on the phone');
+    }
   }
 
   const item: IntakeOutboxPhoto = {
@@ -443,6 +548,9 @@ export function saveIntakePhotoLocally(input: {
     category: input.category,
     localUri: destination.uri,
     capturedAt: new Date().toISOString(),
+    serverPhotoId: null,
+    prepared: null,
+    putStartedAt: null,
     state: 'pending',
     attempts: 0,
     lastError: null,
@@ -454,6 +562,12 @@ export function saveIntakePhotoLocally(input: {
     updatedAt: new Date().toISOString(),
   };
   photos = [...photos, item];
+  // Freeze the Island denominator on shutter, not on the next drain pass.
+  // Drain used to skip in-flight primes, reset the wave, and paint `0/2`.
+  sessionTotal = Math.max(sessionTotal, syncedCount + countPhotoPending(photos));
+  // Hold JS now — `willResignActive` can lose the race to a lock-the-phone
+  // swipe that lands before the AppState handler runs.
+  beginBackgroundExecution('intake-sync');
   // The shot is durable and queued as of the line above — that guarantee is
   // never traded for bandwidth. Shrinking it is a best-effort improvement
   // afterwards, and it only lands while the row is still waiting its turn.
@@ -466,26 +580,46 @@ export function saveIntakePhotoLocally(input: {
       candidate.command.type !== 'pause_session' ||
       candidate.command.payload.sessionId !== input.sessionId,
   );
-  publish();
+  if (!publish()) {
+    throw new Error('Storage full — the photo is on disk but the upload queue could not be saved');
+  }
+  // Do not wait for the next drain wave to reach this row. A wave is bounded,
+  // and on a twelve-shot bay walk the last photos used to sit untouched until
+  // the person had already swiped the app away — so their bytes were still on
+  // the phone when the JS runtime died. Priming here means the ordinary case
+  // is "the PUT is already the daemon's problem before anybody leaves".
+  void primeAndStartUpload(id);
   return item;
 }
 
 /**
  * Re-encode a queued photo in place, if the compression policy says it is
- * worth it and the upload has not already started.
+ * worth it and the upload has not already opened the file.
  *
- * Bails the moment the row is anything but `queued`: replacing the file under
- * a running background URLSession task would upload one image and finalize
- * against the size of another.
+ * `uploading` is still safe: `transferPhoto` awaits this promise before PUT.
+ * Skipping the URI write after a WebP rename left the outbox pointing at a
+ * JPEG that this function had already deleted.
  */
 async function optimizeQueuedPhoto(photoId: string): Promise<void> {
   const queued = photos.find((item) => item.id === photoId);
   if (!queued) return;
+  if (queued.status === 'failed' || queued.status === 'completed') return;
   const outcome = await optimizeIntakePhotoFile(queued.localUri);
   if (!outcome.changed) return;
-  if (!photos.some((item) => item.id === photoId)) return;
+  const live = photos.find((item) => item.id === photoId);
+  if (!live) return;
+  if (live.status === 'failed' || live.status === 'completed') return;
+  // `uploading` is allowed: transferPhoto awaits this promise before PUT, so
+  // the URLSession has not opened the file yet. Skipping the URI write here
+  // left the outbox pointing at a JPEG that compression already deleted.
   photos = photos.map((item) =>
-    item.id === photoId ? { ...item, updatedAt: new Date().toISOString() } : item,
+    item.id === photoId
+      ? {
+          ...item,
+          localUri: outcome.localUri,
+          updatedAt: new Date().toISOString(),
+        }
+      : item,
   );
   publish();
 }
@@ -531,7 +665,7 @@ function prepareRequest(
     deviceId: item.deviceId,
     requirementId: item.requirementId,
     category: item.category,
-    fileName: `${item.id}.jpg`,
+    fileName: fileNameForIntakePhoto(item.id, item.localUri),
     contentType,
     sizeBytes,
     capturedAt: item.capturedAt,
@@ -544,48 +678,142 @@ function prepareRequest(
  * `resolvePhotoUploadSession` for why the session is never chosen from
  * `AppState` any more.
  *
+ * The `UploadTask` SharedObject MUST stay reachable for the whole PUT.
+ * `file.upload()` creates a task, starts it, and drops the only JS
+ * reference — Hermes then releases the native handle, `sharedObjectWillRelease`
+ * cancels the URLSession, and leaving the app looks like a dropped
+ * connection. Holding the task in this map is what lets Live Activity +
+ * the background session actually finish the transfer.
+ *
  * Progress is reported to the caller rather than kept native-side, so the
  * persistent queue owns the state and the UI merely reads it.
  */
-async function putPhotoBytes(
+type HeldPhotoPut = {
+  task: UploadTask;
+  done: Promise<void>;
+};
+
+const heldPhotoPuts = new Map<string, HeldPhotoPut>();
+/** Photos whose PUT is already running — a second drain must not start another. */
+const inflightPhotoIds = new Set<string>();
+/** PUT finished (or skipped) and finalize/settle is still running. */
+const closingPhotoIds = new Set<string>();
+
+function beginPhotoPut(
+  photoId: string,
   file: File,
   uploadUrl: string,
   contentType: string,
   onProgress?: (progress: { bytesSent: number; totalBytes: number }) => void,
 ): Promise<void> {
-  const result = await file.upload(uploadUrl, {
+  const existing = heldPhotoPuts.get(photoId);
+  if (existing) return existing.done;
+
+  let announced = false;
+  const announceStarted = () => {
+    if (announced) return;
+    announced = true;
+    void notePutStarted(photoId);
+  };
+
+  const task = file.createUploadTask(uploadUrl, {
     httpMethod: 'PUT',
     uploadType: UploadType.BINARY_CONTENT,
     headers: { 'Content-Type': contentType },
     mimeType: contentType,
     sessionType: resolvePhotoUploadSession(Platform.OS),
-    ...(onProgress
-      ? {
-          onProgress: (data: { bytesSent: number; totalBytes: number }) =>
-            onProgress({ bytesSent: data.bytesSent, totalBytes: data.totalBytes }),
-        }
-      : {}),
+    onProgress: (data: { bytesSent: number; totalBytes: number }) => {
+      // First byte on the wire — not the JS call that *asked* for a PUT — is
+      // when the daemon actually owns this photo. Marking earlier let leave
+      // skip the row and freeze JS before native `resume()` ran.
+      announceStarted();
+      onProgress?.({ bytesSent: data.bytesSent, totalBytes: data.totalBytes });
+    },
   });
-  if (result.status < 200 || result.status >= 300) {
-    throw new Error(`Photo upload failed (HTTP ${result.status})`);
+  const done = (async () => {
+    try {
+      const result = await task.uploadAsync();
+      announceStarted();
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error(`Photo upload failed (HTTP ${result.status})`);
+      }
+    } finally {
+      heldPhotoPuts.delete(photoId);
+      clearIntakeUploadProgress(photoId);
+    }
+  })();
+  heldPhotoPuts.set(photoId, { task, done });
+  return done;
+}
+
+function isPhotoTransferOwned(photoId: string): boolean {
+  return (
+    inflightPhotoIds.has(photoId) ||
+    heldPhotoPuts.has(photoId) ||
+    closingPhotoIds.has(photoId)
+  );
+}
+
+function countInflightPrepares(): number {
+  let count = 0;
+  for (const id of inflightPhotoIds) {
+    if (!heldPhotoPuts.has(id)) count += 1;
   }
+  return count;
+}
+
+const inflightPrepareIdleWaiters = new Set<() => void>();
+
+function notifyInflightPrepareIdle(): void {
+  if (countInflightPrepares() > 0) return;
+  const waiters = [...inflightPrepareIdleWaiters];
+  inflightPrepareIdleWaiters.clear();
+  for (const waiter of waiters) waiter();
+}
+
+function waitForInflightPrepares(ms: number): Promise<void> {
+  if (countInflightPrepares() === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      inflightPrepareIdleWaiters.delete(finish);
+      if (timer) clearTimeout(timer);
+      resolve();
+    };
+    timer = setTimeout(finish, ms);
+    inflightPrepareIdleWaiters.add(finish);
+  });
+}
+
+/** Pending, blocked, preparing, or already handed to the daemon — keep the wave. */
+function companyWaveStillOpen(companyId: string): boolean {
+  for (const item of photos) {
+    if (item.companyId !== companyId) continue;
+    if (heldPhotoPuts.has(item.id) || inflightPhotoIds.has(item.id) || closingPhotoIds.has(item.id)) {
+      return true;
+    }
+    if (countPhotoPending([item]) > 0 || countPhotoFailed([item]) > 0) return true;
+  }
+  return false;
 }
 
 async function finalizePreparedPhoto(
   item: IntakeOutboxPhoto,
-  prepared: PrepareIntakePhotoResponse,
-  sizeBytes: number,
+  prepared: PreparedIntakeUpload,
 ): Promise<{ photoId: string; url: string; aiInspectionId: string }> {
   return finalizeEngineIntakePhoto({
     jobId: item.jobId,
     sessionId: item.sessionId,
-    photoId: prepared.photoId,
+    photoId: prepared.serverPhotoId,
     idempotencyKey: `${item.id}:finalize`,
     deviceId: item.deviceId,
     storagePath: prepared.storagePath,
     downloadToken: prepared.downloadToken,
     contentType: prepared.contentType,
-    sizeBytes,
+    sizeBytes: prepared.sizeBytes,
   });
 }
 
@@ -738,22 +966,26 @@ async function reclaimJobSession(input: {
   return sessionId;
 }
 
-async function ensureSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<void> {
-  try {
-    await sendEngineIntakeCommand({
-      type: 'resume_session',
-      idempotencyKey: engineIntakeId('resume-upload'),
-      client: 'mobile',
-      deviceId: item.deviceId,
-      payload: { jobId: item.jobId, sessionId: item.sessionId },
-    });
-    return;
-  } catch (error) {
-    if (!isClaimGoneError(error)) {
-      // Already active / transient — let prepare decide.
-      return;
-    }
-  }
+/**
+ * Take the bay back so a photo can be uploaded — the last resort, not the norm.
+ *
+ * This used to run *ahead of every wave*, as a `resume_session` for each job
+ * followed by a reclaim when the session was gone. Both halves were wrong.
+ * The resume bought nothing: the server has always accepted uploads into a
+ * paused session, because upload is transport. And the reclaim was actively
+ * destructive — `claim_job` moves a job from `awaiting_verification` back to
+ * `in_session`, so one straggling photo silently pulled a finished engine off
+ * the reviewer's Ready list, with no Finish left in the queue to put it back.
+ *
+ * The server now accepts late photos on its own (`canAcceptIntakePhotoUpload`),
+ * so this runs only when an upload genuinely reports a dead claim, and only
+ * while the job still has capture work outstanding.
+ */
+async function recoverSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<void> {
+  // Finish already landed for this job: whatever the server objected to, it was
+  // not a claim this photo is entitled to retake. Reclaiming here is exactly
+  // what would undo the worker's Finish.
+  if (!jobHasFinishPending(item.companyId, item.jobId)) return;
 
   try {
     await reclaimJobSession({
@@ -765,7 +997,7 @@ async function ensureSessionForPhotoUpload(item: IntakeOutboxPhoto): Promise<voi
     if (isClaimHeldByOtherMessage(error instanceof Error ? error.message : String(error))) {
       throw error;
     }
-    // Last resort: prepare may still succeed if claim came back.
+    // Last resort: prepare may still succeed if the claim came back.
   }
 }
 
@@ -828,11 +1060,26 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
       // Server still has zero photos — put retained files back on the wire.
       requeueSettledPhotos(companyId, jobId);
     }
+    if (
+      shouldRequeueAfterAppLeave({
+        appState: String(AppState.currentState),
+        error,
+      })
+    ) {
+      updateCommand(pending.id, {
+        status: 'queued',
+        attemptCount: pending.attemptCount,
+        nextRetryAt: null,
+        errorInfo: null,
+      });
+      return;
+    }
     const info = describeSyncError(error);
     const transition = resolveFailureTransition({
       attemptCount: pending.attemptCount + 1,
       retryable: info.retryable || isNeedsPhotoFinishError(error),
       offline: info.code === 'NETWORK_UNAVAILABLE',
+      transport: isTransportSyncError(info.code),
     });
     updateCommand(pending.id, {
       status: transition.status,
@@ -851,17 +1098,95 @@ async function sendQueuedFieldComplete(companyId: string, jobId: string): Promis
  * under `withOutboxMutation` so parallel PUTs cannot clobber each other.
  * Resolves only when the server confirms a photo URL.
  */
-async function transferPhoto(item: IntakeOutboxPhoto): Promise<{ url: string }> {
+/**
+ * Record the server photo id the moment `prepare` returns it.
+ *
+ * Goes through the mutation gate like every other row write: four uploads run
+ * in parallel, and each `photos.map` rebuilds the whole array from the snapshot
+ * it captured, so an ungated write here would silently drop a sibling's status.
+ */
+async function notePreparedPhoto(
+  photoId: string,
+  serverPhotoId: string,
+  prepared: PreparedIntakeUpload | null,
+): Promise<void> {
+  if (!serverPhotoId) return;
+  await withOutboxMutation(() => {
+    let touched = false;
+    const next = photos.map((item) => {
+      if (item.id !== photoId) return item;
+      if (item.serverPhotoId === serverPhotoId && item.prepared === prepared) return item;
+      touched = true;
+      return {
+        ...item,
+        serverPhotoId,
+        prepared,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+    if (!touched) return;
+    photos = next;
+    publish();
+  });
+}
+
+/**
+ * Record that the bytes are the daemon's problem now.
+ *
+ * Persisted rather than held in memory because the point of the flag is to
+ * survive the runtime that set it: on the next wake it is what tells the queue
+ * that this photo's next question is "did the object land?" rather than "send
+ * it again".
+ */
+async function notePutStarted(photoId: string): Promise<void> {
+  await withOutboxMutation(() => {
+    let touched = false;
+    const startedAt = new Date().toISOString();
+    const next = photos.map((item) => {
+      if (item.id !== photoId) return item;
+      touched = true;
+      return { ...item, putStartedAt: startedAt, updatedAt: startedAt };
+    });
+    if (!touched) return;
+    photos = next;
+    publish();
+  });
+}
+
+type PrimedPhoto =
+  /** Nothing left to do — the server already holds a finished photo. */
+  | { step: 'settle'; url: string }
+  /** Bytes are in the bucket; only the Firestore row is outstanding. */
+  | { step: 'finalize'; prepared: PreparedIntakeUpload }
+  /** Send the bytes. */
+  | { step: 'upload'; file: File; prepared: PreparedIntakeUpload };
+
+/**
+ * Step 1 — make a photo ready for the daemon: optimize, measure, prepare.
+ *
+ * Credentials already on the row are reused while their signed URL is good and
+ * the bytes have not been sent, which is what turns the leave window into pure
+ * PUT time. Once a PUT has been attempted the server has to be asked again:
+ * only it can say whether the object landed, and `prepare` answers that with
+ * `alreadyUploaded` instead of making the worker pay for the file twice.
+ */
+async function primePhoto(item: IntakeOutboxPhoto): Promise<PrimedPhoto> {
   // The bytes must be final before they are measured or sent — a re-encode
   // landing mid-flight would upload one image and finalize against the size
   // of another.
   await awaitPhotoOptimization(item.id);
-  const file = new File(item.localUri);
+  const latest = photos.find((candidate) => candidate.id === item.id) ?? item;
+  const file = new File(latest.localUri);
   if (!file.exists) {
     throw new MobileApiError('Local photo is missing. Retake this angle.', 410);
   }
+
+  if (!latest.putStartedAt && isPreparedUploadUsable(latest.prepared, new Date())) {
+    return { step: 'upload', file, prepared: latest.prepared! };
+  }
+
   const normalized = normalizeIntakePhotoPayload({
-    localUri: item.localUri,
+    localUri: latest.localUri,
     mimeType: file.type,
     sizeBytes: file.size,
   });
@@ -870,33 +1195,300 @@ async function transferPhoto(item: IntakeOutboxPhoto): Promise<{ url: string }> 
     throw new MobileApiError(normalized.error.message, status);
   }
   const { contentType, sizeBytes } = normalized.value;
-  const prepared = await prepareEngineIntakePhoto(prepareRequest(item, contentType, sizeBytes));
-  if (!prepared.alreadyUploaded) {
-    if (!prepared.uploadUrl) {
-      throw new MobileApiError('Photo upload URL was missing from the server.', 502);
-    }
-    try {
-      await putPhotoBytes(file, prepared.uploadUrl, prepared.contentType, (bytes) =>
-        setIntakeUploadProgress(item.id, bytes),
-      );
-    } finally {
-      // Live bytes are meaningless once the transfer settles, either way.
-      clearIntakeUploadProgress(item.id);
-    }
+  const response = await prepareEngineIntakePhoto(
+    prepareRequest(latest, contentType, sizeBytes),
+  );
+  const next = resolvePreparedPhotoStep(response);
+  const prepared: PreparedIntakeUpload = {
+    serverPhotoId: response.photoId,
+    uploadUrl: response.uploadUrl,
+    storagePath: response.storagePath,
+    downloadToken: response.downloadToken,
+    contentType: response.contentType,
+    sizeBytes,
+    url: response.url ?? '',
+    expiresAt: preparedUploadExpiresAt(new Date()),
+  };
+  // The job document counts this shot from here on; the phone must stop
+  // counting it a second time.
+  await notePreparedPhoto(item.id, response.photoId, next.step === 'settle' ? null : prepared);
+
+  if (next.step === 'settle') return { step: 'settle', url: next.url };
+  if (next.step === 'finalize') return { step: 'finalize', prepared };
+  return { step: 'upload', file, prepared };
+}
+
+/** Step 2 — hand the bytes to the iOS background URLSession. Does not wait for them. */
+async function startPreparedPut(
+  item: IntakeOutboxPhoto,
+  file: File,
+  prepared: PreparedIntakeUpload,
+): Promise<{ bytes: Promise<void> }> {
+  if (!prepared.uploadUrl) {
+    throw new MobileApiError('Photo upload URL was missing from the server.', 502);
   }
+  return {
+    bytes: beginPhotoPut(item.id, file, prepared.uploadUrl, prepared.contentType, (progress) =>
+      setIntakeUploadProgress(item.id, progress),
+    ),
+  };
+}
+
+/**
+ * Step 3 — close the Firestore row, or accept that it is already closed.
+ *
+ * The server's Storage trigger finalizes an object on its own, so by the time
+ * a woken runtime gets here the answer is often "already done". Both of those
+ * are success; only a photo whose bytes are genuinely not on the server may
+ * report failure.
+ */
+async function finalizeOrSettle(
+  item: IntakeOutboxPhoto,
+  prepared: PreparedIntakeUpload,
+  bytesConfirmed: boolean,
+): Promise<{ url: string }> {
+  const storedUrl = prepared.url.trim();
   try {
-    const finalized = await finalizePreparedPhoto(item, prepared, sizeBytes);
-    const url = finalized.url?.trim() || prepared.url?.trim() || '';
+    const finalized = await finalizePreparedPhoto(item, prepared);
+    const url = finalized.url?.trim() || storedUrl;
     if (!url) {
       throw new MobileApiError('Server did not confirm the photo upload.', 502);
     }
     return { url };
   } catch (error) {
-    if (isIdempotentPhotoSuccess(error) && prepared.url?.trim()) {
-      return { url: prepared.url.trim() };
+    if (isIdempotentPhotoSuccess(error) && storedUrl) {
+      return { url: storedUrl };
+    }
+    // `prepare` handed back a URL, which it only does for a photo whose bytes
+    // are in the bucket. Whatever finalize objected to, the work is not lost and
+    // must not be presented as lost — an older server that still answers without
+    // `alreadyFinalized` lands here.
+    if (bytesConfirmed && storedUrl) {
+      return { url: storedUrl };
     }
     throw error;
   }
+}
+
+/**
+ * What a caller of `runPhotoUpload` knows that the upload itself does not.
+ *
+ * A drain wave has a blocked-job set, one shared session recovery per job, and
+ * an abort flag; an eager prime fired by the shutter has none of those. Keeping
+ * them as collaborators is what lets both paths run the exact same transfer,
+ * failure classification and settle rules instead of drifting apart.
+ */
+type PhotoUploadContext = {
+  isBlocked: (jobId: string) => boolean;
+  recoverJobSession: (item: IntakeOutboxPhoto) => Promise<void>;
+  onOffline: () => void;
+};
+
+async function runPhotoUpload(
+  item: IntakeOutboxPhoto,
+  context: PhotoUploadContext,
+): Promise<void> {
+  if (context.isBlocked(item.jobId)) return;
+  if (isPhotoTransferOwned(item.id)) return;
+
+  // `completed` is not "gone": a job with a queued Finish keeps its confirmed
+  // rows so a failed Finish can retry from them. With the shutter and the drain
+  // both able to pick a photo up, existence alone would let the second one
+  // through and upload a file the server had already accepted.
+  const stillQueued = await withOutboxMutation(() =>
+    photos.some((candidate) => candidate.id === item.id && candidate.status !== 'completed'),
+  );
+  if (!stillQueued) return;
+
+  inflightPhotoIds.add(item.id);
+  try {
+    await withOutboxMutation(() => {
+      updatePhoto(item.id, {
+        status: 'uploading',
+        attemptCount: item.attemptCount + 1,
+        nextRetryAt: null,
+        errorInfo: null,
+      });
+    });
+
+    const liveRow = async (): Promise<IntakeOutboxPhoto | null> =>
+      withOutboxMutation(() => photos.find((candidate) => candidate.id === item.id) ?? null);
+
+    const parkFailure = async (error: unknown): Promise<void> => {
+      const live = (await liveRow()) ?? item;
+      if (isIdempotentPhotoSuccess(error)) {
+        await withOutboxMutation(() => {
+          const row = photos.find((candidate) => candidate.id === item.id) ?? live;
+          settleUploadedPhoto(row);
+          noteSyncSuccess();
+        });
+        return;
+      }
+      if (
+        shouldRequeueAfterAppLeave({
+          appState: String(AppState.currentState),
+          error,
+        })
+      ) {
+        await withOutboxMutation(() => {
+          updatePhoto(live.id, {
+            status: 'queued',
+            attemptCount: item.attemptCount,
+            nextRetryAt: null,
+            errorInfo: null,
+          });
+        });
+        return;
+      }
+      const info = describeSyncError(error);
+      const offline = info.code === 'NETWORK_UNAVAILABLE';
+      const transition = resolveFailureTransition({
+        attemptCount: item.attemptCount + 1,
+        retryable: info.retryable,
+        offline,
+        transport: isTransportSyncError(info.code),
+      });
+      await withOutboxMutation(() => {
+        updatePhoto(live.id, {
+          status: transition.status,
+          attemptCount: transition.attemptCount,
+          nextRetryAt: transition.nextRetryAt,
+          errorInfo: info,
+        });
+      });
+      if (offline) context.onOffline();
+    };
+
+    const settleSuccess = async (): Promise<void> => {
+      await withOutboxMutation(() => {
+        const row = photos.find((candidate) => candidate.id === item.id);
+        if (row) settleUploadedPhoto(row);
+        noteSyncSuccess();
+      });
+    };
+
+    type StartedTransfer = {
+      primed: PrimedPhoto;
+      bytes: Promise<void> | null;
+    };
+
+    const primeAndBegin = async (target: IntakeOutboxPhoto): Promise<StartedTransfer> => {
+      const primed = await primePhoto(target);
+      if (primed.step !== 'upload') return { primed, bytes: null };
+      const startedPut = await startPreparedPut(target, primed.file, primed.prepared);
+      return { primed, bytes: startedPut.bytes };
+    };
+
+    let started: StartedTransfer | null = null;
+    try {
+      started = await withPhotoUploadSlot(async () => {
+        const live = await liveRow();
+        if (!live) return null;
+        try {
+          return await primeAndBegin(live);
+        } catch (firstError) {
+          if (!isClaimGoneError(firstError)) throw firstError;
+          await context.recoverJobSession(live);
+          const retried = await liveRow();
+          if (!retried) return null;
+          return primeAndBegin(retried);
+        }
+      });
+    } catch (error) {
+      await parkFailure(error);
+      return;
+    }
+
+    if (!started) return;
+    const primed = started.primed;
+    if (primed.step === 'settle') {
+      await settleSuccess();
+      return;
+    }
+
+    // Always close the row after the PUT, including on leave. Skipping that
+    // left photos `uploading` on this phone until the next foreground drain —
+    // Island looked right (`0/3`) and nothing appeared until the app was opened.
+    // Do not await here: the slot is already released, and blocking would
+    // starve later shutter-presses of the 30s window.
+    closingPhotoIds.add(item.id);
+    void (async () => {
+      try {
+        if (started.bytes) await started.bytes;
+        const live = (await liveRow()) ?? item;
+        await finalizeOrSettle(
+          live,
+          primed.prepared,
+          primed.step === 'finalize' || Boolean(live.putStartedAt),
+        );
+        await settleSuccess();
+      } catch (error) {
+        await parkFailure(error);
+      } finally {
+        closingPhotoIds.delete(item.id);
+      }
+    })();
+  } finally {
+    inflightPhotoIds.delete(item.id);
+    notifyInflightPrepareIdle();
+  }
+}
+
+/**
+ * Take a freshly captured photo all the way to a started PUT, now.
+ *
+ * The slot lives inside `runPhotoUpload` around prepare + starting the PUT,
+ * not around waiting for bytes — so a burst of captures cannot outrun prepare
+ * and also cannot block the last photo behind four in-flight transfers.
+ */
+async function primeAndStartUpload(photoId: string): Promise<void> {
+  const item = photos.find((candidate) => candidate.id === photoId);
+  if (!item) return;
+  if (!syncing) {
+    syncing = true;
+    publish();
+  }
+  try {
+    await runPhotoUpload(item, {
+      isBlocked: () => false,
+      recoverJobSession: recoverSessionForPhotoUpload,
+      onOffline: () => undefined,
+    });
+  } catch {
+    // `runPhotoUpload` already parked the row with a retry schedule.
+  } finally {
+    if (
+      !drainPromise &&
+      inflightPhotoIds.size === 0 &&
+      closingPhotoIds.size === 0 &&
+      heldPhotoPuts.size === 0 &&
+      syncing
+    ) {
+      syncing = false;
+      publish();
+    }
+  }
+}
+
+/**
+ * Capture order in the foreground; survival order once the person has left.
+ *
+ * While the app is up, oldest first is what the worker expects to see clear.
+ * After a leave the queue is racing a suspend, and the only work that keeps
+ * paying off once JS dies is a PUT already handed to the background session —
+ * so the wave reorders to start as many of those as the window allows.
+ */
+function orderPhotoWaveWork(items: IntakeOutboxPhoto[]): IntakeOutboxPhoto[] {
+  if (String(AppState.currentState) === 'active') return items;
+  const now = new Date();
+  return orderLeaveAppPhotoWork(
+    items.map((item) => ({
+      item,
+      createdAt: item.createdAt,
+      hasUsablePreparedUpload: isPreparedUploadUsable(item.prepared, now),
+      putStarted: Boolean(item.putStartedAt),
+    })),
+  ).map((entry) => entry.item);
 }
 
 async function drain(companyId: string): Promise<void> {
@@ -904,6 +1496,7 @@ async function drain(companyId: string): Promise<void> {
   // icon (and always lies in background). A real outage fails the request and
   // parks the row via resolveFailureTransition(offline). Gating here froze
   // reclaim on "Session claim is no longer active" while the phone was online.
+  requeueTransientTransportFailures();
 
   const blockedJobIds = new Set<string>();
   for (const item of commands) {
@@ -931,7 +1524,11 @@ async function drain(companyId: string): Promise<void> {
       commandType: item.command.type,
     }));
   const pendingPhotos = photos
-    .filter((item) => item.companyId === companyId && isJobRunnable(item, runnable))
+    .filter((item) => {
+      if (item.companyId !== companyId) return false;
+      if (isPhotoTransferOwned(item.id)) return false;
+      return isJobRunnable(item, runnable);
+    })
     .map((item) => ({
       kind: 'photo' as const,
       item,
@@ -943,6 +1540,10 @@ async function drain(companyId: string): Promise<void> {
   const photoWorkCount = work.filter((entry) => entry.kind === 'photo').length;
 
   if (work.length === 0) {
+    // In-flight prepares and daemon PUTs are not drainable, but they are still
+    // this wave. Resetting here painted the Island as `0/2` then `0/1` while
+    // the remaining files were still leaving the phone.
+    if (companyWaveStillOpen(companyId)) return;
     if (syncedCount > 0 || sessionTotal > 0) {
       resetSyncSession();
       publish();
@@ -951,12 +1552,10 @@ async function drain(companyId: string): Promise<void> {
   }
 
   // Island progress tracks photos only — not heartbeats / old failed junk.
+  // Never shrink: a pass that only sees the not-yet-owned remainder is not a
+  // new wave.
   if (photoWorkCount > 0) {
-    if (!syncing || sessionTotal === 0) {
-      sessionTotal = photoWorkCount + syncedCount;
-    } else {
-      sessionTotal = Math.max(sessionTotal, photoWorkCount + syncedCount);
-    }
+    sessionTotal = Math.max(sessionTotal, photoWorkCount + syncedCount);
   }
 
   syncing = true;
@@ -964,10 +1563,11 @@ async function drain(companyId: string): Promise<void> {
   const ensureByJob = new Map<string, Promise<void>>();
   let stopWave = false;
 
-  const ensureJobSession = (item: IntakeOutboxPhoto): Promise<void> => {
+  /** One recovery attempt per job per wave, shared by its parallel uploads. */
+  const recoverJobSession = (item: IntakeOutboxPhoto): Promise<void> => {
     const existing = ensureByJob.get(item.jobId);
     if (existing) return existing;
-    const pending = ensureSessionForPhotoUpload(item).catch((error) => {
+    const pending = recoverSessionForPhotoUpload(item).catch((error) => {
       ensureByJob.delete(item.jobId);
       throw error;
     });
@@ -1050,12 +1650,27 @@ async function drain(companyId: string): Promise<void> {
       if (item.command.type === 'field_complete' && jobId && isNeedsPhotoFinishError(error)) {
         requeueSettledPhotos(companyId, jobId);
       }
+      if (
+        shouldRequeueAfterAppLeave({
+          appState: String(AppState.currentState),
+          error,
+        })
+      ) {
+        updateCommand(item.id, {
+          status: 'queued',
+          attemptCount: item.attemptCount,
+          nextRetryAt: null,
+          errorInfo: null,
+        });
+        return 'ok';
+      }
       const info = describeSyncError(error);
       const offline = info.code === 'NETWORK_UNAVAILABLE';
       const transition = resolveFailureTransition({
         attemptCount: item.attemptCount + 1,
         retryable: info.retryable,
         offline,
+        transport: isTransportSyncError(info.code),
       });
       const terminal = transition.status === 'failed';
       updateCommand(item.id, {
@@ -1093,75 +1708,13 @@ async function drain(companyId: string): Promise<void> {
 
   const runPhotoEntry = async (item: IntakeOutboxPhoto): Promise<void> => {
     if (stopWave) return;
-    if (blockedJobIds.has(item.jobId)) return;
-
-    const stillQueued = await withOutboxMutation(() =>
-      photos.some((candidate) => candidate.id === item.id),
-    );
-    if (!stillQueued) return;
-
-    await withOutboxMutation(() => {
-      updatePhoto(item.id, {
-        status: 'uploading',
-        attemptCount: item.attemptCount + 1,
-        nextRetryAt: null,
-        errorInfo: null,
-      });
+    await runPhotoUpload(item, {
+      isBlocked: (jobId) => blockedJobIds.has(jobId),
+      recoverJobSession,
+      onOffline: () => {
+        stopWave = true;
+      },
     });
-
-    try {
-      await ensureJobSession(item);
-      const live = await withOutboxMutation(
-        () => photos.find((candidate) => candidate.id === item.id) ?? null,
-      );
-      if (!live) return;
-      try {
-        await transferPhoto(live);
-      } catch (firstError) {
-        if (!isClaimGoneError(firstError)) throw firstError;
-        ensureByJob.delete(item.jobId);
-        await ensureJobSession(live);
-        const retried = await withOutboxMutation(
-          () => photos.find((candidate) => candidate.id === item.id) ?? null,
-        );
-        if (!retried) return;
-        await transferPhoto(retried);
-      }
-      await withOutboxMutation(() => {
-        const row = photos.find((candidate) => candidate.id === item.id);
-        if (row) settleUploadedPhoto(row);
-        noteSyncSuccess();
-      });
-    } catch (error) {
-      const live =
-        (await withOutboxMutation(
-          () => photos.find((candidate) => candidate.id === item.id) ?? null,
-        )) ?? item;
-      if (isIdempotentPhotoSuccess(error)) {
-        await withOutboxMutation(() => {
-          const row = photos.find((candidate) => candidate.id === item.id) ?? live;
-          settleUploadedPhoto(row);
-          noteSyncSuccess();
-        });
-        return;
-      }
-      const info = describeSyncError(error);
-      const offline = info.code === 'NETWORK_UNAVAILABLE';
-      const transition = resolveFailureTransition({
-        attemptCount: item.attemptCount + 1,
-        retryable: info.retryable,
-        offline,
-      });
-      await withOutboxMutation(() => {
-        updatePhoto(live.id, {
-          status: transition.status,
-          attemptCount: transition.attemptCount,
-          nextRetryAt: transition.nextRetryAt,
-          errorInfo: info,
-        });
-      });
-      if (offline) stopWave = true;
-    }
   };
 
   try {
@@ -1181,22 +1734,14 @@ async function drain(companyId: string): Promise<void> {
       if (result === 'abort') return;
     }
 
-    // Seed claim once per job before the parallel PUT wave.
-    for (const entry of photoEntries) {
-      if (entry.kind !== 'photo') continue;
-      if (blockedJobIds.has(entry.item.jobId)) continue;
-      if (!photos.some((candidate) => candidate.id === entry.item.id)) continue;
-      try {
-        await ensureJobSession(entry.item);
-      } catch (error) {
-        if (isClaimHeldByOtherMessage(error instanceof Error ? error.message : String(error))) {
-          blockedJobIds.add(entry.item.jobId);
-        }
-      }
-    }
-
+    // No claim seeding here any more. A round-trip per job before every wave
+    // bought nothing the server needed, and the recovery it triggered could undo
+    // a finished intake; uploads now go straight onto the wire and recover only
+    // if one of them actually reports a dead claim.
     await mapPool(
-      photoEntries.filter((entry) => entry.kind === 'photo').map((entry) => entry.item),
+      orderPhotoWaveWork(
+        photoEntries.filter((entry) => entry.kind === 'photo').map((entry) => entry.item),
+      ),
       PHOTO_UPLOAD_CONCURRENCY,
       async (item) => {
         await runPhotoEntry(item);
@@ -1219,25 +1764,77 @@ async function drain(companyId: string): Promise<void> {
       if (result === 'abort') return;
     }
   } finally {
-    syncing = false;
-    const photosStillMoving = photos.some(
-      (item) =>
-        item.companyId === companyId &&
-        item.status !== 'failed' &&
-        item.status !== 'completed',
-    );
-    if (!photosStillMoving) {
+    // An eager prime started by the shutter can outlive the wave that was
+    // running when it fired; clearing the flag unconditionally would drop the
+    // banner while a photo was still on the wire.
+    syncing =
+      inflightPhotoIds.size > 0 ||
+      closingPhotoIds.size > 0 ||
+      photos.some((item) => item.companyId === companyId && heldPhotoPuts.has(item.id));
+    if (!companyWaveStillOpen(companyId)) {
       resetSyncSession();
     }
     publish();
   }
 }
 
-export function drainIntakeOutbox(companyId: string): Promise<void> {
-  if (drainPromise) return drainPromise;
-  drainPromise = drain(companyId).finally(() => {
-    drainPromise = null;
+/**
+ * Leave-app JS fetch used to classify as UNKNOWN and mark the photo failed.
+ * Put those rows back on the queue so Live Activity stays on Syncing and the
+ * background URLSession can finish the PUT.
+ */
+export function requeueTransientTransportFailures(): boolean {
+  let changed = false;
+  const nextCommands = commands.map((row) => {
+    const revived = reviveIfTransient(row);
+    if (revived !== row) changed = true;
+    return revived;
   });
+  const nextPhotos = photos.map((row) => {
+    const revived = reviveIfTransient(row);
+    if (revived !== row) changed = true;
+    return revived;
+  });
+  if (!changed) return false;
+  commands = nextCommands;
+  photos = nextPhotos;
+  publish();
+  return true;
+}
+
+export function drainIntakeOutbox(companyId: string): Promise<void> {
+  if (drainPromise) {
+    drainAgain = true;
+    return drainPromise;
+  }
+  drainPromise = (async () => {
+    let passes = 0;
+    try {
+      do {
+        drainAgain = false;
+        await drain(companyId);
+        const appState = String(AppState.currentState);
+        if (
+          shouldWaitForLeaveInflightPrepares({
+            appState,
+            inflightPrepareCount: countInflightPrepares(),
+          })
+        ) {
+          await waitForInflightPrepares(LEAVE_INFLIGHT_PREPARE_WAIT_MS);
+        }
+        passes += 1;
+      } while (
+        shouldContinueLeaveAppDrain({
+          drainAgain,
+          appState: String(AppState.currentState),
+          hasRunnableWork: hasRunnableIntakeWork(companyId),
+          passes,
+        })
+      );
+    } finally {
+      drainPromise = null;
+    }
+  })();
   return drainPromise;
 }
 
@@ -1246,6 +1843,54 @@ export function hasPendingIntakeWork(): boolean {
     commands.some((item) => item.status !== 'failed' && item.status !== 'completed') ||
     photos.some((item) => item.status !== 'failed' && item.status !== 'completed')
   );
+}
+
+/** Work the drain can pick up right now — not a future retry or an in-flight PUT. */
+export function hasRunnableIntakeWork(companyId?: string): boolean {
+  const runnable = { online: true, now: new Date() };
+  const match = (item: { companyId: string }) => !companyId || item.companyId === companyId;
+  const leave = String(AppState.currentState) !== 'active';
+  return (
+    commands.some((item) => match(item) && isJobRunnable(item, runnable)) ||
+    photos.some((item) => {
+      if (!match(item)) return false;
+      if (!leave) {
+        if (isPhotoTransferOwned(item.id)) return false;
+        return isJobRunnable(item, runnable);
+      }
+      return photoIsLeaveDrainWork({
+        heldByDaemon: heldPhotoPuts.has(item.id) || closingPhotoIds.has(item.id),
+        putStarted: false,
+        inflightPrepare: inflightPhotoIds.has(item.id) && !heldPhotoPuts.has(item.id),
+        jobRunnable: isJobRunnable(item, runnable),
+      });
+    })
+  );
+}
+
+/**
+ * Work that dies if JS is frozen — prepare, and starting a PUT.
+ *
+ * Distinct from `hasRunnableIntakeWork`: a photo already in `inflightPhotoIds`
+ * is not drainable (the running transfer owns it) but it still needs the
+ * runtime, and releasing `beginBackgroundTask` in that gap is how the last
+ * photo used to vanish until the app was opened again.
+ */
+export function hasLiveRuntimeIntakeWork(companyId?: string): boolean {
+  const runnable = { online: true, now: new Date() };
+  const match = (item: { companyId: string }) => !companyId || item.companyId === companyId;
+  if (commands.some((item) => match(item) && isJobRunnable(item, runnable))) return true;
+  return photos.some((item) => {
+    if (!match(item)) return false;
+    // Prepare (and the tick that creates the URLSession task) still need JS,
+    // even if a previous publish already wrote `putStartedAt`. Releasing the
+    // assertion on that publish is how leave-app sync used to vanish.
+    if (inflightPhotoIds.has(item.id)) return true;
+    return photoNeedsLiveRuntime({
+      putStarted: Boolean(item.putStartedAt),
+      status: item.status,
+    });
+  });
 }
 
 function intakeOutboxCompanyIds(): string[] {
@@ -1483,9 +2128,7 @@ function snapshotForCompany(
   const photoPendingCount = countPhotoPending(companyPhotos);
   const photoFailedCount = countPhotoFailed(companyPhotos);
   const pendingCount = countPendingCommands(companyCommands) + photoPendingCount;
-  const failedCount =
-    companyCommands.filter((item) => item.state === 'failed' && !isNoiseCommand(item.command))
-      .length + photoFailedCount;
+  const failedCount = countFailedCommands(companyCommands) + photoFailedCount;
   return {
     commands: companyCommands,
     photos: companyPhotos,
@@ -1553,6 +2196,9 @@ export async function sendOrQueueIntakeCommand(
   companyId: string,
   command: EngineIntakeCommand,
 ): Promise<EngineIntakeCommandResult | null> {
+  if (command.type === 'resume_session') {
+    dropQueuedPauseForSession(command.payload.sessionId, true);
+  }
   try {
     return await sendEngineIntakeCommand(command);
   } catch (error) {

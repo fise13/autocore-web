@@ -107,7 +107,7 @@ export function NotificationInboxScreen() {
 
   const subtitle =
     syncing || refreshing
-      ? 'Syncing…'
+      ? 'Updating…'
       : unreadCount > 0
         ? `${unreadCount} unread`
         : 'All caught up';

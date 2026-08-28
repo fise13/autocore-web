@@ -7,7 +7,8 @@ import {
   subscribePendingDeepLink,
 } from '@/lib/deep-links/pending-deep-link';
 import { deepLinkTargetToPath } from '@/lib/deep-links/canonical-deep-links';
-import { openEngineIntakeBay } from '@/features/engine-intake/lib/open-engine-intake';
+import { openEnginesList } from '@/features/engines/navigation';
+import { parseEngineListFilter } from '@/features/engines/lib/engine-lane';
 import { guardedPush } from '@/lib/navigation/guarded-push';
 
 /**
@@ -37,8 +38,10 @@ export function DeepLinkHead() {
 
     // Intake has its own opener that reuses an existing stack entry instead of
     // pushing a second copy — repeated taps must not build a stack of bays.
-    if (link.pathname === '/intake') {
-      openEngineIntakeBay(router);
+    if (link.pathname === '/intake' || link.pathname === '/objects/engines') {
+      openEnginesList(router, {
+        filter: parseEngineListFilter(link.params.filter) ?? 'incoming',
+      });
       return;
     }
 

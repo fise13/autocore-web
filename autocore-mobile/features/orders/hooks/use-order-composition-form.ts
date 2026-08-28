@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { haptics } from '@/theme';
+import { isLaborCatalogItem } from '@/lib/autocomplete/catalog';
 import { resolveQuickSpecificCategories } from '@/lib/work-order/category-presets';
 import {
   assigneeRoleLabel,
@@ -337,12 +338,33 @@ export function useOrderCompositionForm({
     haptics.light();
   }, []);
 
+  const fillLaborFromCatalog = useCallback(
+    (name: string) => {
+      const item = inventoryItems.find(
+        (entry) => isLaborCatalogItem(entry) && entry.name === name,
+      );
+      if (!item) {
+        patchLaborDraft({ title: name });
+        return;
+      }
+      patchLaborDraft({
+        title: item.name,
+        unitPrice: String(resolveInventoryUnitPrice(item)),
+      });
+    },
+    [inventoryItems, patchLaborDraft],
+  );
+
   const fillPartFromInventory = useCallback(
     (skuOrName: string, by: 'sku' | 'name') => {
       const item =
         by === 'sku'
-          ? inventoryItems.find((entry) => entry.sku === skuOrName)
-          : inventoryItems.find((entry) => entry.name === skuOrName);
+          ? inventoryItems.find(
+              (entry) => !isLaborCatalogItem(entry) && entry.sku === skuOrName,
+            )
+          : inventoryItems.find(
+              (entry) => !isLaborCatalogItem(entry) && entry.name === skuOrName,
+            );
       if (!item) return;
       setPartSku(item.sku);
       setPartName(item.name);
@@ -434,6 +456,7 @@ export function useOrderCompositionForm({
       removePart,
       removeMotor,
       fillPartFromInventory,
+      fillLaborFromCatalog,
       laborLineItems,
       regularPartLineItems,
       specificPartLineItems,
@@ -451,6 +474,7 @@ export function useOrderCompositionForm({
       commitAssignee,
       error,
       fillPartFromInventory,
+      fillLaborFromCatalog,
       laborDraft,
       laborLineItems,
       laborLines,

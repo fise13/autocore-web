@@ -6,6 +6,7 @@ import { Loader2Icon } from '@/assets/icons';
 import type { IconProps } from '@/assets/icons/create-icon';
 import { useTheme } from '@/hooks';
 import { haptics, radius } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 export type ActionIconButtonVariant =
   | 'default'
@@ -133,7 +134,7 @@ export const ActionIconButton = forwardRef<
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: radius.md,
-          opacity: isDisabled ? 0.45 : pressed ? 0.72 : 1,
+          opacity: isDisabled ? 0.45 : pressed ? tokens.opacity.pressed : 1,
         },
         variantStyle,
         style,

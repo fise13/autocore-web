@@ -12,6 +12,7 @@ import {
   type ReviewReason,
   type SourceRef,
 } from "./contracts";
+import { resolveImportLocationPath } from "@/lib/warehouse/location-path";
 
 /**
  * Passes 3–5 — turning rows into entities, and entities into a graph.
@@ -50,6 +51,7 @@ export type ResolutionInput = {
     row: ClassifiedRow;
     table: string;
     section?: string | null;
+    locationPath?: string[];
     /**
      * Normalizations applied to this row, keyed by field. Supplied separately
      * so the entity keeps the original text: rewriting `row.values` in place
@@ -110,6 +112,38 @@ function toImportValues(
       : { raw: value, normalized: value.trim(), decision: source };
   }
   return out;
+}
+
+/**
+ * A place the sheet named, as a nested path.
+ *
+ * The cell wins when it already wrote a warehouse. Otherwise a box in the
+ * cell hangs off the section, and a section that *is* a warehouse becomes
+ * the place for every row that did not say otherwise. Written into
+ * `location` so commit sees one field, with the original path preserved as
+ * a slash-separated string that `splitLocationPath` can read back.
+ */
+function applyResolvedLocation(
+  values: Partial<Record<CanonicalField, ImportValue>>,
+  source: Decision,
+  locationPath: readonly string[] | undefined,
+  section: string | null | undefined,
+): void {
+  const path = resolveImportLocationPath({
+    cellLocation: values.location?.normalized,
+    cellWarehouse: values.warehouse?.normalized,
+    sectionPath: locationPath,
+    section,
+  });
+  if (path.length === 0) return;
+  const joined = path.join(" / ");
+  const existing = values.location?.normalized?.trim();
+  if (existing && existing === joined) return;
+  values.location = {
+    raw: values.location?.raw || joined,
+    normalized: joined,
+    decision: decision("field", 0.9, "Место собрано из заголовков и ячейки", source.source),
+  };
 }
 
 /**
@@ -209,15 +243,21 @@ export function resolveEntities(input: ResolutionInput): ResolutionResult {
   const byKey = new Map<string, EntityDraft>();
   let counter = 0;
 
-  for (const { row, table, section, normalized } of input.rows) {
+  for (const { row, table, section, locationPath, normalized } of input.rows) {
     // The reasoning pass may have read a row as something the flat record
     // types cannot express — a sale, a customer — and that reading wins when
     // it is present, because it is strictly more specific.
     const kind: ImportEntityKind =
       (row.aiEntityKind as ImportEntityKind | undefined) ??
       ENTITY_KIND_BY_RECORD_TYPE[row.classification.recordType];
+    const recordType = row.classification.recordType;
     const keys = entityKeysFor(row.values, kind);
-    const source: SourceRef = { table, index: row.index, section: section ?? null };
+    const source: SourceRef = {
+      table,
+      index: row.index,
+      section: section ?? null,
+      locationPath: locationPath && locationPath.length > 0 ? [...locationPath] : undefined,
+    };
     const rowDecision = decision(
       "entity",
       row.classification.confidence.score,
@@ -232,17 +272,22 @@ export function resolveEntities(input: ResolutionInput): ResolutionResult {
 
     if (existing) {
       existing.sources.push(source);
-      const conflicts = mergeValues(existing, toImportValues(row.values, rowDecision, normalized));
+      const incoming = toImportValues(row.values, rowDecision, normalized);
+      applyResolvedLocation(incoming, rowDecision, locationPath, section);
+      const conflicts = mergeValues(existing, incoming);
       existing.review.push(...conflicts);
       for (const key of lookup) byKey.set(key, existing);
       continue;
     }
 
     counter += 1;
+    const values = toImportValues(row.values, rowDecision, normalized);
+    applyResolvedLocation(values, rowDecision, locationPath, section);
     const draft: EntityDraft = {
       id: `e${counter}`,
       kind,
-      values: toImportValues(row.values, rowDecision, normalized),
+      recordType,
+      values,
       sources: [source],
       keys,
       decision: rowDecision,

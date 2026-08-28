@@ -11,6 +11,10 @@ describe('isNetworkError', () => {
   it('treats fetch failures as offline', () => {
     assert.equal(isNetworkError(new TypeError('Network request failed')), true);
     assert.equal(isNetworkError({ message: 'Failed to fetch' }), true);
+    assert.equal(
+      isNetworkError({ message: 'fetch failed: Сетевое соединение потеряно.' }),
+      true,
+    );
   });
 
   it('does not treat permission errors as offline', () => {

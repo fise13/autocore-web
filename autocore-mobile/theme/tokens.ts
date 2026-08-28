@@ -68,6 +68,16 @@ export const tokens = {
       slow: 420,
     },
   },
+  autocomplete: {
+    chipPadH: 12,
+    chipPadV: 8,
+    dockHeight: 56,
+    fadeWidth: 36,
+    chipMaxWidth: 240,
+    staggerMs: 24,
+    enterMs: 200,
+    maxChips: 8,
+  },
 } as const;
 
 /** @deprecated Prefer tokens.motion.springs */

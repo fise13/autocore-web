@@ -4,7 +4,9 @@ import { describe, it } from 'node:test';
 import {
   canOpenSessionImmediately,
   canShowSessionForLocalClaim,
+  isSessionClaimLost,
   resolveClaimOutcome,
+  shouldPauseIntakeSession,
 } from './claim-outcome';
 
 describe('resolveClaimOutcome', () => {
@@ -145,5 +147,71 @@ describe('canShowSessionForLocalClaim', () => {
       }),
       false,
     );
+  });
+});
+
+describe('isSessionClaimLost', () => {
+  const held = {
+    jobState: 'in_session',
+    sessionState: 'active' as string | null,
+    assignmentSessionId: 's1',
+    claimedByUid: 'u1',
+    uid: 'u1',
+    routeSessionId: 's1',
+    overlaySessionIds: [] as string[],
+    hasPendingClaimCommand: false,
+  };
+
+  it('does not kick the camera while the optimistic claim is the only record of it', () => {
+    assert.equal(
+      isSessionClaimLost({
+        ...held,
+        assignmentSessionId: null,
+        claimedByUid: null,
+        overlaySessionIds: ['s1'],
+      }),
+      false,
+    );
+  });
+
+  it('does not kick while a claim command is still in the outbox', () => {
+    assert.equal(
+      isSessionClaimLost({
+        ...held,
+        assignmentSessionId: null,
+        claimedByUid: null,
+        hasPendingClaimCommand: true,
+      }),
+      false,
+    );
+  });
+
+  it('does not treat a paused or stale lease on this device as a lost claim', () => {
+    assert.equal(isSessionClaimLost({ ...held, sessionState: 'paused' }), false);
+    assert.equal(isSessionClaimLost({ ...held, sessionState: 'stale' }), false);
+  });
+
+  it('leaves when the engine itself was cancelled', () => {
+    assert.equal(isSessionClaimLost({ ...held, jobState: 'cancelled' }), true);
+  });
+
+  it('leaves when another worker holds the bay', () => {
+    assert.equal(
+      isSessionClaimLost({
+        ...held,
+        claimedByUid: 'u2',
+        assignmentSessionId: 's-other',
+        overlaySessionIds: [],
+      }),
+      true,
+    );
+  });
+});
+
+describe('shouldPauseIntakeSession', () => {
+  it('pauses only when the app is actually backgrounded', () => {
+    assert.equal(shouldPauseIntakeSession('background'), true);
+    assert.equal(shouldPauseIntakeSession('inactive'), false);
+    assert.equal(shouldPauseIntakeSession('active'), false);
   });
 });

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AlertTriangleIcon, CheckCircle2Icon } from '@/assets/icons';
+import { AlertTriangleIcon, CameraIcon, CheckCircle2Icon } from '@/assets/icons';
 import {
   AutocompleteInput,
   Button,
@@ -17,6 +18,8 @@ import {
   GroupedList,
   GroupedSection,
 } from '@/features/orders/components/create-order/grouped-form';
+import { openEngineIntakeSession } from '@/features/engine-intake/lib/open-engine-intake';
+import { queueOptimisticIntakeCreate } from '@/features/engine-intake/lib/start-intake-session';
 import { useSession, useTheme } from '@/hooks';
 import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { motorRepository } from '@/services/firestore/motor-repository';
@@ -43,18 +46,13 @@ function pickParam(value: string | string[] | undefined): string {
 }
 
 /**
- * Add a serialized engine to the catalog.
- *
- * Replaces the inline spreadsheet pad that used to sit above the list. That pad
- * committed on blur, gave no confirmation, and had nowhere to say "this serial
- * already exists" — so the same block could be filed twice and nobody found out
- * until two cards disagreed. This is the same composer shape as the ledger's
- * New Operation sheet: Cancel · title · Add, one grouped form, one save.
+ * Receive an engine: photograph (intake) or file without photos (catalog).
  */
 export function CreateEngineScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { companyId, uid, can } = useSession();
+  const insets = useSafeAreaInsets();
+  const { companyId, uid, can, profile } = useSession();
   const params = useLocalSearchParams<{
     serial?: string;
     brand?: string;
@@ -75,9 +73,9 @@ export function CreateEngineScreen() {
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canEdit = can('inventory_edit');
+  const canPhotograph = can('engine_intake_execute');
+  const canAdd = canEdit || canPhotograph;
 
-  // Same key SessionRealtimeHead already listens on — read only, never a second
-  // motors listener, and it gives the duplicate check a catalog for free.
   const motorsKey = useMemo(
     () => ['realtime', 'motors', companyId, uid] as const,
     [companyId, uid],
@@ -110,22 +108,48 @@ export function CreateEngineScreen() {
   }, [router]);
 
   const check = useMemo(() => checkEngineDraft(draft, motors), [draft, motors]);
-  const canSubmit = canEdit && canSaveEngineDraft(check) && phase === 'idle';
+  const identityReady = canSaveEngineDraft(check) && phase === 'idle';
+  const canSubmitCatalog = identityReady && canEdit;
 
-  const onSubmit = useCallback(async () => {
-    if (!uid || !companyId || !canEdit) return;
-
-    // Re-check rather than trust the render-time verdict: the listener may
-    // have delivered the colliding unit while this form was open.
-    const verdict = checkEngineDraft(draft, motors);
+  const failSerial = useCallback((verdict: ReturnType<typeof checkEngineDraft>): boolean => {
     if (verdict.status === 'incomplete') {
       setError('Enter the serial stamped on the block.');
-      return;
+      return true;
     }
     if (verdict.status === 'duplicate') {
       setError(`Serial ${verdict.existing.serialCode} is already in the catalog.`);
-      return;
+      return true;
     }
+    return false;
+  }, []);
+
+  const onPhotograph = useCallback(() => {
+    if (!uid || !companyId || !canPhotograph) return;
+    const verdict = checkEngineDraft(draft, motors);
+    if (failSerial(verdict)) return;
+
+    setError(null);
+    haptics.light();
+    const { jobId, sessionId } = queueOptimisticIntakeCreate({
+      companyId,
+      uid,
+      displayName: profile?.displayName ?? null,
+      identity: {
+        serialCode: draft.serial.trim(),
+        brandName: draft.brand.trim(),
+        engineCode: draft.code.trim(),
+      },
+    });
+    haptics.success();
+    if (router.canGoBack()) router.back();
+    openEngineIntakeSession(router, jobId, sessionId);
+  }, [canPhotograph, companyId, draft, failSerial, motors, profile?.displayName, router, uid]);
+
+  const onSaveWithoutPhotos = useCallback(async () => {
+    if (!uid || !companyId || !canEdit) return;
+
+    const verdict = checkEngineDraft(draft, motors);
+    if (failSerial(verdict)) return;
 
     setError(null);
     setPhase('submitting');
@@ -134,8 +158,6 @@ export function CreateEngineScreen() {
     try {
       await motorRepository.create(uid, { companyId, ...toEngineCreateInput(draft) }, motors);
       haptics.success();
-      // Confirm on the button the user just pressed, then close. No toast — the
-      // engine is on the list behind the sheet, which says it better.
       setPhase('success');
       dismissTimer.current = setTimeout(dismiss, SUCCESS_HOLD_MS);
     } catch (caught) {
@@ -145,9 +167,9 @@ export function CreateEngineScreen() {
       setError(message);
       toast({ title: 'Engine was not added', description: message, variant: 'destructive' });
     }
-  }, [canEdit, companyId, dismiss, draft, motors, uid]);
+  }, [canEdit, companyId, dismiss, draft, failSerial, motors, uid]);
 
-  if (!canEdit) {
+  if (!canAdd) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <Stack.Screen options={{ headerShown: false, title: 'Add engine' }} />
@@ -162,7 +184,7 @@ export function CreateEngineScreen() {
           }}
         >
           <Text variant="body" color="muted" style={{ textAlign: 'center' }}>
-            Your role cannot add engines to the catalog.
+            Your role cannot add engines.
           </Text>
           <Button variant="outline" native={false} onPress={dismiss}>
             Close
@@ -184,13 +206,55 @@ export function CreateEngineScreen() {
           <CoSheetHeader
             title="Add engine"
             onCancel={dismiss}
-            onSubmit={() => void onSubmit()}
+            onSubmit={canPhotograph ? undefined : () => void onSaveWithoutPhotos()}
             submitLabel="Add"
             successLabel="Added"
-            canSubmit={canSubmit}
+            canSubmit={canSubmitCatalog}
             phase={phase}
             scrolled={scrolled}
           />
+        }
+        footer={
+          canPhotograph ? (
+            <View
+              style={{
+                paddingHorizontal: tokens.space.screenX,
+                paddingTop: tokens.space.stack,
+                paddingBottom: Math.max(insets.bottom, tokens.space.stack),
+                gap: tokens.space.stack,
+                backgroundColor: colors.background,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: colors.border,
+              }}
+            >
+              <Button
+                size="xl"
+                native={false}
+                disabled={!identityReady}
+                accessibilityLabel="Photograph this engine"
+                leftIcon={
+                  <CameraIcon
+                    size={20}
+                    color={identityReady ? colors.primaryForeground : colors.mutedForeground}
+                    strokeWidth={2.2}
+                  />
+                }
+                onPress={onPhotograph}
+              >
+                Photograph
+              </Button>
+              {canEdit ? (
+                <Button
+                  variant="outline"
+                  native={false}
+                  disabled={!identityReady}
+                  onPress={() => void onSaveWithoutPhotos()}
+                >
+                  Save without photos
+                </Button>
+              ) : null}
+            </View>
+          ) : null
         }
         contentContainerStyle={{
           paddingHorizontal: tokens.space.screenX,
@@ -204,8 +268,9 @@ export function CreateEngineScreen() {
           color="muted"
           style={{ paddingHorizontal: tokens.space.micro, letterSpacing: -0.08 }}
         >
-          One unit, one card. The serial is enough. Brand and code decide which
-          heading it files under.
+          {canPhotograph
+            ? 'Serial first. Photograph opens the camera — photos upload in the background.'
+            : 'One unit, one card. The serial is enough. Brand and code decide which heading it files under.'}
         </Text>
 
         <GroupedSection title="Identity">
@@ -274,11 +339,6 @@ export function CreateEngineScreen() {
   );
 }
 
-/**
- * Says what the save will do before it happens: which heading the unit files
- * under, or why the serial is a problem. A duplicate is stated as a refusal, a
- * near match as a question — the wording carries the difference, not just colour.
- */
 function DraftVerdict({
   check,
   draft,

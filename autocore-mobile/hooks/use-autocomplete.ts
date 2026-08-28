@@ -20,6 +20,7 @@ type UseAutocompleteArgs = Omit<AutocompleteConfig, 'source'> & {
   options?: AutocompleteOption[];
   replaceMode?: AutocompleteConfig['replaceMode'];
   matchMode?: AutocompleteConfig['matchMode'];
+  presentation?: AutocompleteConfig['presentation'];
 };
 
 export function useAutocomplete({
@@ -31,6 +32,7 @@ export function useAutocomplete({
   options,
   replaceMode = 'full',
   matchMode = 'flexible',
+  presentation = 'chips',
   fieldKey: fieldKeyProp,
   context,
   debounceMs,
@@ -53,12 +55,14 @@ export function useAutocomplete({
       minQueryLength,
       replaceMode,
       matchMode,
+      presentation,
     }),
     [
       context,
       debounceMs,
       matchMode,
       minQueryLength,
+      presentation,
       replaceMode,
       resolved.fieldKey,
       resolved.source,

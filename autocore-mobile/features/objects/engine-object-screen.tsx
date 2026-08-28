@@ -20,6 +20,7 @@ import { EngineLocationSheet } from '@/features/engines/components/engine-locati
 import { EnginePhotoViewer } from '@/features/engines/components/engine-photo-viewer';
 import { SellMotorSheet, type SellMotorSheetRef } from '@/features/search/components/sell-motor-sheet';
 import { documentationLine, engineSpecRows } from '@/features/engines/lib/engine-facts';
+import { openEnginesList } from '@/features/engines/navigation';
 import { shareEnginePhoto } from '@/features/engines/lib/engine-photo-file';
 import { engineUnitLabel, engineVariantTitle } from '@/features/engines/lib/engine-variants';
 import { eng } from '@/features/engines/layout';
@@ -236,7 +237,9 @@ export function EngineObjectScreen() {
                 <EngineDocumentationRow
                   line={docLine}
                   onPress={
-                    can('engine_intake_view') ? () => router.push('/intake' as Href) : undefined
+                    can('engine_intake_view')
+                      ? () => openEnginesList(router, { filter: 'incoming' })
+                      : undefined
                   }
                 />
               </EngineChapter>

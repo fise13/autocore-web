@@ -6,7 +6,7 @@ export type AutocompleteOptionDisplay = {
 };
 
 export function formatAutocompleteOption(option: AutocompleteOption): AutocompleteOptionDisplay {
-  const value = option.value.trim();
+  const value = (option.value ?? '').trim();
   if (option.meta?.title?.trim()) {
     return {
       primary: option.meta.title.trim(),
@@ -16,6 +16,9 @@ export function formatAutocompleteOption(option: AutocompleteOption): Autocomple
   }
 
   const label = option.label?.trim() || value;
+  if (!value) {
+    return { primary: label, secondary: null };
+  }
 
   if (label.includes(' · ')) {
     const parts = label

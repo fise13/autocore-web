@@ -4,7 +4,8 @@ import { ACCOUNTING_CATEGORY_SUGGESTIONS, operationCategoryLabel } from '@/lib/a
 import { vehicleMakeOptions, vehicleModelOptions } from '@/lib/vehicles/vehicle-catalog';
 
 import type { AutocompleteDataSnapshot } from './autocomplete-data-store';
-import { AUTOCOMPLETE_MAX_SUGGESTIONS } from './constants';
+import { isLaborCatalogItem } from './catalog';
+import { AUTOCOMPLETE_CHIP_MAX, AUTOCOMPLETE_MAX_SUGGESTIONS } from './constants';
 import { filterAutocompleteOptions, uniqueAutocompleteOptions } from './filter-options';
 import { computeMatchRanges, inferEngineFuelBadge } from './match-utils';
 import { readFieldValues, readRecentValues } from './recent-values-store';
@@ -101,7 +102,7 @@ function searchCustomers(query: string, data: AutocompleteDataSnapshot, context?
   if (field === 'phone') {
     return uniqueAutocompleteOptions(
       data.clients.map((client) => ({
-        value: client.phone,
+        value: client.phone ?? '',
         label: client.fullName ? `${client.phone} · ${client.fullName}` : client.phone,
         keywords: client.fullName,
       })),
@@ -110,7 +111,7 @@ function searchCustomers(query: string, data: AutocompleteDataSnapshot, context?
 
   return uniqueAutocompleteOptions(
     data.clients.map((client) => ({
-      value: client.fullName,
+      value: client.fullName ?? '',
       label: client.phone ? `${client.fullName} · ${client.phone}` : client.fullName,
       keywords: client.phone,
     })),
@@ -195,6 +196,8 @@ function searchPreviousValues(
     contextual.push(...data.inventory.map((item) => item.sku));
   } else if (field === 'partName') {
     contextual.push(...data.inventory.map((item) => item.name));
+  } else if (field === 'laborTitle') {
+    contextual.push(...data.inventory.filter(isLaborCatalogItem).map((item) => item.name));
   } else if (field === 'motorSerial') {
     contextual.push(...data.motors.map((motor) => motor.serialCode));
   }
@@ -225,6 +228,10 @@ function mergeEngineCustomOptions(
   );
 }
 
+function suggestionLimit(config: AutocompleteConfig): number {
+  return config.presentation === 'chips' ? AUTOCOMPLETE_CHIP_MAX : AUTOCOMPLETE_MAX_SUGGESTIONS;
+}
+
 export function searchAutocomplete(
   query: string,
   config: AutocompleteConfig,
@@ -236,22 +243,27 @@ export function searchAutocomplete(
     return [];
   }
 
+  const limit = suggestionLimit(config);
+
   // Engine code: domain fuzzy first; custom inventory options merge — never replace.
   if (config.source === 'engineCode') {
     const domainHits = searchEngineCodes(query, data);
     if (customOptions?.length) {
       return mergeEngineCustomOptions(query, domainHits, customOptions);
     }
-    return domainHits.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS);
+    return domainHits.slice(0, limit);
   }
 
   if (customOptions?.length) {
-    return filterAutocompleteOptions(
-      query,
-      customOptions,
-      config.matchMode ?? 'flexible',
-      AUTOCOMPLETE_MAX_SUGGESTIONS,
-    ).map((option) => withMatchRanges(option, query));
+    return uniqueAutocompleteOptions(
+      filterAutocompleteOptions(
+        query,
+        customOptions,
+        config.matchMode ?? 'flexible',
+        limit,
+      ).map((option) => withMatchRanges(option, query)),
+      limit,
+    );
   }
 
   let base: AutocompleteOption[] = [];
@@ -292,7 +304,7 @@ export function searchAutocomplete(
 
   const merged = uniqueAutocompleteOptions([...recents, ...base]);
   const matchMode = config.matchMode ?? 'flexible';
-  return filterAutocompleteOptions(query, merged, matchMode, AUTOCOMPLETE_MAX_SUGGESTIONS).map(
-    (option) => withMatchRanges(option, query),
+  return filterAutocompleteOptions(query, merged, matchMode, limit).map((option) =>
+    withMatchRanges(option, query),
   );
 }

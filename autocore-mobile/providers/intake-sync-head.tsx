@@ -7,11 +7,23 @@ import {
   dropIdempotentPhotoConflicts,
   getIntakeOutboxSnapshot,
   purgeUnrecoverableIntakeOutbox,
+  requeueTransientTransportFailures,
   subscribeIntakeOutbox,
 } from '@/features/engine-intake/store/intake-outbox';
+import { subscribeIntakeUploadProgress } from '@/features/engine-intake/store/intake-upload-progress';
 import { nextWakeUpAt } from '@/features/engine-intake/lib/sync-schedule';
-import { reconcileIntakeSyncLocalNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
+import { reconcileIntakeAttentionNotification } from '@/features/engine-intake/lib/intake-sync-notifications';
+import { shouldRunLeaveAppDrain } from '@/features/engine-intake/lib/leave-app-drain';
+import {
+  pushOperationsLiveActivity,
+  resetOperationsLiveActivityPush,
+  setIntakeLiveActivityScope,
+} from '@/features/live-activity/push-operations-live-activity';
 import { useSession } from '@/hooks/use-session';
+import {
+  beginBackgroundExecution,
+  endBackgroundExecution,
+} from '@/lib/offline/background-execution';
 import { syncBackgroundTaskRegistration } from '@/lib/offline/background-sync-task';
 
 /** Ignore NetInfo flapping before committing to a drain. */
@@ -31,7 +43,8 @@ const MAX_TIMER_MS = 60_000;
  *
  * Mounting this next to `SessionRealtimeHead` gives the queue one owner for the
  * life of the session. It renders nothing, so outbox churn never re-renders the
- * navigation tree.
+ * navigation tree. The Dynamic Island is driven from here too: the tab host
+ * unmounts on the camera route, which is exactly when photos start leaving.
  */
 export function IntakeSyncHead() {
   const { companyId } = useSession();
@@ -39,9 +52,14 @@ export function IntakeSyncHead() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!companyId) return;
+    if (!companyId) {
+      setIntakeLiveActivityScope(null);
+      resetOperationsLiveActivityPush();
+      return;
+    }
 
     let disposed = false;
+    setIntakeLiveActivityScope(companyId);
 
     const clearTimer = () => {
       if (timerRef.current) {
@@ -52,8 +70,9 @@ export function IntakeSyncHead() {
 
     const run = () => {
       if (disposed) return;
-      void drainIntakeOutbox(companyId).finally(() => {
+      return drainIntakeOutbox(companyId).finally(() => {
         void syncBackgroundTaskRegistration();
+        pushOperationsLiveActivity();
       });
     };
 
@@ -84,14 +103,26 @@ export function IntakeSyncHead() {
     // is gone, clear leftover 409s, then drain.
     dropIdempotentPhotoConflicts(companyId);
     purgeUnrecoverableIntakeOutbox(companyId);
-    reconcileIntakeSyncLocalNotification(0);
+    reconcileIntakeAttentionNotification(0);
     run();
     armRetryTimer();
     void syncBackgroundTaskRegistration();
+    pushOperationsLiveActivity();
 
     const unsubscribeOutbox = subscribeIntakeOutbox(() => {
       armRetryTimer();
       void syncBackgroundTaskRegistration();
+      pushOperationsLiveActivity();
+      // Leave-app: a torn-down prepare requeues the row after the first drain
+      // pass already returned "empty". Without this, those photos sat until
+      // the retry timer or a 15-minute background task.
+      if (String(AppState.currentState) !== 'active') {
+        run();
+      }
+    });
+
+    const unsubscribeProgress = subscribeIntakeUploadProgress(() => {
+      pushOperationsLiveActivity();
     });
 
     const unsubscribeNetwork = NetInfo.addEventListener(() => {
@@ -105,19 +136,43 @@ export function IntakeSyncHead() {
       }, NETWORK_DEBOUNCE_MS);
     });
 
+    const leave = () => {
+      // Must not await — a Promise hop here is how an instant Home swipe
+      // froze JS before `beginBackgroundTask` existed. Native also begins
+      // on `willResignActive`.
+      beginBackgroundExecution('intake-sync');
+      requeueTransientTransportFailures();
+      pushOperationsLiveActivity({ force: true });
+      void (async () => {
+        try {
+          void syncBackgroundTaskRegistration();
+          await run();
+        } catch {
+          // Expiration / drain errors still leave the native assertion up
+          // until iOS takes it back. That is the point of this window.
+        }
+      })();
+    };
+
     const appState = AppState.addEventListener('change', (next) => {
       if (next === 'active') {
+        void endBackgroundExecution();
         dropIdempotentPhotoConflicts(companyId);
         purgeUnrecoverableIntakeOutbox(companyId);
-        run();
+        requeueTransientTransportFailures();
+        void run();
         armRetryTimer();
+        pushOperationsLiveActivity({ force: true });
         return;
       }
-      // Leaving the app: start the drain so iOS can hand the PUT to a
-      // background URLSession, then arm BGProcessingTask for after kill/reboot.
-      if (next === 'background' || next === 'inactive') {
-        void syncBackgroundTaskRegistration();
-        run();
+      // Native `willResignActive` already holds JS. Do not drain on `inactive`:
+      // Live Activity / Control Center bounce back to `active` and used to skip
+      // finalize, so photos sat until the app was opened again.
+      if (shouldRunLeaveAppDrain(next)) {
+        leave();
+      } else if (next === 'inactive') {
+        beginBackgroundExecution('intake-sync');
+        pushOperationsLiveActivity({ force: true });
       }
     });
 
@@ -126,8 +181,10 @@ export function IntakeSyncHead() {
       clearTimer();
       if (debounceRef.current) clearTimeout(debounceRef.current);
       unsubscribeOutbox();
+      unsubscribeProgress();
       unsubscribeNetwork();
       appState.remove();
+      resetOperationsLiveActivityPush();
     };
   }, [companyId]);
 

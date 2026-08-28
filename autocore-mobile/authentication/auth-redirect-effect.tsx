@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 
 import { useAuthStore } from '@/store/auth-store';
 import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
@@ -22,8 +22,13 @@ import {
  * Auth-state routing without `useSegments` in the effect deps.
  * Segment-driven replace loops overflowed the native nav stack.
  */
+function isDevSandboxPath(pathname: string): boolean {
+  return pathname === '/design-system';
+}
+
 export function AuthRedirectEffect() {
   const router = useRouter();
+  const pathname = usePathname();
   const lastTargetRef = useRef<string | null>(null);
 
   const status = useAuthStore((s) => s.status);
@@ -69,7 +74,8 @@ export function AuthRedirectEffect() {
     let target: string | null = null;
 
     if (!firebaseUser) {
-      target = '/(auth)/login';
+      // Mock labs do not need a session; stay put instead of bouncing to login.
+      target = __DEV__ && isDevSandboxPath(pathname) ? null : '/(auth)/login';
     } else if (journeyStep !== 'app') {
       target = journeyPathForStep(journeyStep);
     } else if (hasAccess && subscriptionLoading && !paywallBypassed) {
@@ -103,6 +109,7 @@ export function AuthRedirectEffect() {
     isPro,
     isReady,
     journeyStep,
+    pathname,
     paywallBypassed,
     profile,
     router,

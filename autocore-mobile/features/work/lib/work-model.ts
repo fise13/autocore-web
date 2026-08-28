@@ -41,18 +41,14 @@ export type WorkDetailKind =
   /** No data yet (listener still bootstrapping, or scope denied). */
   | 'fallback';
 
-export type WorkIntakeCounts = {
-  /** Jobs waiting to be picked up. */
-  awaiting: number;
-  /** Jobs claimed and being photographed right now. */
-  inProgress: number;
-  /** Field work finished, waiting on a verifier. */
-  awaitingVerification: number;
-  /** Every job in the bay, whatever its state. */
+export type WorkEngineCounts = {
+  /** Yard / catalog motors (not incoming). */
   total: number;
+  /** Jobs and draft motors still in receive / photograph / review. */
+  incoming: number;
+  /** Open or rework jobs that need a person today. */
+  awaiting: number;
 };
-
-export type WorkEngineCounts = { total: number };
 export type WorkPartsCounts = { total: number; lowStock: number };
 export type WorkReceivingCounts = { awaitingPlacement: number; total: number };
 export type WorkLocationsCounts = { locations: number; bins: number };
@@ -70,7 +66,6 @@ export type WorkEarningsCounts = {
  * `null` until a listener has delivered its first snapshot.
  */
 export type WorkCounts = {
-  intake: WorkIntakeCounts | null;
   engines: WorkEngineCounts | null;
   parts: WorkPartsCounts | null;
   receiving: WorkReceivingCounts | null;
@@ -80,7 +75,6 @@ export type WorkCounts = {
 };
 
 export const EMPTY_WORK_COUNTS: WorkCounts = {
-  intake: null,
   engines: null,
   parts: null,
   receiving: null,
@@ -123,7 +117,7 @@ export type WorkTodaySegment = {
 export type WorkToday = {
   count: number;
   title: string;
-  /** `2 orders · 1 engine intake` — null when nothing needs attention. */
+  /** `2 orders · 1 incoming` — null when nothing needs attention. */
   breakdown: string | null;
   /** Deep link to the largest contributor. */
   href: string | null;
@@ -159,44 +153,20 @@ function fallback(node: WorkNode): ResolvedDetail {
   return { detail: node.subtitle ?? '', detailKind: 'fallback', attention: 0 };
 }
 
-function resolveIntake(node: WorkNode, counts: WorkIntakeCounts | null): ResolvedDetail {
-  if (!counts) return fallback(node);
-  if (counts.awaiting > 0) {
-    return {
-      detail: `${groupThousands(counts.awaiting)} awaiting inspection`,
-      detailKind: 'live',
-      attention: counts.awaiting,
-    };
-  }
-  if (counts.inProgress > 0) {
-    return {
-      detail: `${groupThousands(counts.inProgress)} in progress`,
-      detailKind: 'live',
-      attention: 0,
-    };
-  }
-  if (counts.awaitingVerification > 0) {
-    return {
-      detail: `${groupThousands(counts.awaitingVerification)} awaiting verification`,
-      detailKind: 'live',
-      attention: 0,
-    };
-  }
-  if (counts.total === 0) {
-    return { detail: 'Receive your first engine', detailKind: 'onboarding', attention: 0 };
-  }
-  return { detail: 'No engines waiting', detailKind: 'clear', attention: 0 };
-}
-
 function resolveEngines(node: WorkNode, counts: WorkEngineCounts | null): ResolvedDetail {
   if (!counts) return fallback(node);
-  if (counts.total === 0) {
-    return { detail: 'Add your first engine', detailKind: 'onboarding', attention: 0 };
+  const incoming = counts.incoming;
+  const yard = counts.total;
+  if (incoming === 0 && yard === 0) {
+    return { detail: 'Receive your first engine', detailKind: 'onboarding', attention: 0 };
   }
+  const parts: string[] = [];
+  if (incoming > 0) parts.push(`${groupThousands(incoming)} incoming`);
+  if (yard > 0) parts.push(`${groupThousands(yard)} in yard`);
   return {
-    detail: `${groupThousands(counts.total)} serialized ${plural(counts.total, 'motor', 'motors')}`,
+    detail: parts.join(' · '),
     detailKind: 'live',
-    attention: 0,
+    attention: counts.awaiting,
   };
 }
 
@@ -329,8 +299,6 @@ function resolveEarnings(node: WorkNode, counts: WorkEarningsCounts | null): Res
 
 export function resolveWorkRowDetail(node: WorkNode, counts: WorkCounts): ResolvedDetail {
   switch (node.id) {
-    case 'intake':
-      return resolveIntake(node, counts.intake);
     case 'engines':
       return resolveEngines(node, counts.engines);
     case 'parts':
@@ -351,7 +319,7 @@ export function resolveWorkRowDetail(node: WorkNode, counts: WorkCounts): Resolv
 /** Row id → how that row's attention count reads in the Today breakdown. */
 const TODAY_LABELS: Record<string, (count: number) => string> = {
   orders: (n) => `${groupThousands(n)} ${plural(n, 'order', 'orders')}`,
-  intake: (n) => `${groupThousands(n)} engine ${plural(n, 'intake', 'intakes')}`,
+  engines: (n) => `${groupThousands(n)} incoming`,
   receiving: (n) => `${groupThousands(n)} to place`,
   parts: (n) => `${groupThousands(n)} running low`,
   earnings: (n) => `${groupThousands(n)} ${plural(n, 'payout', 'payouts')}`,

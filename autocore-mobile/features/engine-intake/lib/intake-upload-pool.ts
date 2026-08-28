@@ -8,7 +8,7 @@
  * Pure — no React Native — so the node test runner can load it.
  */
 
-/** Concurrent photo uploads per drain wave. */
+/** Concurrent photo uploads per drain wave — enough to fill the pipe, not the radio. */
 export const PHOTO_UPLOAD_CONCURRENCY = 4;
 
 /**
@@ -35,3 +35,48 @@ export async function mapPool<T>(
 
   await Promise.all(runners);
 }
+
+/**
+ * A counting gate shared by everything that talks to the photo backend.
+ *
+ * `mapPool` bounds one drain wave. It cannot bound a wave *and* the uploads
+ * that start the moment a shutter fires, and those now overlap: a photo is
+ * primed as soon as it is captured rather than waiting for the next wave. Two
+ * independently-bounded producers would have put eight transfers on the radio.
+ */
+export function createSlotGate(limit: number): <T>(task: () => Promise<T>) => Promise<T> {
+  const size = Math.max(1, limit);
+  const waiting: Array<() => void> = [];
+  let active = 0;
+
+  const acquire = async (): Promise<void> => {
+    if (active < size) {
+      active += 1;
+      return;
+    }
+    // The releaser hands its slot straight over rather than giving it back, so
+    // a woken waiter cannot lose the race to a caller arriving at that moment.
+    await new Promise<void>((resolve) => waiting.push(resolve));
+  };
+
+  const release = (): void => {
+    const next = waiting.shift();
+    if (next) {
+      next();
+      return;
+    }
+    active -= 1;
+  };
+
+  return async function withSlot<T>(task: () => Promise<T>): Promise<T> {
+    await acquire();
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  };
+}
+
+/** Global ceiling on photo transfers in flight, whatever started them. */
+export const withPhotoUploadSlot = createSlotGate(PHOTO_UPLOAD_CONCURRENCY);

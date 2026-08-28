@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +16,7 @@ type WarehouseLocationFilterBarProps = {
   items: InventoryItem[];
   filter: WarehouseLocationFilter;
   onChange: (filter: WarehouseLocationFilter) => void;
+  className?: string;
 };
 
 function Chip({
@@ -34,7 +34,7 @@ function Chip({
       size="sm"
       variant={active ? "default" : "outline"}
       className={cn(
-        "h-7 shrink-0 rounded-full px-2.5 text-xs font-medium",
+        "h-7 shrink-0 rounded-md px-2 text-xs font-medium",
         !active && "bg-background/80",
       )}
       onClick={onClick}
@@ -48,6 +48,7 @@ export function WarehouseLocationFilterBar({
   items,
   filter,
   onChange,
+  className,
 }: WarehouseLocationFilterBarProps) {
   const unlocated = countUnlocatedItems(items);
   const options = collectLocationFilterOptions(items);
@@ -55,11 +56,12 @@ export function WarehouseLocationFilterBar({
   if (items.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto border-b border-border/50 px-3 py-2">
-      <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <MapPin className="size-3" />
-        {userCopy.warehouse.locationFilter}
-      </span>
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
+    >
       <Chip active={filter.kind === "all"} onClick={() => onChange({ kind: "all" })}>
         {userCopy.warehouse.allLocations}
       </Chip>

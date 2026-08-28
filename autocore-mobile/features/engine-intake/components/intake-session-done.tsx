@@ -3,6 +3,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { CheckCircle2Icon, CloudIcon } from '@/assets/icons';
 import { Button, Text } from '@/components/ui';
+import { intakeSessionDoneCopy } from '@/features/engine-intake/lib/intake-outbox-banner-copy';
 import { useReducedMotion, useTheme } from '@/hooks';
 import { autocoreEase, duration, spacing } from '@/theme';
 
@@ -58,15 +59,13 @@ export function IntakeSessionDone({
             variant="body"
             style={{ color: colors.mutedForeground, textAlign: 'center', maxWidth: 320 }}
           >
-            {synced
-              ? 'Field capture is complete. The team reviews photos when needed.'
-              : `${Math.max(pendingCount, 1)} items will sync when the connection returns.`}
+            {intakeSessionDoneCopy({ synced, photoPending: pendingCount })}
           </Text>
         </View>
       </Animated.View>
 
       <Button size="xl" onPress={onBack}>
-        Back to intake
+        Back to Engines
       </Button>
     </View>
   );

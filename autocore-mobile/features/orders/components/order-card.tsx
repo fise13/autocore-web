@@ -10,6 +10,7 @@ import { CheckIcon, PhoneIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { formatPrice } from '@/features/search/lib/format';
 import { useMoneyFormatRevision } from '@/store/money-format-store';
 
@@ -142,7 +143,7 @@ function QuickAction({
         backgroundColor: background,
         borderWidth: wo.rule,
         borderColor: border,
-        opacity: pressed ? 0.55 : 1,
+        opacity: pressed ? tokens.opacity.pressed : 1,
       }}
     >
       <ActionGlyph icon={icon} color={foreground} size={16} />

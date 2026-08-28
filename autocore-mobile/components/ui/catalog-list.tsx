@@ -1,4 +1,4 @@
-import { forwardRef, memo, useEffect, useState, type ReactNode } from 'react';
+import { forwardRef, memo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import Animated, {
   interpolateColor,
@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeftIcon, ChevronRightIcon, PlusIcon } from '@/assets/icons';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics, rhythm, spacing, tokens } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 
 import { IconButton } from './icon-button';
 import { Text } from './text';
@@ -135,7 +135,7 @@ export const CatalogRow = memo(
   const { colors, isDark } = useTheme();
   const motion = useMotion();
   const press = useSharedValue(0);
-  const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
 
   // Press feedback lives on an inner Animated.View, not on `Pressable`'s
   // function-form `style` — that form is silently dropped by this RN version
@@ -248,15 +248,15 @@ CatalogRow.displayName = 'CatalogRow';
 /**
  * Fixed header for a catalog screen.
  *
- * A navigation row that always holds the back affordance and the screen's one
- * primary action, a large title under it, and a filter field that stays put —
- * on a 250-row catalog, search you have to scroll back to find is search you
- * do not use.
+ * A navigation row holding the back affordance and the screen's one primary
+ * action, a large title under it, and a filter field that stays put — on a
+ * 250-row catalog, search you have to scroll back to find is search you do not
+ * use.
  *
- * `collapsed` is the Apple navigation-bar move: once the list has scrolled the
- * large title condenses into the nav row and a hairline appears, so the field
- * and the filter keep their place while the page title stops taking a third of
- * the screen. Screens that do not track scroll simply never set it.
+ * Nothing here moves while the list scrolls. A catalog that wants the Apple
+ * arrangement instead — large title and filters riding inside the scroll view,
+ * under a bar that only ever holds chrome — uses `CatalogNavBar` and lets its
+ * list draw them; Engines is built that way.
  */
 export function CatalogScreenHeader({
   title,
@@ -264,7 +264,6 @@ export function CatalogScreenHeader({
   onBack,
   search,
   action,
-  collapsed = false,
 }: {
   title: string;
   subtitle: string;
@@ -272,32 +271,9 @@ export function CatalogScreenHeader({
   search?: ReactNode;
   /** Primary action for the screen (e.g. Add), pinned in the navigation row. */
   action?: ReactNode;
-  /** Condense the large title — drive it from the list's scroll offset. */
-  collapsed?: boolean;
 }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const motion = useMotion();
-  const progress = useSharedValue(collapsed ? 1 : 0);
-  // Measured from the natural (unanimated) inner block, so Dynamic Type sets
-  // the travel instead of a hardcoded height that clips at larger sizes.
-  const [titleHeight, setTitleHeight] = useState(0);
-
-  useEffect(() => {
-    const target = collapsed ? 1 : 0;
-    progress.value = motion.reduced
-      ? target
-      : withTiming(target, { duration: motion.duration.normal, easing: motion.ease });
-  }, [collapsed, motion.duration.normal, motion.ease, motion.reduced, progress]);
-
-  const largeStyle = useAnimatedStyle(() => ({
-    opacity: 1 - progress.value,
-    transform: [{ translateY: -6 * progress.value }],
-    ...(titleHeight > 0 ? { height: titleHeight * (1 - progress.value) } : null),
-  }));
-
-  const inlineStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
-  const hairlineStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
     <View style={{ paddingTop: insets.top + tokens.space.micro, backgroundColor: colors.background }}>
@@ -315,52 +291,22 @@ export function CatalogScreenHeader({
           <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={2} />
         </IconButton>
 
-        {/* Absolute so the condensed title is centred on the screen rather than
-            on whatever space the action leaves behind. */}
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            {
-              position: 'absolute',
-              left: 64,
-              right: 64,
-              top: 0,
-              bottom: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-            },
-            inlineStyle,
-          ]}
-        >
-          <Text variant="headline" numberOfLines={1} style={{ color: colors.foreground }}>
-            {title}
-          </Text>
-        </Animated.View>
-
         {action}
       </View>
 
-      <Animated.View style={[{ overflow: 'hidden' }, largeStyle]}>
-        <View
-          onLayout={(event) => {
-            const next = Math.round(event.nativeEvent.layout.height);
-            setTitleHeight((current) => (Math.abs(current - next) < 1 ? current : next));
-          }}
-          style={{ paddingHorizontal: rhythm.pad, paddingTop: spacing[1], gap: 2 }}
+      <View style={{ paddingHorizontal: rhythm.pad, paddingTop: spacing[1], gap: 2 }}>
+        <Text
+          variant="displayTitle"
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.2}
+          style={{ color: colors.foreground }}
         >
-          <Text
-            variant="displayTitle"
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.2}
-            style={{ color: colors.foreground }}
-          >
-            {title}
-          </Text>
-          <Text variant="subheadline" color="muted" numberOfLines={1}>
-            {subtitle}
-          </Text>
-        </View>
-      </Animated.View>
+          {title}
+        </Text>
+        <Text variant="subheadline" color="muted" numberOfLines={1}>
+          {subtitle}
+        </Text>
+      </View>
 
       {search ? (
         <View
@@ -373,14 +319,6 @@ export function CatalogScreenHeader({
           {search}
         </View>
       ) : null}
-
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          { height: tokens.control.hairline, backgroundColor: colors.border },
-          hairlineStyle,
-        ]}
-      />
     </View>
   );
 }
@@ -432,7 +370,7 @@ export function CatalogAddButton({
         alignItems: 'center',
         gap: 5,
         backgroundColor: colors.primary,
-        opacity: inert ? tokens.opacity.disabled : pressed ? 0.85 : 1,
+        opacity: inert ? tokens.opacity.disabled : pressed ? tokens.opacity.pressed : 1,
       }}
     >
       {loading ? (

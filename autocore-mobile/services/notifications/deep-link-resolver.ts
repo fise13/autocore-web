@@ -99,10 +99,12 @@ export function resolveNotificationDeepLink(deepLink?: string | null): Href | nu
   }
   if (path === 'intake' || path.startsWith('intake/') || path.startsWith('intake?')) {
     const widgetLink = parseWidgetDeepLink(`${SCHEME}${path}`);
-    if (widgetLink?.dest === 'intake' && widgetLink.filter) {
-      return { pathname: '/intake', params: { filter: widgetLink.filter } } as unknown as Href;
-    }
-    return '/intake' as Href;
+    const filter =
+      widgetLink?.dest === 'intake' && widgetLink.filter
+        ? widgetLink.filter
+        : undefined;
+    const parsed = filter === 'all' ? 'all' : 'incoming';
+    return { pathname: '/objects/engines', params: { filter: parsed } } as unknown as Href;
   }
 
   return '/(tabs)' as Href;

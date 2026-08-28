@@ -10,8 +10,7 @@ export type WorkspaceDomainId =
   | 'warehouse'
   | 'sales'
   | 'operations'
-  | 'finance'
-  | 'intake';
+  | 'finance';
 
 /** A node in the dynamic Work tree. */
 export type WorkNode = {

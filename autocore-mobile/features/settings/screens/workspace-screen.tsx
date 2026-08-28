@@ -32,7 +32,7 @@ export function WorkspaceScreen() {
   };
 
   return (
-    <ProfileScreenShell title="Workspace" subtitle="Company, subscription, and sync">
+    <ProfileScreenShell title="Workspace" subtitle="Company, subscription, and devices">
       <WorkspaceHeroCard
         companyName={companyName}
         role={profile?.role ?? 'employee'}

@@ -49,12 +49,17 @@ describe('resolveShellModel', () => {
 
   it('orders Work sections by role', () => {
     const mechanic = resolveShellModel({ modules: ALL_MODULES, user: user('mechanic') });
-    assert.equal(mechanic.workGrouped[0]?.domain, 'intake');
+    assert.equal(mechanic.workGrouped[0]?.domain, 'inventory');
+    assert.ok(mechanic.workNodes.some((n) => n.id === 'engines'));
+    assert.equal(
+      mechanic.workNodes.some((n) => n.id === 'intake'),
+      false,
+    );
 
     const manager = resolveShellModel({ modules: ALL_MODULES, user: user('manager') });
     assert.deepEqual(
       manager.workGrouped.slice(0, 2).map((group) => group.domain),
-      ['sales', 'intake'],
+      ['sales', 'inventory'],
     );
 
     const owner = resolveShellModel({ modules: ALL_MODULES, user: user('owner') });
@@ -65,7 +70,7 @@ describe('resolveShellModel', () => {
   });
 
   it('reorders sections by role without changing which ones exist', () => {
-    // `employee` and `owner` both hold inventory + work-order + intake view,
+    // `employee` and `owner` both hold inventory + work-order view,
     // so any difference between them is ordering, not membership.
     const domains = (role: Parameters<typeof user>[0]) =>
       resolveShellModel({ modules: ALL_MODULES, user: user(role) }).workGrouped.map(
@@ -77,7 +82,7 @@ describe('resolveShellModel', () => {
 
     assert.deepEqual([...employee].sort(), [...owner].sort());
     assert.notDeepEqual(employee, owner);
-    assert.equal(employee[0], 'intake');
+    assert.equal(employee[0], 'inventory');
     assert.equal(owner[0], 'sales');
   });
 
@@ -91,11 +96,20 @@ describe('resolveShellModel', () => {
     assert.deepEqual(managerSales?.nodes.map((n) => n.id), ['orders']);
   });
 
-  it('shows only what the seat can reach — a mechanic gets no inventory sections', () => {
+  it('shows Engines to a mechanic who has intake but no inventory catalog', () => {
     const model = resolveShellModel({ modules: ALL_MODULES, user: user('mechanic') });
     assert.deepEqual(
       model.workGrouped.map((group) => group.domain),
-      ['intake', 'sales', 'operations'],
+      ['inventory', 'sales', 'operations'],
+    );
+    assert.deepEqual(
+      model.workGrouped.find((group) => group.domain === 'inventory')?.nodes.map((n) => n.id),
+      ['engines'],
+    );
+    assert.equal(model.actionItems.some((item) => item.id === 'receive-engine'), true);
+    assert.equal(
+      model.actionItems.find((item) => item.id === 'receive-engine')?.href,
+      '/objects/new',
     );
   });
 

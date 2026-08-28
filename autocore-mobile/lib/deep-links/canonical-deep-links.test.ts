@@ -54,7 +54,7 @@ describe('matchCanonicalPath', () => {
       '/work-orders/wo_123': '/orders/wo_123',
       '/warehouse': '/warehouse',
       '/motors': '/objects/engines',
-      '/engine-intake': '/intake',
+      '/engine-intake': '/objects/engines?filter=incoming',
       '/accounting': '/(tabs)/accounting',
       '/my-earnings': '/earnings',
       '/team': '/(tabs)/profile/team',

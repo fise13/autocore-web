@@ -54,4 +54,5 @@ export { useAppDisplayCurrency } from './use-app-display-currency';
 export { useCompanyDisplayCurrency } from './use-company-display-currency';
 export { useWarehousesRealtime } from './use-warehouses-realtime';
 export { useAutocomplete } from './use-autocomplete';
+export { useCatalogAutocomplete } from './use-catalog-autocomplete';
 export { useExchangeRates } from './use-exchange-rates';

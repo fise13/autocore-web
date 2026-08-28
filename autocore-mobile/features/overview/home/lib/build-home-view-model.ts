@@ -184,7 +184,7 @@ export function buildHomeViewModel(input: BuildHomeViewModelInput): HomeViewMode
 
   const quickActions = buildHomeQuickActions({
     actions: input.actions,
-    hasOpenIntake: (facts.intake?.inProgressCount ?? 0) > 0,
+    intake: facts.intake,
   });
   const activity = buildHomeActivity(facts.orders ? input.orders : null, input.now);
 

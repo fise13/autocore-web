@@ -33,8 +33,8 @@ describe('homeMetricDestination', () => {
       params: { lowStock: '1' },
     });
     assert.deepEqual(homeMetricDestination('intake.in_progress'), {
-      pathname: '/intake',
-      params: { filter: 'active' },
+      pathname: '/objects/engines',
+      params: { filter: 'incoming' },
     });
     assert.deepEqual(homeMetricDestination('engines.aging'), {
       pathname: '/search',
@@ -50,8 +50,8 @@ describe('homeAttentionDestination', () => {
       params: { filter: 'waiting' },
     });
     assert.deepEqual(homeAttentionDestination('intake.quarantine'), {
-      pathname: '/intake',
-      params: { filter: 'ready' },
+      pathname: '/objects/engines',
+      params: { filter: 'incoming' },
     });
   });
 });

@@ -40,7 +40,6 @@ export type WidgetCopy = {
   intakeRefresh: string;
   readyForReview: (count: number) => string;
   documenting: (count: number) => string;
-  photosSyncing: (count: number) => string;
   bayClear: string;
   waitingForReview: string;
   readyLabel: string;
@@ -97,8 +96,6 @@ export const EN_WIDGET_COPY: WidgetCopy = {
     `${count} ${count === 1 ? 'engine' : 'engines'} ready for review`,
   documenting: (count) =>
     `${count} ${count === 1 ? 'engine' : 'engines'} documenting`,
-  photosSyncing: (count) =>
-    `${count} ${count === 1 ? 'photo' : 'photos'} syncing`,
   bayClear: 'Bay is clear',
   waitingForReview: 'Waiting for review',
   readyLabel: 'Ready',

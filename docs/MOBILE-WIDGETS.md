@@ -13,7 +13,7 @@ Provisioning / App Groups: [MOBILE-LIVE-ACTIVITIES.md](MOBILE-LIVE-ACTIVITIES.md
 
 | Name | Gallery title | Job | Families |
 | --- | --- | --- | --- |
-| `OperationsLiveActivity` | — | Fail / documenting / upload | Island + Lock banner |
+| `OperationsLiveActivity` | — | Synced photo count | Island + Lock banner |
 | `AutoCoreToday` | Floor | Hottest fact on the floor | Lock circular / rectangular / inline · Home small / medium / large (StandBy) |
 | `AutoCoreScan` | Scan | Open the camera | Lock circular · Home small |
 | `AutoCoreIntake` | Intake Bay | Ready vs documenting | Lock circular / rectangular / inline · Home small / medium |
@@ -70,14 +70,13 @@ Do not put a Sync circle on the Lock Screen. The queue lives on the Island.
 
 ## Island
 
-One `OperationsLiveActivity` instance. [`resolveDesiredLiveActivity`](../autocore-mobile/features/live-activity/lib/live-activity-model.ts) rank:
+One `OperationsLiveActivity` instance. [`resolveDesiredLiveActivity`](../autocore-mobile/features/live-activity/lib/live-activity-model.ts) is a **sync count**, not a documenting session:
 
-1. Fail / blocked sync (`FAILED`, `ACTION_REQUIRED`)
-2. Active intake session (`in_session` / `paused`: subject + `captured/required`)
-3. Uploading / waiting / retry
-4. Idle — empty queue and no session ends immediately (success linger only after a wave that actually moved)
+1. Person-needed fail only (`FAILED`) — missing file / auth, still shown as `N/M`
+2. Photos still leaving or parked (`SYNCING`, headline `3/8`) — including no-signal; never “Waiting for connection”
+3. Idle — empty outbox. An open camera with nothing to upload does not keep the Island alive
 
-Session frame: camera glyph, title + subject + `4/12`. **No upload Gauge.** Tap opens `autocoremobile://intake?filter=active`. Sync tap stays `autocoremobile://intake`.
+Compact: glyph + `3/8`. Expanded / Lock banner: the same fraction + a thin ProgressView. No “Documenting”, no serial, no camera disc, no Gauge. Tap opens `autocoremobile://intake`.
 
 Always-On still greys accents. After any layout edit bump `OPERATIONS_LIVE_ACTIVITY_LAYOUT_BUILD` and ship a device Release rebuild — Babel serializes only the `'widget'` function.
 
@@ -107,7 +106,6 @@ Intake Bay reads the same merged job list as the bay UI, including optimistic Re
 | Scan / `openScan` | `autocoremobile://scan` |
 | Pay | `autocoremobile://earnings` |
 | Island (sync) | `autocoremobile://intake` |
-| Island (session) | `autocoremobile://intake?filter=active` |
 | Intake Bay (Ready / `openReady`) | `autocoremobile://intake?filter=ready` |
 | Intake Bay (Active / `continueIntake`) | `autocoremobile://intake?filter=active` |
 
@@ -124,7 +122,7 @@ The iOS gallery only lists widgets compiled into `ExpoWidgetsTarget` (`index.swi
 3. Scan opens the camera. To-place badge matches receiving.
 4. Intake Ready on the phone matches the bay (and web **In review**). Tap Ready → Ready tab; Continue → Active.
 5. Sign out or switch company: Lock Screen numbers clear to `—` / AutoCore, not the previous tenant. Pay without earnings access shows `Pay isn’t on for you`, not another person's totals.
-6. Document an engine: Island shows session (camera + `4/12`), not an upload Gauge. Blocked sync outranks the session. Healthy upload yields to documenting. Empty queue with no session ends the Island — it must not sit empty.
+6. Photograph an engine: Island shows `N/M` synced while photos are in the outbox (including offline). It must not say Documenting. Empty queue ends the Island — it must not sit empty.
 7. Settings → Notifications → Lock Screen copy lists Floor / Scan / Intake Bay.
 
 ## After layout edits

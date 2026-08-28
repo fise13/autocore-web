@@ -191,6 +191,10 @@ export async function mobileFetch<T>(
     if (queueWhenOffline && shouldQueueMutation(error, method)) {
       return queueAndResolve<T>(path, method, bodyAsString(requestInit.body));
     }
+    if (isNetworkError(error)) {
+      const message = error instanceof Error ? error.message : 'No internet connection.';
+      throw new MobileApiError(message, 0);
+    }
     throw error;
   }
 }

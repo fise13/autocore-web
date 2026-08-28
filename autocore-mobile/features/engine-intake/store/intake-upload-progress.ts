@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import {
   aggregateUploadProgress,
+  pickUploadProgress,
   shouldNotifyProgress,
   type UploadProgressMap,
 } from '../lib/upload-progress';
@@ -69,6 +70,14 @@ export function resetIntakeUploadProgress(): void {
   notify();
 }
 
+export function useIntakeUploadProgressMap(): UploadProgressMap {
+  return useSyncExternalStore(
+    subscribeIntakeUploadProgress,
+    getIntakeUploadProgress,
+    getIntakeUploadProgress,
+  );
+}
+
 /**
  * Aggregate bytes for the sync UI. `ratio` is null when no transfer reports a
  * usable total, and the caller should fall back to counting photos.
@@ -78,10 +87,11 @@ export function useIntakeUploadProgress(): {
   totalBytes: number;
   ratio: number | null;
 } {
-  const map = useSyncExternalStore(
-    subscribeIntakeUploadProgress,
-    getIntakeUploadProgress,
-    getIntakeUploadProgress,
-  );
+  const map = useIntakeUploadProgressMap();
   return aggregateUploadProgress(map);
+}
+
+export function useIntakeJobByteRatio(photoIds: readonly string[]): number | null {
+  const map = useIntakeUploadProgressMap();
+  return aggregateUploadProgress(pickUploadProgress(map, photoIds)).ratio;
 }

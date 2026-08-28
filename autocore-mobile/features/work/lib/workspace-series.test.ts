@@ -173,8 +173,8 @@ describe('flows', () => {
       NOW,
     );
 
-    assert.equal(series.intake?.shape, 'flow');
-    assert.deepEqual(series.intake?.points, [0, 1, 0, 0, 0, 2, 0, 1]);
+    assert.equal(series.engines?.shape, 'flow');
+    assert.deepEqual(series.engines?.points, [0, 1, 0, 0, 0, 2, 0, 1]);
   });
 
   it('drops undated events instead of guessing a week for them', () => {

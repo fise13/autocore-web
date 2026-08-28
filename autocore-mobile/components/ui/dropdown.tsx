@@ -15,6 +15,7 @@ import { backdropIn, backdropOut, popoverIn, popoverOut } from '@/animations';
 import { CheckIcon, ChevronDownIcon } from '@/assets/icons';
 import { useTheme } from '@/hooks';
 import { haptics, radius, spacing } from '@/theme';
+import { tokens } from '@/theme/tokens';
 
 import { Text } from './text';
 
@@ -111,7 +112,7 @@ export function Dropdown({
                 {
                   borderColor: open ? colors.primary : colors.input,
                   backgroundColor: colors.background,
-                  opacity: pressed ? 0.92 : 1,
+                  opacity: pressed ? tokens.opacity.pressed : 1,
                 },
               ]}
             >

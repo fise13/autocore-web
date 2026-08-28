@@ -193,7 +193,7 @@ export function EditProfileScreen() {
         </Pressable>
       </View>
 
-      <ListSection title="Profile" footer="Your photo syncs across devices through your account.">
+      <ListSection title="Profile" footer="Your photo follows your account on every device.">
         <View style={{ padding: tokens.space.stack + 2, gap: tokens.space.stack }}>
           <View style={{ gap: tokens.space.inline }}>
             <Text variant="footnote" color="muted">

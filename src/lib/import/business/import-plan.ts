@@ -39,6 +39,8 @@ export type ExistingIndex = {
   motorSerials?: Map<string, string>;
   /** Folded SKU → inventory item id. */
   itemSkus?: Map<string, string>;
+  /** Folded serial/SKU → specific-catalogue record id (КПП, кузов, …). */
+  specificSerials?: Map<string, string>;
 };
 
 export type BuildPlanInput = {
@@ -69,6 +71,13 @@ function existingIdFor(
     }
     if (key.field === "serial" && entity.kind === "engine") {
       const hit = existing.motorSerials?.get(key.value);
+      if (hit) return hit;
+    }
+    if (
+      (key.field === "serial" || key.field === "sku") &&
+      (entity.kind === "usedPart" || entity.kind === "stockItem")
+    ) {
+      const hit = existing.specificSerials?.get(key.value);
       if (hit) return hit;
     }
     if (key.field === "sku") {

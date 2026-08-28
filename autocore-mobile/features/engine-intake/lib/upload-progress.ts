@@ -28,6 +28,19 @@ export type UploadProgressMap = Readonly<Record<string, UploadProgressEntry>>;
  * `ratio` is null when nothing reports a usable total — the UI then falls back
  * to counting photos, which is the only honest thing to show.
  */
+export function pickUploadProgress(
+  progress: UploadProgressMap,
+  ids: readonly string[],
+): UploadProgressMap {
+  if (ids.length === 0) return {};
+  const next: Record<string, UploadProgressEntry> = {};
+  for (const id of ids) {
+    const entry = progress[id];
+    if (entry) next[id] = entry;
+  }
+  return next;
+}
+
 export function aggregateUploadProgress(progress: UploadProgressMap): {
   bytesSent: number;
   totalBytes: number;

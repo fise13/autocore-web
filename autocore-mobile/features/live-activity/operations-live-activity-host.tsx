@@ -3,9 +3,9 @@ import { useOperationsLiveActivity } from './use-operations-live-activity';
 import { useWidgetInteractions } from './use-widget-interactions';
 
 /**
- * Mount once under the signed-in shell to drive every iOS presentation surface:
- * the Dynamic Island, the Lock Screen Live Activity, and the Home / Lock Screen
- * widgets. Renders nothing, so churn here never re-renders the navigation tree.
+ * Mount once under the signed-in tab shell to drive Home / Lock Screen
+ * widgets. The Dynamic Island is owned by `IntakeSyncHead` (it has to
+ * outlive this host — the camera route unmounts the tab shell).
  */
 export function OperationsLiveActivityHost() {
   useOperationsLiveActivity();

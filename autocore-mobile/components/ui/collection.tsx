@@ -14,7 +14,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { CheckIcon, ChevronRightIcon } from '@/assets/icons';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 
 import { Switch } from './switch';
@@ -155,7 +155,7 @@ export const CollectionRow = memo(function CollectionRow({
     ? colors.destructive
     : withAlpha(colors.mutedForeground, isDark ? 0.72 : 0.78);
   const chevronColor = withAlpha(colors.mutedForeground, isDark ? 0.4 : 0.45);
-  const pressedFill = isDark ? withAlpha(colors.muted, 0.55) : withAlpha(colors.muted, 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
 
   const pressStyle = useAnimatedStyle(() => {
     if (motion.reduced) {

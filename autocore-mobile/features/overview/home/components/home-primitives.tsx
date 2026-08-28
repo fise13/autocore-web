@@ -13,7 +13,7 @@ import { Text } from '@/components/ui';
 import { mcMotion } from '@/features/overview/animation/mc-motion';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics, typography } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 
 /**
@@ -189,7 +189,7 @@ export const HomeRow = memo(function HomeRow({
   const motion = useMotion();
   const press = useSharedValue(0);
 
-  const pressedFill = withAlpha(colors.foreground, isDark ? 0.06 : 0.045);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
 
   const pressStyle = useAnimatedStyle(() => {
     if (motion.reduced) {

@@ -25,6 +25,7 @@ import { WarehouseImportWizard } from "@/components/warehouse/import/warehouse-i
 import { WarehouseImportHistoryPanel } from "@/components/warehouse/import/warehouse-import-history-panel";
 import { InventoryImportJob } from "@/domain/inventory-import";
 import { WarehouseLocationFilterBar } from "@/components/warehouse/warehouse-location-filter-bar";
+import { WarehouseLocationsDialog } from "@/components/warehouse/warehouse-locations-dialog";
 import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-movement-drawer";
 import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
 import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
@@ -37,7 +38,7 @@ import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useStockLevelsRealtime } from "@/hooks/use-stock-levels-realtime";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { useLifecyclePausable } from "@/hooks/use-lifecycle-pausable";
-import { can } from "@/lib/auth/permissions";
+import { can, canManageWarehouses } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
 import {
@@ -105,6 +106,7 @@ export function WarehouseWorkspace() {
   const actorUserId = profile?.id ?? "";
   const canView = can(profile, "inventory_view");
   const canEdit = can(profile, "inventory_edit");
+  const canManage = canManageWarehouses(profile);
   const canImport = can(profile, "inventory_import");
   const canExport = can(profile, "inventory_export");
 
@@ -123,6 +125,7 @@ export function WarehouseWorkspace() {
   const [locationFilter, setLocationFilter] = useState<WarehouseLocationFilter>(ALL_LOCATION_FILTER);
   const [assignItems, setAssignItems] = useState<InventoryItem[]>([]);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [locationsOpen, setLocationsOpen] = useState(false);
   const [importResumeSession, setImportResumeSession] = useState<{
     jobId: string;
     rows: InventoryImportJob["rows"];
@@ -384,18 +387,33 @@ export function WarehouseWorkspace() {
           </button>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
-        <span>
-          {userCopy.warehouse.consumables}
-          <span className="text-muted-foreground">
-            {" "}
-            · {activeWarehouse?.name ?? userCopy.warehouse.selectWarehouse}
-          </span>
-          {warehouses.length > 1 ? (
-            <span className="text-muted-foreground"> · {userCopy.warehouse.stockThisWarehouseOnly}</span>
-          ) : null}
-        </span>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {activeWarehouseId ? (
+            <button
+              type="button"
+              className="shrink-0 rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
+              onClick={() => setLocationsOpen(true)}
+            >
+              {userCopy.warehouse.locations}
+            </button>
+          ) : (
+            <span className="min-w-0 truncate">
+              {userCopy.warehouse.consumables}
+              <span className="text-muted-foreground">
+                {" "}
+                · {userCopy.warehouse.selectWarehouse}
+              </span>
+            </span>
+          )}
+          <WarehouseLocationFilterBar
+            items={scopedWarehouseItems}
+            filter={locationFilter}
+            onChange={setLocationFilter}
+            className="min-w-0 flex-1"
+          />
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {dirtyCount > 0 ? (
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
               {userCopy.warehouse.dirtyCount(dirtyCount)}
@@ -440,38 +458,31 @@ export function WarehouseWorkspace() {
         )}
       >
         {isGridReady && activeWarehouseId ? (
-          <>
-            <WarehouseLocationFilterBar
-              items={scopedWarehouseItems}
-              filter={locationFilter}
-              onChange={setLocationFilter}
-            />
-            <WarehouseExcelGrid
-              key={activeWarehouseId}
-              items={filteredItems}
-              companyId={companyId}
-              canEdit={canEdit}
-              repository={itemRepository}
-              stockLevelRepository={stockLevelRepository}
-              movementRepository={movementRepository}
-              warehouseRepository={warehouseRepository}
-              financialRepository={financialRepository}
-              activeWarehouseId={activeWarehouseId}
-              actorUserId={actorUserId}
-              onReceipt={(item) => openDialog("receipt", item)}
-              onAdjust={(item) => openDialog("adjust", item)}
-              onSale={(item) => openDialog("sale", item)}
-              onTransfer={(item) => openDialog("transfer", item)}
-              onHistory={(item) => openDialog("history", item)}
-              onAssignLocation={(items) => {
-                setAssignItems(items);
-                setAssignOpen(true);
-              }}
-              onCloudPendingChange={setCloudPending}
-              onDirtyCountChange={setDirtyCount}
-              externalInteractionLocked={dialog !== null || assignOpen}
-            />
-          </>
+          <WarehouseExcelGrid
+            key={activeWarehouseId}
+            items={filteredItems}
+            companyId={companyId}
+            canEdit={canEdit}
+            repository={itemRepository}
+            stockLevelRepository={stockLevelRepository}
+            movementRepository={movementRepository}
+            warehouseRepository={warehouseRepository}
+            financialRepository={financialRepository}
+            activeWarehouseId={activeWarehouseId}
+            actorUserId={actorUserId}
+            onReceipt={(item) => openDialog("receipt", item)}
+            onAdjust={(item) => openDialog("adjust", item)}
+            onSale={(item) => openDialog("sale", item)}
+            onTransfer={(item) => openDialog("transfer", item)}
+            onHistory={(item) => openDialog("history", item)}
+            onAssignLocation={(items) => {
+              setAssignItems(items);
+              setAssignOpen(true);
+            }}
+            onCloudPendingChange={setCloudPending}
+            onDirtyCountChange={setDirtyCount}
+            externalInteractionLocked={dialog !== null || assignOpen || locationsOpen}
+          />
         ) : isGridReady ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
             {userCopy.warehouse.selectOrCreate}
@@ -673,6 +684,17 @@ export function WarehouseWorkspace() {
         }}
       />
 
+      {activeWarehouseId && activeWarehouse ? (
+        <WarehouseLocationsDialog
+          open={locationsOpen}
+          onOpenChange={setLocationsOpen}
+          companyId={companyId}
+          warehouseId={activeWarehouseId}
+          warehouseName={activeWarehouse.name}
+          actorUserId={actorUserId}
+          canManage={canManage}
+        />
+      ) : null}
       {activeWarehouseId ? (
         <WarehouseBulkAssignLocationDialog
           open={assignOpen}

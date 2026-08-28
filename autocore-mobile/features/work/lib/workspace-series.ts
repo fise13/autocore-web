@@ -194,12 +194,15 @@ export function buildWorkspaceSeries(
   }
 
   if (intakeJobs) {
-    put(
-      'intake',
-      'flow',
-      'Engines booked into the bay each week for the last 8 weeks',
-      flowSeries(intakeJobs, windows),
-    );
+    // Mechanics have no motors catalog — Incoming flow is the Engines spark.
+    if (!motors) {
+      put(
+        'engines',
+        'flow',
+        'Engines booked into receive each week for the last 8 weeks',
+        flowSeries(intakeJobs, windows),
+      );
+    }
   }
 
   if (payroll) {

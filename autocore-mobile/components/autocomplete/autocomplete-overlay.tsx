@@ -1,21 +1,23 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { KeyboardStickyView, useKeyboardState } from 'react-native-keyboard-controller';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AutocompleteDock } from '@/components/autocomplete/autocomplete-dock';
 import {
   InlineAutocomplete,
   InlineAutocompleteEmpty,
 } from '@/components/autocomplete/inline-autocomplete';
 import type { AutocompleteSession } from '@/lib/autocomplete/types';
-import { tokens } from '@/theme';
+import { spacing, tokens } from '@/theme';
 
 type AutocompleteOverlayProps = {
   session: AutocompleteSession | null;
   chromeBottomInset?: number;
   onSelect: (index: number) => void;
   onInteractionStart?: () => void;
+  onDockHeight?: (height: number) => void;
 };
 
 type DockPanelProps = {
@@ -25,15 +27,24 @@ type DockPanelProps = {
   onSelect: (index: number) => void;
   onInteractionStart?: () => void;
   paddingBottom: number;
+  onContentHeight: (height: number) => void;
 };
 
-function DockPanel({
+function reportHeight(
+  event: LayoutChangeEvent,
+  onContentHeight: (height: number) => void,
+) {
+  onContentHeight(Math.round(event.nativeEvent.layout.height));
+}
+
+function ListDockPanel({
   session,
   loading,
   suggestions,
   onSelect,
   onInteractionStart,
   paddingBottom,
+  onContentHeight,
 }: DockPanelProps) {
   return (
     <View
@@ -44,8 +55,7 @@ function DockPanel({
         paddingBottom,
       }}
     >
-      {/* auto — only the panel itself captures presses */}
-      <View pointerEvents="auto">
+      <View pointerEvents="auto" onLayout={(event) => reportHeight(event, onContentHeight)}>
         <InlineAutocomplete
           items={suggestions}
           query={session.query}
@@ -61,46 +71,100 @@ function DockPanel({
   );
 }
 
+function ChipDockPanel({
+  session,
+  suggestions,
+  onSelect,
+  onInteractionStart,
+  paddingBottom,
+  onContentHeight,
+}: Omit<DockPanelProps, 'loading'>) {
+  if (suggestions.length === 0) return null;
+  return (
+    <View pointerEvents="box-none" style={{ paddingBottom }}>
+      <View pointerEvents="auto" onLayout={(event) => reportHeight(event, onContentHeight)}>
+        <AutocompleteDock
+          suggestions={suggestions}
+          query={session.query}
+          onSelect={onSelect}
+          onInteractionStart={onInteractionStart}
+        />
+      </View>
+    </View>
+  );
+}
+
 /**
- * Keyboard-docked suggestions.
+ * Keyboard-docked suggestions. Not in the form layout.
  *
- * iOS: FullWindowOverlay so the dock paints above formSheet/pageSheet, with
- * box-none pass-through so the form stays tappable.
- * Android: KeyboardStickyView in the normal hierarchy (no form-sheet window).
+ * iOS: FullWindowOverlay so the bar paints above formSheet.
+ * `KeyboardExtender` / `InputAccessoryView` crash or vanish with KeyboardProvider
+ * + formSheet — do not use them here.
+ * Android: KeyboardStickyView.
  */
 export const AutocompleteOverlay = memo(function AutocompleteOverlay({
   session,
   chromeBottomInset = 0,
   onSelect,
   onInteractionStart,
+  onDockHeight,
 }: AutocompleteOverlayProps) {
   const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardState((state) => state.height);
+  const chips = session?.config.presentation !== 'list';
   const suggestions = session?.visible ? session.suggestions : [];
   const loading = session?.status === 'loading';
-  const show = Boolean(session?.visible && session);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const show = Boolean(
+    session?.visible && session && (chips ? suggestions.length > 0 : true),
+  );
 
   useEffect(() => {
-    const onShow = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const onHide = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      onShow.remove();
-      onHide.remove();
-    };
-  }, []);
+    if (!show) {
+      onDockHeight?.(0);
+      return;
+    }
+    onDockHeight?.(
+      chips ? tokens.autocomplete.dockHeight : tokens.autocomplete.dockHeight * 2,
+    );
+  }, [chips, onDockHeight, show]);
+
+  const handleContentHeight = useCallback(
+    (height: number) => {
+      if (show) onDockHeight?.(height);
+    },
+    [onDockHeight, show],
+  );
 
   const bottomPad = useMemo(() => {
     if (keyboardHeight > 0) {
-      return keyboardHeight + Math.max(chromeBottomInset, tokens.space.micro);
+      const lift = chips && Platform.OS === 'ios' ? spacing[2] : 0;
+      return keyboardHeight + lift + Math.max(chromeBottomInset, tokens.space.micro);
     }
     return Math.max(insets.bottom, tokens.space.inline) + chromeBottomInset;
-  }, [chromeBottomInset, insets.bottom, keyboardHeight]);
+  }, [chips, chromeBottomInset, insets.bottom, keyboardHeight]);
 
   if (!show || !session) return null;
+
+  const panel: ReactNode = chips ? (
+    <ChipDockPanel
+      session={session}
+      suggestions={suggestions}
+      onSelect={onSelect}
+      onInteractionStart={onInteractionStart}
+      paddingBottom={bottomPad}
+      onContentHeight={handleContentHeight}
+    />
+  ) : (
+    <ListDockPanel
+      session={session}
+      loading={loading}
+      suggestions={suggestions}
+      onSelect={onSelect}
+      onInteractionStart={onInteractionStart}
+      paddingBottom={bottomPad}
+      onContentHeight={handleContentHeight}
+    />
+  );
 
   if (Platform.OS === 'ios') {
     return (
@@ -113,19 +177,9 @@ export const AutocompleteOverlay = memo(function AutocompleteOverlay({
               left: 0,
               right: 0,
               bottom: 0,
-              // Keep the host only as tall as the dock + keyboard band so we
-              // don't rely solely on hit-testing quirks of a full-screen layer.
-              paddingBottom: 0,
             }}
           >
-            <DockPanel
-              session={session}
-              loading={loading}
-              suggestions={suggestions}
-              onSelect={onSelect}
-              onInteractionStart={onInteractionStart}
-              paddingBottom={bottomPad}
-            />
+            {panel}
           </View>
         </View>
       </FullWindowOverlay>
@@ -145,14 +199,26 @@ export const AutocompleteOverlay = memo(function AutocompleteOverlay({
         zIndex: 100,
       }}
     >
-      <DockPanel
-        session={session}
-        loading={loading}
-        suggestions={suggestions}
-        onSelect={onSelect}
-        onInteractionStart={onInteractionStart}
-        paddingBottom={Math.max(chromeBottomInset, tokens.space.micro)}
-      />
+      {chips ? (
+        <ChipDockPanel
+          session={session}
+          suggestions={suggestions}
+          onSelect={onSelect}
+          onInteractionStart={onInteractionStart}
+          paddingBottom={Math.max(chromeBottomInset, tokens.space.micro)}
+          onContentHeight={handleContentHeight}
+        />
+      ) : (
+        <ListDockPanel
+          session={session}
+          loading={loading}
+          suggestions={suggestions}
+          onSelect={onSelect}
+          onInteractionStart={onInteractionStart}
+          paddingBottom={Math.max(chromeBottomInset, tokens.space.micro)}
+          onContentHeight={handleContentHeight}
+        />
+      )}
     </KeyboardStickyView>
   );
 });

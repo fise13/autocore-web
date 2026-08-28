@@ -4,6 +4,8 @@ import { View } from 'react-native';
 
 import { CollectionRow, ListSection, Text, toast } from '@/components/ui';
 import { ProfileScreenShell } from '@/features/profile/components/profile-screen-shell';
+import { useGuardedRouter } from '@/hooks/use-guarded-router';
+import { haptics } from '@/theme';
 import {
   formatIapTraceLines,
   getIapTraceSeq,
@@ -28,6 +30,7 @@ function formatMark(ms: number | undefined): string {
 }
 
 export function DiagnosticsSettingsScreen() {
+  const router = useGuardedRouter();
   const startup = useMemo(() => getStartupSummary(), []);
   const cacheSize = useMemo(() => formatCacheSize(estimateCacheSizeBytes()), []);
   const purchase = useSyncExternalStore(
@@ -47,6 +50,22 @@ export function DiagnosticsSettingsScreen() {
 
   return (
     <ProfileScreenShell title="Diagnostics" subtitle="Logs and developer mode">
+      {__DEV__ ? (
+        <ListSection
+          title="Playground"
+          footer="Dev-only labs. They are not shipped as operator tools."
+        >
+          <CollectionRow
+            title="Design system"
+            subtitle="DL v3 living surface"
+            onPress={() => {
+              haptics.selection();
+              router.push('/design-system');
+            }}
+          />
+        </ListSection>
+      ) : null}
+
       <ListSection title="Environment">
         <CollectionRow title="Build" value={__DEV__ ? 'Development' : 'Production'} showChevron={false} />
         <CollectionRow title="Realtime" value="Firebase" showChevron={false} />

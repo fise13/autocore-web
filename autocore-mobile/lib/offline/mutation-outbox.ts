@@ -59,7 +59,7 @@ export function enqueueMutation(input: {
   publish();
   toast({
     title: 'Saved on this iPhone',
-    description: 'Will sync automatically when you are back online.',
+    description: 'Saved on this phone. It sends by itself once you are back online.',
     variant: 'default',
   });
   return item;

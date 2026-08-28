@@ -18,3 +18,20 @@ export function withAlpha(color: string, alpha: number): string {
 export function toneBackground(color: string, alpha = 0.1): string {
   return withAlpha(color, alpha);
 }
+
+/**
+ * The tint a row takes while a finger is on it.
+ *
+ * One definition, because it was previously nine. Six call sites agreed on
+ * `muted` at 0.55/0.85, `order-row` used 0.9 in light mode, Home and Finance
+ * tinted with `foreground` at 0.045 instead, and `settings-row` used raw
+ * `muted` at full strength with no animation. Rows that sit two screens apart
+ * are hard to compare, which is exactly why the drift went unnoticed and why it
+ * has to live somewhere single.
+ *
+ * Dark mode needs less alpha than light: the same tint over a near-black
+ * surface reads far heavier than over a near-white one.
+ */
+export function pressedRowFill(mutedColor: string, isDark: boolean): string {
+  return withAlpha(mutedColor, isDark ? 0.55 : 0.85);
+}

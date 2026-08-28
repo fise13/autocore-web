@@ -15,6 +15,7 @@ import { useSessionQueryData } from '@/hooks/use-session-query-data';
 import { useRbacPolicy } from '@/hooks/use-rbac-policy';
 import { useMobileWarehouseLocations } from '@/hooks/use-mobile-relocate';
 import { useEngineIntakeJobs } from '@/features/engine-intake/hooks/use-engine-intake-data';
+import { isIncomingJobState, isIncomingMotor } from '@/features/engines/lib/engine-lane';
 import { isWarehouseLowStock } from '@/lib/inventory/is-low-stock';
 import { isRealtimeReady } from '@/lib/realtime/subscription-registry';
 import { isOpenStatus } from '@/lib/work-order/work-order-utils';
@@ -59,7 +60,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
   const wantsEngines = nodeIds.has('engines');
   const wantsInventory = nodeIds.has('parts') || nodeIds.has('receiving');
   const wantsLocations = nodeIds.has('locations');
-  const wantsIntake = nodeIds.has('intake');
+  const wantsIntakeJobs = wantsEngines;
 
   const ordersKey = useMemo(
     () => ['realtime', 'work-orders', companyId, rbac.scopes.workOrders, uid] as const,
@@ -110,7 +111,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     warehousesEnabled && Boolean(defaultWarehouseId),
   );
 
-  const intake = useEngineIntakeJobs(wantsIntake && hasCompany ? companyId : null);
+  const intake = useEngineIntakeJobs(wantsIntakeJobs && hasCompany ? companyId : null);
 
   const ordersReady = !ordersEnabled || isRealtimeReady(ordersKey);
   const inventoryReady = !inventoryEnabled || isRealtimeReady(inventoryKey);
@@ -124,7 +125,8 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
         locationsQuery.isSuccess ||
         locationsQuery.isError ||
         locationsQuery.isFetched));
-  const intakeReady = !wantsIntake || !hasCompany || !intake.loading;
+  const intakeReady = !wantsIntakeJobs || !hasCompany || !intake.loading;
+  const enginesReady = (!motorsEnabled || motorsReady) && intakeReady;
   const payrollReady = !payrollEnabled || isRealtimeReady(payrollKey);
 
   const scopedOrders = useMemo(() => {
@@ -167,8 +169,31 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
       };
     }
 
-    if (motorsEnabled && motorsReady) {
-      next.engines = { total: motorsList.length };
+    if (wantsEngines && enginesReady) {
+      const incomingJobs = intakeJobs.filter((job) => isIncomingJobState(job.state));
+      const incomingJobIds = new Set(incomingJobs.map((job) => job.id));
+      const incomingEngineIds = new Set(
+        incomingJobs.map((job) => job.engineId).filter((id): id is string => Boolean(id)),
+      );
+      const extraIncoming = motorsEnabled
+        ? motorsList.filter((motor) => {
+            if (!isIncomingMotor(motor)) return false;
+            if (motor.intakeJobId && incomingJobIds.has(motor.intakeJobId)) return false;
+            if (incomingEngineIds.has(motor.id)) return false;
+            return true;
+          }).length
+        : 0;
+      const yard = motorsEnabled
+        ? motorsList.filter(
+            (motor) => !isIncomingMotor(motor) && !incomingEngineIds.has(motor.id),
+          )
+        : [];
+      next.engines = {
+        total: yard.length,
+        incoming: incomingJobs.length + extraIncoming,
+        awaiting: intakeJobs.filter((job) => job.state === 'open' || job.state === 'rework')
+          .length,
+      };
     }
 
     if (inventoryEnabled && inventoryReady) {
@@ -197,18 +222,6 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
       };
     }
 
-    if (wantsIntake && hasCompany && intakeReady) {
-      next.intake = {
-        total: intakeJobs.length,
-        awaiting: intakeJobs.filter((job) => job.state === 'open' || job.state === 'rework').length,
-        inProgress: intakeJobs.filter(
-          (job) => job.state === 'in_session' || job.state === 'paused',
-        ).length,
-        awaitingVerification: intakeJobs.filter((job) => job.state === 'awaiting_verification')
-          .length,
-      };
-    }
-
     if (wantsEarnings && ordersReady && payrollReady && uid) {
       next.earnings = {
         pendingCount: ownPayroll.filter((row) => row.status === 'pending').length,
@@ -222,6 +235,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
 
     return next;
   }, [
+    enginesReady,
     hasCompany,
     intakeJobs,
     intakeReady,
@@ -231,7 +245,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     locationsData,
     locationsReady,
     motorsEnabled,
-    motorsList.length,
+    motorsList,
     motorsReady,
     nodeIds,
     ordersEnabled,
@@ -239,7 +253,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
     scopedOrders,
     warehousesEnabled,
     wantsEarnings,
-    wantsIntake,
+    wantsEngines,
     payrollReady,
     ownPayroll,
     uid,
@@ -255,7 +269,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
         orders: ordersEnabled && ordersReady ? scopedOrders : null,
         items: inventoryEnabled && inventoryReady ? items : null,
         motors: motorsEnabled && motorsReady ? motorsList : null,
-        intakeJobs: wantsIntake && hasCompany && intakeReady ? intakeJobs : null,
+        intakeJobs: wantsIntakeJobs && hasCompany && intakeReady ? intakeJobs : null,
         payroll: payrollEnabled && payrollReady ? ownPayroll : null,
       }),
     [
@@ -274,7 +288,7 @@ export function useWorkCounts(nodeIds: ReadonlySet<string>): WorkCountsResult {
       payrollEnabled,
       payrollReady,
       scopedOrders,
-      wantsIntake,
+      wantsIntakeJobs,
     ],
   );
 

@@ -31,7 +31,7 @@ export const useToastStore = create<ToastStore>((set) => ({
       const withoutSame = state.toasts.filter((item) => item.title !== toast.title);
       return { toasts: [...withoutSame, { ...toast, id }] };
     });
-    const duration = toast.duration ?? 4000;
+    const duration = toast.duration ?? (toast.action ? 8_000 : 4_000);
     setTimeout(() => {
       set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
     }, duration);

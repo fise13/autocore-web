@@ -126,8 +126,9 @@ usedPart whose donor is that VIN — it is not a donor. A row that carries only 
 VIN and a make/model/year is the donor itself.
 
 The section heading above a row is context: a heading naming a car makes the
-rows beneath it parts of that car; a heading naming a branch is a location, not
-an entity.
+rows beneath it parts of that car; a heading naming a warehouse, rack or box
+is a location, not an entity. Nested places ("СКЛАД / КОРОБКА 1 / КОРОБКА 2")
+are one path, parent then child.
 
 Keep every "reason" to at most twelve words — a short true sentence, not a
 paragraph. A long answer for one row is paid for by the rows further down the

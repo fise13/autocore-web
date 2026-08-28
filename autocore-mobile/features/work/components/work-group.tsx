@@ -12,7 +12,7 @@ import { ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui/text';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 
 import { workLayout } from '../layout';
 import type { WorkDetailKind } from '../lib/work-model';
@@ -105,7 +105,7 @@ export const WorkGroupRow = memo(function WorkGroupRow({
   const motion = useMotion();
   const press = useSharedValue(0);
 
-  const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
   const chevronColor = withAlpha(colors.mutedForeground, isDark ? 0.4 : 0.45);
   const detailColor =
     detailKind === 'onboarding' || urgent ? colors.primary : colors.mutedForeground;

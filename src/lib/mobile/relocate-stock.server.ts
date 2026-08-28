@@ -2,15 +2,13 @@ import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
 
-import {
-  UNLOCATED_LOCATION_CODE,
-  UNLOCATED_LOCATION_LABEL,
-  unlocatedLocationDocId,
-} from "@/domain/warehouse-location";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
+import {
+  createLocationPathEnsurer,
+  ensureUnlocatedAdmin,
+} from "@/lib/warehouse/ensure-location-path.server";
 import { computeAvailable } from "@/lib/warehouse/movement-logic";
-import { normalizeWarehouseLocation } from "@/lib/warehouse/warehouse-search";
 import {
   locationBalanceDocumentId,
   stockLevelDocumentId,
@@ -52,76 +50,16 @@ async function resolveDefaultWarehouseId(companyId: string): Promise<string | nu
   return (preferred ?? snap.docs[0]).id;
 }
 
-async function ensureUnlocatedAdmin(companyId: string, warehouseId: string, actorUserId: string) {
-  const db = getAdminFirestore();
-  const id = unlocatedLocationDocId(warehouseId);
-  const ref = db.collection("warehouseLocations").doc(id);
-  const snap = await ref.get();
-  if (snap.exists) return { id, displayCode: UNLOCATED_LOCATION_LABEL };
-
-  await ref.set(
-    {
-      companyId,
-      warehouseId,
-      parentId: null,
-      type: "custom",
-      code: UNLOCATED_LOCATION_CODE,
-      path: [UNLOCATED_LOCATION_CODE],
-      displayCode: UNLOCATED_LOCATION_LABEL,
-      label: UNLOCATED_LOCATION_LABEL,
-      isSystem: true,
-      isActive: true,
-      sortOrder: -1,
-      createdByUserId: actorUserId,
-      updatedByUserId: actorUserId,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
-  return { id, displayCode: UNLOCATED_LOCATION_LABEL };
-}
-
 async function ensureCustomLeafAdmin(
   companyId: string,
   warehouseId: string,
   rawCode: string,
   actorUserId: string,
 ) {
-  const code = normalizeWarehouseLocation(rawCode) || rawCode.trim();
-  if (!code) throw new Error("Provide a location code");
-
-  const db = getAdminFirestore();
-  const existing = await db
-    .collection("warehouseLocations")
-    .where("companyId", "==", companyId)
-    .where("warehouseId", "==", warehouseId)
-    .where("displayCode", "==", code)
-    .limit(1)
-    .get();
-  if (!existing.empty) {
-    const doc = existing.docs[0];
-    return { id: doc.id, displayCode: String(doc.data().displayCode ?? code) };
-  }
-
-  const ref = db.collection("warehouseLocations").doc();
-  await ref.set({
-    companyId,
-    warehouseId,
-    parentId: null,
-    type: "custom",
-    code,
-    path: [code],
-    displayCode: code,
-    isSystem: false,
-    isActive: true,
-    sortOrder: 0,
-    createdByUserId: actorUserId,
-    updatedByUserId: actorUserId,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-  return { id: ref.id, displayCode: code };
+  const ensurer = createLocationPathEnsurer({ companyId, warehouseId, actorUserId });
+  const leaf = await ensurer.ensure(rawCode);
+  if (!leaf) throw new Error("Provide a location code");
+  return { id: leaf.id, displayCode: leaf.displayCode };
 }
 
 async function seedUnlocatedBalanceIfNeeded(params: {

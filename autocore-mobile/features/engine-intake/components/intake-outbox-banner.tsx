@@ -2,12 +2,13 @@ import { Pressable, View } from 'react-native';
 
 import { AlertTriangleIcon, ChevronRightIcon, CloudIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
+import { intakeOutboxBannerCopy } from '@/features/engine-intake/lib/intake-outbox-banner-copy';
 import { useTheme } from '@/hooks';
 import { minTouchTarget, spacing, tokens } from '@/theme';
 
 export type IntakeOutboxBannerProps = {
-  pendingCount: number;
-  failedCount: number;
+  photoPendingCount: number;
+  photoFailedCount: number;
   syncing: boolean;
   issue: string | null;
   needsDeploy: boolean;
@@ -15,35 +16,31 @@ export type IntakeOutboxBannerProps = {
 };
 
 export function IntakeOutboxBanner({
-  pendingCount,
-  failedCount,
+  photoPendingCount,
+  photoFailedCount,
   syncing,
   issue,
   needsDeploy,
   onPress,
 }: IntakeOutboxBannerProps) {
   const { colors } = useTheme();
+  const copy = intakeOutboxBannerCopy({
+    photoPending: photoPendingCount,
+    photoFailed: photoFailedCount,
+    syncing,
+    needsDeploy,
+  });
 
-  if (pendingCount <= 0 && failedCount <= 0) return null;
+  if (!copy.visible) return null;
 
-  const alert = failedCount > 0 || needsDeploy;
-  const title = needsDeploy
-    ? 'Web API not deployed — sync is blocked'
-    : failedCount > 0
-      ? failedCount === 1
-        ? '1 item needs attention'
-        : `${failedCount} items need attention`
-      : syncing
-        ? 'Syncing Warehouse work'
-        : pendingCount === 1
-          ? '1 item waiting to sync'
-          : `${pendingCount} items waiting to sync`;
-  const actionHint = failedCount > 0 || needsDeploy ? 'Tap to clear or retry' : undefined;
+  const alert = copy.alert;
+  const title = copy.title;
+  const actionHint = photoFailedCount > 0 || needsDeploy ? 'Tap to try again' : undefined;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={alert ? 'Clear or retry Warehouse sync' : 'Warehouse sync status'}
+      accessibilityLabel={alert ? 'Try these photos again' : 'Engine photo status'}
       accessibilityHint={actionHint}
       onPress={onPress}
       style={{
@@ -74,16 +71,18 @@ export function IntakeOutboxBanner({
         >
           {title}
         </Text>
-        <Text
-          variant="caption"
-          numberOfLines={2}
-          style={{
-            color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
-            marginTop: 2,
-          }}
-        >
-          {issue ?? actionHint}
-        </Text>
+        {issue || actionHint ? (
+          <Text
+            variant="caption"
+            numberOfLines={2}
+            style={{
+              color: alert ? colors.dangerOnSubtle : colors.primaryOnSubtle,
+              marginTop: 2,
+            }}
+          >
+            {issue ?? actionHint}
+          </Text>
+        ) : null}
       </View>
       <ChevronRightIcon
         size={18}

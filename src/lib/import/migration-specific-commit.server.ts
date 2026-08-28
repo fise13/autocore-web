@@ -23,8 +23,9 @@ import {
   migrationCategoryNameForRecordType,
   migrationSubcategoryForRecordType,
 } from "./migration-row-builders";
-import type { RecordType } from "./types";
+import type { CanonicalField, RecordType } from "./types";
 import type { ReviewRow } from "@/components/migration/migration-types";
+import { SPECIFIC_LOCATION_COLUMN_KEY } from "@/lib/specific/specific-location-column";
 
 export type SpecificCategoryCache = Map<InventorySubcategoryId, SpecificCategoryEntity>;
 
@@ -174,6 +175,81 @@ export async function persistMigrationSpecificRowAdmin(params: {
   );
 
   return true;
+}
+
+function identityRowIndex(seed: string): number {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return (hash % 1_000_000_000) + 1;
+}
+
+export async function persistBusinessImportSpecificAdmin(params: {
+  companyId: string;
+  recordType: RecordType;
+  values: Partial<Record<CanonicalField, string>>;
+  entityId: string;
+  existingId?: string;
+  location?: {
+    warehouseLocation: string;
+    primaryLocationId: string;
+    primaryLocationCode: string;
+  };
+  categoryCache: SpecificCategoryCache;
+  categories: SpecificCategoryEntity[];
+}): Promise<string | null> {
+  const subcategoryId = migrationSubcategoryForRecordType(params.recordType);
+  if (!subcategoryId) return null;
+
+  const data = buildSpecificRecordDataFromMigrationRow(params.values, params.recordType);
+  if (!data) return null;
+  if (params.location) {
+    data[SPECIFIC_LOCATION_COLUMN_KEY] = params.location.warehouseLocation;
+    data["Место"] = params.location.warehouseLocation;
+  }
+
+  let category = params.categoryCache.get(subcategoryId);
+  if (!category) {
+    category = await ensureSpecificCategoryAdmin(
+      params.companyId,
+      subcategoryId,
+      params.categories,
+    );
+    params.categoryCache.set(subcategoryId, category);
+  }
+
+  const normalized = normalizeCompanyId(params.companyId);
+  const identity =
+    params.values.serial?.trim() || params.values.sku?.trim() || params.entityId;
+  const rowIndex = identityRowIndex(`${params.recordType}:${identity}`);
+  const recordRef = getAdminFirestore()
+    .collection("specificRecords")
+    .doc(
+      params.existingId?.trim() ||
+        scopedRecordDocumentId(normalized, category.localId, rowIndex),
+    );
+
+  const payload: Record<string, unknown> = {
+    companyId: normalized,
+    categoryId: scopedCategoryDocumentId(normalized, category.localId),
+    categoryLocalId: category.localId,
+    data,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (!params.existingId?.trim()) {
+    payload.rowIndex = rowIndex;
+    payload.createdAt = FieldValue.serverTimestamp();
+  }
+  if (params.location) {
+    payload.warehouseLocation = params.location.warehouseLocation;
+    payload.primaryLocationId = params.location.primaryLocationId;
+    payload.primaryLocationCode = params.location.primaryLocationCode;
+  }
+
+  await recordRef.set(payload, { merge: true });
+  return recordRef.id;
 }
 
 export function migrationUsesSpecificCatalog(recordType: RecordType): boolean {

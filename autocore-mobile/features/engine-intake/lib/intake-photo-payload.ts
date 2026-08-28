@@ -47,6 +47,32 @@ function contentTypeFromExtension(uri: string): string | null {
   return null;
 }
 
+export type IntakePhotoFileExt = 'jpg' | 'webp' | 'png' | 'heic' | 'heif';
+
+/** Swap the path extension after a re-encode (JPEG → WebP, HEIC → JPEG, …). */
+export function rewritePhotoUriExtension(
+  originalUri: string,
+  ext: IntakePhotoFileExt,
+): string {
+  const qIndex = originalUri.indexOf('?');
+  const path = qIndex >= 0 ? originalUri.slice(0, qIndex) : originalUri;
+  const query = qIndex >= 0 ? originalUri.slice(qIndex) : '';
+  const nextPath = /\.[a-z0-9]+$/i.test(path)
+    ? path.replace(/\.[a-z0-9]+$/i, `.${ext}`)
+    : `${path}.${ext}`;
+  return `${nextPath}${query}`;
+}
+
+/** Storage object name for prepare — matches the bytes we are about to PUT. */
+export function fileNameForIntakePhoto(photoId: string, localUri: string): string {
+  const ext = extensionHint(localUri);
+  if (ext === 'webp') return `${photoId}.webp`;
+  if (ext === 'png') return `${photoId}.png`;
+  if (ext === 'heic') return `${photoId}.heic`;
+  if (ext === 'heif') return `${photoId}.heif`;
+  return `${photoId}.jpg`;
+}
+
 export function normalizeIntakePhotoPayload(input: {
   localUri: string;
   mimeType: string | null | undefined;
@@ -66,7 +92,9 @@ export function normalizeIntakePhotoPayload(input: {
   const raw = (input.mimeType ?? '').trim().toLowerCase();
   const fromMime = raw ? ALLOWED[raw] : undefined;
   const fromExt = contentTypeFromExtension(input.localUri);
-  const contentType = fromMime ?? fromExt;
+  // Path wins: after WebP compression the file is renamed but RN File.type
+  // often still reports the original JPEG mime.
+  const contentType = fromExt ?? fromMime;
 
   if (!contentType) {
     return {

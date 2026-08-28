@@ -20,7 +20,6 @@ const DOMAIN_TITLES: Record<WorkspaceDomainId, string> = {
   sales: 'Sales',
   operations: 'Operations',
   finance: 'Finance',
-  intake: 'Intake',
 };
 
 /**
@@ -28,7 +27,6 @@ const DOMAIN_TITLES: Record<WorkspaceDomainId, string> = {
  * actually exposes a node inside them.
  */
 const DEFAULT_DOMAIN_ORDER: WorkspaceDomainId[] = [
-  'intake',
   'inventory',
   'warehouse',
   'sales',
@@ -40,18 +38,18 @@ const DEFAULT_DOMAIN_ORDER: WorkspaceDomainId[] = [
  * Work is not the same screen for every seat. The catalog is identical; what
  * changes is which domain the role reaches for first.
  *
- * - Floor roles start at the bay (intake) and their order queue.
- * - Managers start at orders, then the bay.
+ * - Floor roles start at Engines (receive / photograph) and their order queue.
+ * - Managers start at orders, then inventory.
  * - Owners/admins/accountants start at the commercial picture.
  */
 const ROLE_DOMAIN_ORDER: Partial<Record<UserRole, WorkspaceDomainId[]>> = {
-  mechanic: ['intake', 'sales', 'inventory', 'warehouse', 'operations', 'finance'],
-  diagnostician: ['intake', 'sales', 'inventory', 'warehouse', 'operations', 'finance'],
-  employee: ['intake', 'sales', 'warehouse', 'inventory', 'operations', 'finance'],
-  manager: ['sales', 'intake', 'inventory', 'warehouse', 'operations', 'finance'],
-  owner: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
-  admin: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
-  accountant: ['sales', 'inventory', 'warehouse', 'intake', 'operations', 'finance'],
+  mechanic: ['inventory', 'sales', 'warehouse', 'operations', 'finance'],
+  diagnostician: ['inventory', 'sales', 'warehouse', 'operations', 'finance'],
+  employee: ['inventory', 'sales', 'warehouse', 'operations', 'finance'],
+  manager: ['sales', 'inventory', 'warehouse', 'operations', 'finance'],
+  owner: ['sales', 'inventory', 'warehouse', 'operations', 'finance'],
+  admin: ['sales', 'inventory', 'warehouse', 'operations', 'finance'],
+  accountant: ['sales', 'inventory', 'warehouse', 'operations', 'finance'],
 };
 
 export function workDomainOrder(role: UserRole | null | undefined): WorkspaceDomainId[] {
@@ -70,24 +68,14 @@ export function workDomainTitle(domain: WorkspaceDomainId, nodeCount: number): s
 /** Canonical Work tree catalog — filtered by modules + permissions at resolve time. */
 export const WORK_NODE_CATALOG: WorkNode[] = [
   {
-    id: 'intake',
-    domain: 'intake',
-    title: 'Engine intake',
-    subtitle: 'Receive and photograph engines',
-    href: '/intake',
-    sf: 'camera.viewfinder',
-    modules: ['motors', 'warehouse'],
-    permissions: ['engine_intake_view'],
-  },
-  {
     id: 'engines',
     domain: 'inventory',
     title: 'Engines',
-    subtitle: 'Serialized motors',
+    subtitle: 'Receive, photograph, catalog',
     href: '/objects/engines',
     sf: 'engine.combustion',
     modules: ['motors'],
-    permissions: ['inventory_view'],
+    // `inventory_view` OR `engine_intake_view` — see canWorkNode.
   },
   {
     id: 'parts',
@@ -165,21 +153,21 @@ const ACTION_CATALOG: ActionItem[] = [
     id: 'receive-engine',
     title: 'Receive engine',
     subtitle: 'Start intake with a serial',
-    href: '/intake?new=1',
+    href: '/objects/new',
     sf: 'plus.viewfinder',
     modules: ['motors'],
     permissions: ['engine_intake_execute'],
-    contexts: ['intake', 'engines', 'warehouse'],
+    contexts: ['engines', 'warehouse'],
   },
   {
     id: 'photograph',
     title: 'Photograph engine',
     subtitle: 'Continue an open intake',
-    href: '/intake',
+    href: '/objects/engines?filter=incoming',
     sf: 'camera',
     modules: ['motors'],
     permissions: ['engine_intake_execute'],
-    contexts: ['intake', 'engines'],
+    contexts: ['engines'],
   },
   {
     id: 'new-order',
@@ -282,10 +270,15 @@ function canPermission(user: UserEntity | null | undefined, permissions?: string
 }
 
 function canWorkNode(user: UserEntity | null | undefined, node: WorkNode): boolean {
+  if (node.id === 'engines') {
+    if (!user) return false;
+    if (hasPermission(user, 'engine_intake_view')) return true;
+    return hasPermission(user, 'inventory_view') && getDataScope(user, 'inventory') !== 'none';
+  }
   if (!canPermission(user, node.permissions)) return false;
   if (node.id === 'orders') return getDataScope(user, 'work_orders') !== 'none';
   if (node.id === 'earnings') return canAccessMyEarnings(user);
-  if (node.id === 'engines' || node.id === 'parts' || node.id === 'locations' || node.id === 'receiving') {
+  if (node.id === 'parts' || node.id === 'locations' || node.id === 'receiving') {
     return getDataScope(user, 'inventory') !== 'none';
   }
   return true;

@@ -352,3 +352,27 @@ describe("commitImportPlan — a real book's worth of records", () => {
     assert.equal(seen.at(-1), 40);
   });
 });
+
+describe("commitImportPlan — catalogue units", () => {
+  it("writes transmissions through the specific-record writer when one exists", async () => {
+    const calls: string[] = [];
+    const writers: PlanWriters = {
+      ...recordingWriters().writers,
+      createSpecificRecord: async (input) => {
+        calls.push(`specific:${input.recordType}:${input.values.serial}`);
+        return "spec-1";
+      },
+    };
+    const entity = draft("e1", "stockItem");
+    entity.recordType = "transmission";
+    entity.values.serial = {
+      raw: "TZ1A4",
+      normalized: "TZ1A4",
+      decision: decision("field", 1, "тест", "rules"),
+    };
+    entity.keys = [{ field: "serial", value: "tz1a4" }];
+    const result = await commitImportPlan({ plan: plan([entity]), writers });
+    assert.deepEqual(calls, ["specific:transmission:TZ1A4"]);
+    assert.equal(result.created, 1);
+  });
+});

@@ -2,6 +2,11 @@ import type { Href } from 'expo-router';
 
 import { navigationHrefKey } from '@/lib/navigation/href-key';
 import { stackNavigationGuard } from '@/lib/navigation/stack-navigation-guard';
+import { openEnginesList } from '@/features/engines/navigation';
+import {
+  parseEngineListFilter,
+  type EngineListFilter,
+} from '@/features/engines/lib/engine-lane';
 
 type IntakeRouter = {
   push: (href: Href) => void;
@@ -10,36 +15,23 @@ type IntakeRouter = {
   dismissTo?: (href: Href) => void;
 };
 
-const INTAKE_BAY = '/intake' as Href;
-
+/** @deprecated Intake bay filters — mapped onto Engines Incoming / All. */
 export type IntakeBayFilter = 'active' | 'ready' | 'all';
 
-function intakeBayHref(filter?: IntakeBayFilter): Href {
-  if (!filter) return INTAKE_BAY;
-  return { pathname: '/intake', params: { filter } } as unknown as Href;
+function enginesFilterFromBay(filter?: IntakeBayFilter): EngineListFilter | undefined {
+  if (!filter) return 'incoming';
+  return parseEngineListFilter(filter) ?? 'incoming';
 }
 
 /**
- * Open the Engine intake bay without stacking duplicate screens.
- * Prefer `navigate` (reuses an existing stack entry) over `push`.
+ * Opens Engines (Incoming by default). Kept so widgets, Live Activities, and
+ * leftover `/intake` links do not need a native rebuild.
  */
 export function openEngineIntakeBay(
   router: IntakeRouter,
   options?: { filter?: IntakeBayFilter },
 ): void {
-  const href = intakeBayHref(options?.filter);
-  const key = navigationHrefKey(href);
-  stackNavigationGuard.tryPush(key, () => {
-    if (typeof router.dismissTo === 'function') {
-      try {
-        router.dismissTo(href);
-        return;
-      } catch {
-        // Fall through when dismissTo cannot target this route.
-      }
-    }
-    router.navigate(href);
-  });
+  openEnginesList(router, { filter: enginesFilterFromBay(options?.filter) });
 }
 
 /**

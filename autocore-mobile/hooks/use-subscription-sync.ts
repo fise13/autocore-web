@@ -45,7 +45,7 @@ export function useSubscriptionSync(): SyncState {
       return { isOnline, isStale, label: 'Verifying with server…' };
     }
     if (entitlement.source === 'cached') {
-      return { isOnline, isStale, label: 'Syncing…' };
+      return { isOnline, isStale, label: 'Updating…' };
     }
     return { isOnline, isStale, label: 'Up to date' };
   }, [devOffline, entitlement.source, networkOnline]);

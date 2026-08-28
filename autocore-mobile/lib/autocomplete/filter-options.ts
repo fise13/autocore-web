@@ -25,9 +25,10 @@ export function uniqueAutocompleteOptions(options: AutocompleteOption[], limit =
   const merged: AutocompleteOption[] = [];
 
   for (const option of options) {
-    const key = option.value.trim().toLowerCase();
+    const value = typeof option.value === 'string' ? option.value.trim() : '';
+    const key = value.toLowerCase();
     const hasCopy = Boolean(
-      option.meta?.title?.trim() || option.label?.trim() || option.value.trim(),
+      option.meta?.title?.trim() || option.label?.trim() || value,
     );
     if (!key || !hasCopy || seen.has(key)) continue;
     seen.add(key);

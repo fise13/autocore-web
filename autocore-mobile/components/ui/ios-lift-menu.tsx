@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Dimensions,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -74,19 +75,40 @@ export function IosLiftMenu({
   const { colors, isDark, shadows } = useTheme();
   const motion = useMotion();
   const insets = useSafeAreaInsets();
+  const [hosted, setHosted] = useState(visible);
   const [presented, setPresented] = useState(visible);
   const [dismissArmed, setDismissArmed] = useState(false);
   const [pressedIndex, setPressedIndex] = useState<number | null>(null);
   const frozenAnchor = useRef<IosLiftMenuAnchor | null>(anchor);
+  const pendingAction = useRef<(() => void) | null>(null);
+  const visibleRef = useRef(visible);
+  const dismissFallback = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progress = useSharedValue(visible ? 1 : 0);
   const menuProgress = useSharedValue(visible ? 1 : 0);
+
+  visibleRef.current = visible;
 
   if (visible && anchor) {
     frozenAnchor.current = anchor;
   }
 
+  const flushPending = useCallback(() => {
+    if (dismissFallback.current) {
+      clearTimeout(dismissFallback.current);
+      dismissFallback.current = null;
+    }
+    if (!visibleRef.current) setHosted(false);
+    const action = pendingAction.current;
+    if (!action) return;
+    pendingAction.current = null;
+    // Next macrotask: UIKit has torn down this Modal's window. Navigating in
+    // the same turn leaves an invisible overlay on the camera.
+    setTimeout(action, 0);
+  }, []);
+
   useEffect(() => {
     if (visible) {
+      setHosted(true);
       setPresented(true);
       setDismissArmed(false);
       progress.value = withSpring(1, {
@@ -105,13 +127,29 @@ export function IosLiftMenu({
       return () => clearTimeout(arm);
     }
 
-    // Drop immediately — exit animation keeps a full-screen Modal above the
-    // next route and freezes taps for hundreds of ms.
+    // Keep the Modal mounted with visible=false until UIKit dismisses it.
+    // Unmounting while visible, or navigating in the same frame as onClose,
+    // leaves a full-screen window over the camera — nothing is tappable.
     setDismissArmed(false);
     progress.value = 0;
     menuProgress.value = 0;
     setPresented(false);
   }, [menuProgress, motion.springs.settle, progress, visible]);
+
+  useEffect(() => {
+    if (presented || !hosted) return;
+    if (Platform.OS !== 'ios') {
+      flushPending();
+      return;
+    }
+    dismissFallback.current = setTimeout(flushPending, 400);
+    return () => {
+      if (dismissFallback.current) {
+        clearTimeout(dismissFallback.current);
+        dismissFallback.current = null;
+      }
+    };
+  }, [flushPending, hosted, presented]);
 
   const activeAnchor = visible ? anchor : frozenAnchor.current;
 
@@ -201,7 +239,7 @@ export function IosLiftMenu({
     };
   });
 
-  if (!presented || !layout) return null;
+  if (!hosted || !layout) return null;
 
   const dismiss = () => {
     if (!dismissArmed) return;
@@ -211,10 +249,11 @@ export function IosLiftMenu({
 
   return (
     <Modal
-      visible
+      visible={presented}
       transparent
       animationType="none"
       statusBarTranslucent
+      onDismiss={flushPending}
       onRequestClose={() => {
         if (dismissArmed) onClose();
       }}
@@ -321,9 +360,8 @@ export function IosLiftMenu({
                 onPress={() => {
                   if (muted || !dismissArmed) return;
                   haptics.selection();
+                  pendingAction.current = item.onPress;
                   onClose();
-                  // Let the modal unmount before navigation / mutations.
-                  requestAnimationFrame(() => item.onPress());
                 }}
                 onPressIn={() => setPressedIndex(index)}
                 onPressOut={() => setPressedIndex(null)}

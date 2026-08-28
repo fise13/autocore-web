@@ -101,7 +101,7 @@ function ComposerCancelButton({ onPress }: { onPress: () => void }) {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.secondary,
-        opacity: pressed ? 0.7 : 1,
+        opacity: pressed ? tokens.opacity.pressed : 1,
       }}
     >
       <XIcon size={18} color={colors.foreground} strokeWidth={2.4} />
@@ -534,6 +534,8 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   value={clientName}
                   type="customer"
                   context={{ field: 'name' }}
+                  matchMode="flexible"
+                  options={composerOptions.clientNameOptions}
                   onValueChange={(value) => {
                     setClientName(value);
                     setClientId('');
@@ -551,6 +553,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   value={clientPhone}
                   type="customer"
                   context={{ field: 'phone' }}
+                  options={composerOptions.clientPhoneOptions}
                   onValueChange={(value) => {
                     setClientPhone(value);
                     setClientId('');
@@ -578,6 +581,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     value={vehicleMake}
                     type="vehicle"
                     context={{ field: 'make' }}
+                    options={composerOptions.vehicleMakeOptionsList}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       const previousMake = vehicleMake.trim();
@@ -601,6 +605,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                     value={vehicleModel}
                     type="vehicle"
                     context={{ field: 'model', make: vehicleMake }}
+                    options={composerOptions.vehicleModelOptionsList}
                     onValueChange={(value) => {
                       detachVehicleLink();
                       setVehicleModel(value);
@@ -624,6 +629,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   value={licensePlate}
                   type="vehicle"
                   fieldKey="licensePlate"
+                  options={composerOptions.licensePlateOptions}
                   onValueChange={(value) => {
                     detachVehicleLink();
                     setLicensePlate(value.toUpperCase());
@@ -645,6 +651,7 @@ export function CreateOrderScreen({ orderId }: { orderId?: string } = {}) {
                   value={vin}
                   type="vehicle"
                   fieldKey="vin"
+                  options={composerOptions.vinOptions}
                   onValueChange={(value) => {
                     detachVehicleLink();
                     setVin(value.toUpperCase());

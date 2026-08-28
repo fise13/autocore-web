@@ -176,6 +176,39 @@ const FIELD_COMPLETE_SETTLED = new Set([
   'cancelled',
 ]);
 
+export function identityOverrideSettled(
+  job: EngineIntakeJob,
+  patch: OptimisticIntakeIdentity,
+): boolean {
+  return (
+    job.expectedIdentity.serialCode.trim() === patch.serialCode.trim() &&
+    job.expectedIdentity.brandName.trim() === patch.brandName.trim() &&
+    job.expectedIdentity.engineCode.trim() === patch.engineCode.trim()
+  );
+}
+
+/** Keep serial/brand/code edits on the bay until Firestore echoes them. */
+export function applyIdentityOverrides(
+  jobs: EngineIntakeJob[],
+  patches: Readonly<Record<string, OptimisticIntakeIdentity>>,
+): EngineIntakeJob[] {
+  const ids = Object.keys(patches);
+  if (ids.length === 0) return jobs;
+  return jobs.map((job) => {
+    const patch = patches[job.id];
+    if (!patch) return job;
+    return {
+      ...job,
+      expectedIdentity: {
+        ...job.expectedIdentity,
+        serialCode: patch.serialCode,
+        brandName: patch.brandName,
+        engineCode: patch.engineCode,
+      },
+    };
+  });
+}
+
 /**
  * Finish can land on the server (web already shows In review) while the phone
  * Firestore listener still holds `in_session`. Force Ready until the snapshot

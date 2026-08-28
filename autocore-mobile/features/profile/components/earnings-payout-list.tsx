@@ -10,7 +10,7 @@ import { ChevronRightIcon } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useAppDisplayCurrency, useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 import type { PayrollTransactionStatus } from '@/types/payroll-transaction';
 
@@ -50,7 +50,7 @@ function PayoutRow({
   const motion = useMotion();
   const { formatMoney } = useAppDisplayCurrency();
   const press = useSharedValue(0);
-  const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
   const tone = statusTone(row.status, theme);
 
   const pressStyle = useAnimatedStyle(() => {

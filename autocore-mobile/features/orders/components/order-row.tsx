@@ -20,7 +20,7 @@ import { CheckIcon } from '@/assets/icons';
 import { Text, toast, type IosLiftMenuItem } from '@/components/ui';
 import { useMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import { tokens } from '@/theme/tokens';
 import { formatPrice } from '@/features/search/lib/format';
 import { useMoneyFormatRevision } from '@/store/money-format-store';
@@ -317,7 +317,7 @@ export const OrderRow = memo(function OrderRow({
   const canOpenComposer = order.status === 'draft' || order.status === 'confirmed';
   const corners = cornerRadiusFor(position);
   const showSeparator = position === 'first' || position === 'middle';
-  const pressedFill = isDark ? withAlpha(colors.muted, 0.55) : withAlpha(colors.muted, 0.9);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
   const idleFill = selected ? colors.secondary : colors.card;
   const menuOpen = activeOrderId === order.id;
 

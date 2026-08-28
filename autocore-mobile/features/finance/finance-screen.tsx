@@ -108,7 +108,7 @@ export function FinanceScreen() {
   const subtitle = !companyId
     ? 'Loading ledger'
     : isBootstrapping
-      ? `${model.window.period.longLabel} · syncing`
+      ? `${model.window.period.longLabel} · updating`
       : connected
         ? `${model.window.period.longLabel} · ${model.totals.operationCount} ${
             model.totals.operationCount === 1 ? 'operation' : 'operations'
@@ -146,7 +146,7 @@ export function FinanceScreen() {
               {!isOnline ? (
                 <FinNotice
                   tone="offline"
-                  title="Offline — showing the last synced ledger"
+                  title="Offline — showing the last saved ledger"
                   detail="Figures are as of your last connection. Nothing here is estimated."
                 />
               ) : null}

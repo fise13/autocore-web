@@ -160,6 +160,47 @@ describe('resolveFailureTransition', () => {
   });
 });
 
+describe('resolveFailureTransition — transport never gives up', () => {
+  it('keeps retrying a dead link past the attempt budget', () => {
+    // A dismantler works between steel containers. Ten attempts is roughly
+    // twenty minutes of ceiling delay — a lunch break behind a wall used to
+    // exhaust the budget and turn a perfectly good photo red, with a "retry"
+    // the worker then had to find and press.
+    const transition = resolveFailureTransition({
+      attemptCount: MAX_RETRY_ATTEMPTS + 12,
+      retryable: true,
+      offline: false,
+      transport: true,
+      now: NOW,
+    });
+    assert.equal(transition.status, 'retry_scheduled');
+    assert.ok(transition.nextRetryAt);
+  });
+
+  it('holds the attempt count at the ceiling instead of growing forever', () => {
+    const first = resolveFailureTransition({
+      attemptCount: 50,
+      retryable: true,
+      offline: false,
+      transport: true,
+      now: NOW,
+    });
+    assert.equal(first.attemptCount, RETRY_DELAYS_MS.length);
+    assert.equal(first.nextRetryAt, nextRetryAt(RETRY_DELAYS_MS.length, NOW));
+  });
+
+  it('still gives up on a failure a retry cannot fix', () => {
+    const transition = resolveFailureTransition({
+      attemptCount: MAX_RETRY_ATTEMPTS + 1,
+      retryable: true,
+      offline: false,
+      transport: false,
+      now: NOW,
+    });
+    assert.equal(transition.status, 'failed');
+  });
+});
+
 describe('nextWakeUpAt', () => {
   it('returns the soonest scheduled retry', () => {
     const wake = nextWakeUpAt(

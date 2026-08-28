@@ -70,6 +70,7 @@ export type ImportRunResult = {
     row: ClassifiedRow;
     table: string;
     section: string | null;
+    locationPath: string[];
     normalized?: Partial<Record<CanonicalField, NormalizedField>>;
   }>;
   audit: ImportAuditTrail;
@@ -197,10 +198,16 @@ export async function runBusinessImport(
     if (!sheet) continue;
     const keep = new Set(sheet.recordIndexes);
     const sectionByIndex = new Map(sheet.rows.map((row) => [row.index, row.section]));
+    const locationByIndex = new Map(sheet.rows.map((row) => [row.index, row.locationPath]));
     const analysis = analyzeTable(table, options);
     for (const row of analysis.rows) {
       if (!keep.has(row.index)) continue;
-      analyzed.push({ row, table: table.name, section: sectionByIndex.get(row.index) ?? null });
+      analyzed.push({
+        row,
+        table: table.name,
+        section: sectionByIndex.get(row.index) ?? null,
+        locationPath: locationByIndex.get(row.index) ?? [],
+      });
     }
   }
 

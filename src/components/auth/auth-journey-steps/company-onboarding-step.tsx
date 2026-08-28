@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Loader2, Upload, Users } from "lucide-react";
+import { Building2, Loader2, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -11,18 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUserCompanies } from "@/hooks/use-user-companies";
+import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { clearInviteToken, readInviteToken } from "@/lib/invites/pending-invite";
 import { authJourneyPanelTransition } from "@/lib/motion/auth-journey-motion";
 import { prefersReducedMotion } from "@/lib/motion/cross-route-transition";
-import { skipOnboardingForBusinessImport } from "@/lib/onboarding/skip-to-business-import";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 export function CompanyOnboardingStep() {
-  const router = useRouter();
-  const { profile, createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, switchCompany } =
+  const { createCompany, joinCompanyWithInvite, joinCompanyWithInviteToken, switchCompany } =
     useAuth();
   const { companies, isLoading: companiesLoading } = useUserCompanies();
+  const selectableCompanies = useMemo(
+    () => companies.filter((membership) => membership.companyId.trim() !== DEFAULT_COMPANY_ID),
+    [companies],
+  );
   const [companyName, setCompanyName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [showInvite, setShowInvite] = useState(false);
@@ -76,21 +78,6 @@ export function CompanyOnboardingStep() {
     }, userCopy.company.creatingCompany);
   }
 
-  async function onImportBusiness() {
-    if (!companyName.trim()) {
-      setError(userCopy.company.importBusinessNeedsName);
-      return;
-    }
-    if (!profile?.id) return;
-
-    await runAction(async () => {
-      const companyId = await createCompany(companyName.trim());
-      await skipOnboardingForBusinessImport(companyId, profile.id);
-      setCompanyName("");
-      router.push("/migration");
-    }, userCopy.company.openingImport);
-  }
-
   async function onJoinCompany(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!inviteCode.trim()) return;
@@ -135,7 +122,7 @@ export function CompanyOnboardingStep() {
       </div>
 
       <div className="space-y-6 text-left">
-        {companies.length > 0 ? (
+        {selectableCompanies.length > 0 ? (
           <AuthJourneyReveal index={2} className="space-y-4">
             <div className="space-y-1">
               <p className="font-medium">{userCopy.company.yourCompanies}</p>
@@ -144,7 +131,7 @@ export function CompanyOnboardingStep() {
               </p>
             </div>
             <div className="space-y-2">
-              {companies.map((membership) => (
+              {selectableCompanies.map((membership) => (
                 <button
                   key={membership.companyId}
                   type="button"
@@ -168,7 +155,7 @@ export function CompanyOnboardingStep() {
           </AuthJourneyReveal>
         ) : null}
 
-        <AuthJourneyReveal index={companies.length > 0 ? 3 : 2} className="space-y-4">
+        <AuthJourneyReveal index={selectableCompanies.length > 0 ? 3 : 2} className="space-y-4">
           <div className="space-y-1">
             <p className="font-medium">{userCopy.company.newTeamTitle}</p>
             <p className="text-sm text-muted-foreground">{userCopy.company.newTeamDescription}</p>
@@ -191,22 +178,11 @@ export function CompanyOnboardingStep() {
             <Button type="submit" className="h-11 w-full">
               {userCopy.company.createButton}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full"
-              disabled={isSubmitting || companiesLoading}
-              onClick={() => void onImportBusiness()}
-            >
-              <Upload data-icon="inline-start" className="size-4" aria-hidden />
-              {userCopy.company.importBusiness}
-            </Button>
-            <p className="text-xs text-muted-foreground">{userCopy.company.importBusinessHint}</p>
           </form>
         </AuthJourneyReveal>
       </div>
 
-      <AuthJourneyReveal index={companies.length > 0 ? 4 : 3}>
+      <AuthJourneyReveal index={selectableCompanies.length > 0 ? 4 : 3}>
         <button
           type="button"
           className="cursor-pointer text-sm text-muted-foreground underline-offset-4 transition-colors duration-200 hover:text-foreground hover:underline"

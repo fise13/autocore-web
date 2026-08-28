@@ -11,32 +11,40 @@ import { Button, Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks';
 import { minTouchTarget, spacing, spring, tokens, type SemanticColors } from '@/theme';
 
+import { IntakePhotoThumbs, type IntakePhotoThumbItem } from './intake-photo-thumbs';
+
 export type IntakeCaptureDockProps = {
   chrome: SemanticColors;
   bottomInset: number;
   photoCount: number;
-  unsyncedCount: number;
   failedCount: number;
   syncErrorText: string | null;
   capturing: boolean;
+  photoThumbs?: readonly IntakePhotoThumbItem[];
   onPickGallery: () => void;
   onShutter: () => void;
   onFinish: () => void;
   onRetryUpload: () => void;
+  /**
+   * `companion` sits above the native Camera chrome: thumbs + retry only,
+   * no shutter / gallery / finish (those live in SwiftUI).
+   */
+  variant?: 'full' | 'companion';
 };
 
 export function IntakeCaptureDock({
   chrome,
   bottomInset,
   photoCount,
-  unsyncedCount,
   failedCount,
   syncErrorText,
   capturing,
+  photoThumbs = [],
   onPickGallery,
   onShutter,
   onFinish,
   onRetryUpload,
+  variant = 'full',
 }: IntakeCaptureDockProps) {
   const reducedMotion = useReducedMotion();
   const shutterScale = useSharedValue(1);
@@ -55,36 +63,42 @@ export function IntakeCaptureDock({
   }));
 
   const sideControlSize = minTouchTarget + spacing[2];
-  const syncLine =
-    failedCount > 0
-      ? ` · ${failedCount} not uploaded`
-      : unsyncedCount > 0
-        ? ` · ${unsyncedCount} syncing`
-        : ' · Camera or Photos';
+  // How many photos are on the server is not the worker's problem, and saying
+  // it here only ever produced an anxious number that changed while they were
+  // reading it. The count of shots taken is the honest, useful fact.
+  const companion = variant === 'companion';
+  const hint = failedCount > 0 ? ' · needs you' : ' · Camera or Photos';
 
   return (
     <View
+      pointerEvents={companion ? 'box-none' : 'auto'}
       style={{
         position: 'absolute',
         right: 0,
         bottom: 0,
         left: 0,
         paddingHorizontal: spacing[5],
-        paddingBottom: bottomInset + spacing[5],
-        paddingTop: spacing[6],
+        // Native Camera chrome (zoom + shutter + Finish pill) sits in the
+        // bottom safe area; keep thumbs just above the zoom cluster.
+        paddingBottom: companion ? bottomInset + 200 : bottomInset + spacing[5],
+        paddingTop: companion ? spacing[3] : spacing[6],
         gap: spacing[4],
-        backgroundColor: chrome.overlay,
+        backgroundColor: companion ? 'transparent' : chrome.overlay,
       }}
     >
-      <View style={{ gap: spacing[1], alignItems: 'center' }}>
-        <Text variant="heading" style={{ color: chrome.foreground, textAlign: 'center' }}>
-          Engine condition
-        </Text>
-        <Text variant="caption" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
-          {photoCount} photo{photoCount === 1 ? '' : 's'}
-          {syncLine}
-        </Text>
-      </View>
+      <IntakePhotoThumbs items={photoThumbs} chrome={chrome} />
+
+      {companion ? null : (
+        <View style={{ gap: spacing[1], alignItems: 'center' }}>
+          <Text variant="heading" style={{ color: chrome.foreground, textAlign: 'center' }}>
+            Engine condition
+          </Text>
+          <Text variant="caption" style={{ color: chrome.mutedForeground, textAlign: 'center' }}>
+            {photoCount} photo{photoCount === 1 ? '' : 's'}
+            {hint}
+          </Text>
+        </View>
+      )}
 
       {failedCount > 0 ? (
         <View
@@ -99,7 +113,7 @@ export function IntakeCaptureDock({
             variant="caption"
             style={{ color: chrome.dangerOnSubtle, fontWeight: '700', textAlign: 'center' }}
           >
-            Could not upload {failedCount} photo{failedCount === 1 ? '' : 's'}
+            {failedCount === 1 ? '1 photo needs you' : `${failedCount} photos need you`}
           </Text>
           {syncErrorText ? (
             <Text
@@ -113,14 +127,15 @@ export function IntakeCaptureDock({
             variant="caption"
             style={{ color: chrome.dangerOnSubtle, textAlign: 'center' }}
           >
-            Saved on this phone — you can keep shooting or finish anyway.
+            Keep shooting or finish — nothing is lost either way.
           </Text>
           <Button variant="outline" onPress={onRetryUpload}>
-            Retry upload
+            Try again
           </Button>
         </View>
       ) : null}
 
+      {companion ? null : (
       <View
         style={{
           minHeight: 88,
@@ -183,10 +198,13 @@ export function IntakeCaptureDock({
 
         <View style={{ width: sideControlSize }} />
       </View>
+      )}
 
+      {companion ? null : (
       <Button size="xl" disabled={photoCount < 1} onPress={onFinish}>
         Finish
       </Button>
+      )}
     </View>
   );
 }

@@ -20,11 +20,13 @@ export function getJson<T>(key: string): T | null {
   }
 }
 
-export function setJson<T>(key: string, value: T): void {
+/** Returns false when MMKV cannot persist (disk full, etc.). */
+export function setJson<T>(key: string, value: T): boolean {
   try {
     appStorage.set(key, JSON.stringify(value));
+    return true;
   } catch {
-    // ignore
+    return false;
   }
 }
 

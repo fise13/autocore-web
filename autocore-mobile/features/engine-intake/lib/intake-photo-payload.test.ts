@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { normalizeIntakePhotoPayload } from './intake-photo-payload';
+import {
+  fileNameForIntakePhoto,
+  normalizeIntakePhotoPayload,
+  rewritePhotoUriExtension,
+} from './intake-photo-payload';
 
 describe('normalizeIntakePhotoPayload', () => {
   it('rejects empty or non-integer sizes before the API sees them', () => {
@@ -57,5 +61,47 @@ describe('normalizeIntakePhotoPayload', () => {
     });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.error.code, 'UNSUPPORTED_TYPE');
+  });
+
+  it('uses the WebP path when File.type still says jpeg', () => {
+    const result = normalizeIntakePhotoPayload({
+      localUri: 'file:///documents/engine-intake/photo_1.webp',
+      mimeType: 'image/jpeg',
+      sizeBytes: 4096,
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.value.contentType, 'image/webp');
+  });
+});
+
+describe('fileNameForIntakePhoto', () => {
+  it('keeps the webp extension when compression swapped the file', () => {
+    assert.equal(
+      fileNameForIntakePhoto('photo_1', 'file:///documents/engine-intake/photo_1.webp'),
+      'photo_1.webp',
+    );
+  });
+
+  it('defaults to jpeg for camera originals', () => {
+    assert.equal(
+      fileNameForIntakePhoto('photo_1', 'file:///documents/engine-intake/photo_1.jpg'),
+      'photo_1.jpg',
+    );
+  });
+});
+
+describe('rewritePhotoUriExtension', () => {
+  it('renames a jpeg capture to webp', () => {
+    assert.equal(
+      rewritePhotoUriExtension('file:///documents/engine-intake/photo_1.jpg', 'webp'),
+      'file:///documents/engine-intake/photo_1.webp',
+    );
+  });
+
+  it('renames a gallery HEIC to jpeg after re-encode', () => {
+    assert.equal(
+      rewritePhotoUriExtension('file:///documents/engine-intake/photo_1.heic', 'jpg'),
+      'file:///documents/engine-intake/photo_1.jpg',
+    );
   });
 });

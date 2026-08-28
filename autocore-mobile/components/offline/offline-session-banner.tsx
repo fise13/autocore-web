@@ -47,9 +47,9 @@ function resolveCopy(mode: ConnectivityMode, pendingCount: number): {
   if (mode === 'syncing') {
     const unit = pendingCount === 1 ? 'change' : 'changes';
     return {
-      title: 'Syncing',
+      title: 'Saving',
       detail: `${pendingCount} ${unit}`,
-      a11y: `Syncing ${pendingCount} saved ${unit}`,
+      a11y: `Saving ${pendingCount} ${unit}`,
     };
   }
   if (mode === 'offline-queued') {

@@ -18,12 +18,12 @@ export async function interpretAiPrompt(prompt: string): Promise<AiUiBlock[]> {
           ? `Start intake for serial ${serial}. Camera opens after you confirm.`
           : 'Open engine intake to type a serial and begin photography.',
         confirmLabel: 'Start intake',
-        href: '/intake',
+        href: '/objects/new',
       },
       {
         type: 'action',
-        label: 'Open intake bay',
-        href: '/intake',
+        label: 'Receive engine',
+        href: '/objects/new',
         primary: true,
       },
     ];
@@ -33,19 +33,19 @@ export async function interpretAiPrompt(prompt: string): Promise<AiUiBlock[]> {
     return [
       {
         type: 'text',
-        body: 'Engines missing evidence — open intake Ready / Active to continue photography.',
+        body: 'Engines missing evidence — open Incoming to continue photography.',
       },
       {
         type: 'action',
         label: 'Engines needing photos',
-        href: '/intake',
+        href: '/objects/engines?filter=incoming',
         primary: true,
       },
       {
         type: 'metric',
-        label: 'Open intake jobs',
+        label: 'Open incoming engines',
         value: '—',
-        delta: 'Check intake bay',
+        delta: 'Check Engines Incoming',
       },
     ];
   }
@@ -56,19 +56,19 @@ export async function interpretAiPrompt(prompt: string): Promise<AiUiBlock[]> {
         type: 'metric',
         label: 'Received today',
         value: '—',
-        delta: 'Live counts load from intake once opened',
+        delta: 'Live counts load from Engines once opened',
       },
       {
         type: 'timeline',
         title: 'Today',
         items: [
-          { id: '1', title: 'Open intake for today’s activity', meta: 'Field complete → warehouse' },
+          { id: '1', title: 'Open Engines Incoming for today’s activity', meta: 'Field complete → yard' },
         ],
       },
       {
         type: 'action',
-        label: 'Open intake',
-        href: '/intake',
+        label: 'Open Engines',
+        href: '/objects/engines?filter=incoming',
       },
     ];
   }

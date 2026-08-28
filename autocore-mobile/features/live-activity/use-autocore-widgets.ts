@@ -82,7 +82,9 @@ export function useAutoCoreWidgets() {
       ? {
           openOrders: counts.orders ? counts.orders.open : UNKNOWN_COUNT,
           attentionOrders: counts.orders ? counts.orders.attention : UNKNOWN_COUNT,
-          engines: counts.engines ? counts.engines.total : UNKNOWN_COUNT,
+          engines: counts.engines
+            ? counts.engines.total + counts.engines.incoming
+            : UNKNOWN_COUNT,
           awaitingPlacement: counts.receiving
             ? counts.receiving.awaitingPlacement
             : UNKNOWN_COUNT,

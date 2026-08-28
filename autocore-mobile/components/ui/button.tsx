@@ -10,6 +10,7 @@ import {
 
 import { useDesignLanguage } from '@/hooks';
 import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { Text } from './text';
 
 export type ButtonVariant = 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link';
@@ -168,7 +169,7 @@ export const Button = memo(
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: shape === 'pill' ? 999 : isXl ? 20 : dl.corner.control,
-                opacity: usesDisabledSurface ? 1 : isDisabled ? 0.5 : pressed ? 0.88 : 1,
+                opacity: usesDisabledSurface ? 1 : isDisabled ? 0.5 : pressed ? tokens.opacity.pressed : 1,
                 ...sizeStyle,
                 ...variantStyle,
                 ...(isXl && !isDisabled && variant === 'default' && dl.scheme === 'light'

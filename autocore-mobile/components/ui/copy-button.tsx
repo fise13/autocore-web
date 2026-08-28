@@ -7,6 +7,7 @@ import { CheckIcon, CopyIcon } from '@/assets/icons';
 import { useTheme } from '@/hooks';
 import { useControlledState } from '@/hooks/use-controlled-state';
 import { haptics } from '@/theme';
+import { tokens } from '@/theme/tokens';
 import { radius } from '@/theme';
 
 export type CopyButtonVariant =
@@ -165,7 +166,7 @@ export const CopyButton = forwardRef<React.ComponentRef<typeof Pressable>, CopyB
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: radius.md,
-            opacity: disabled ? 0.5 : pressed ? 0.72 : 1,
+            opacity: disabled ? 0.5 : pressed ? tokens.opacity.pressed : 1,
           },
           variantStyle,
           style,

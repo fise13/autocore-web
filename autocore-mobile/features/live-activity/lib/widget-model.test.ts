@@ -190,14 +190,15 @@ describe('buildIntakeBayWidgetProps', () => {
     assert.match(props.lockLine, /3 Ready · 1 documenting/);
   });
 
-  it('falls to syncing photos when nothing is waiting for review', () => {
-    const props = buildIntakeBayWidgetProps(
-      { active: 2, ready: 0, syncing: 4 },
-      AT,
-    );
-    assert.equal(props.headline, '4');
-    assert.match(props.title, /photos syncing/);
-    assert.match(props.lockLine, /0 Ready · 2 documenting/);
+  it('never spends the widget on the upload queue', () => {
+    // A Home Screen widget announces work that is waiting for a person. Photos
+    // still going up are not that, and on a yard connection they were the
+    // widget's most common state — so its one useful signal was drowned out by
+    // plumbing. Documenting outranks them now.
+    const props = buildIntakeBayWidgetProps({ active: 2, ready: 0, syncing: 4 }, AT);
+    assert.equal(props.headline, '2');
+    assert.match(props.title, /documenting/);
+    assert.ok(!/sync/i.test(props.title));
   });
 
   it('then documenting, then a clear bay', () => {

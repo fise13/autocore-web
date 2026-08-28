@@ -20,6 +20,22 @@ import { resolveHomeWindows } from './period';
 /** A Tuesday mid-morning — deliberately not the evening urgency branch. */
 const NOW = new Date('2026-08-18T10:00:00.000Z');
 
+/** The phone the fixture reader is holding. */
+const DEVICE_ID = 'device_1';
+
+/** A capture session this device already holds — what Continue is offered for. */
+function heldIntakeJob(overrides: Partial<HomeIntakeJob> = {}): HomeIntakeJob {
+  return {
+    id: 'j1',
+    state: 'in_session',
+    activeSessionId: 's1',
+    claimedByUid: 'u1',
+    claimDeviceId: DEVICE_ID,
+    label: 'U398539',
+    ...overrides,
+  };
+}
+
 const FULL_PERMISSIONS: HomePermissions = {
   canViewMoney: true,
   canViewOrders: true,
@@ -50,7 +66,7 @@ const ALL_READY = {
 const ACTIONS: ActionItem[] = [
   { id: 'scan', title: 'Scan', subtitle: 'Barcode, VIN, or serial', href: '/(tabs)/scan', sf: '' },
   { id: 'new-order', title: 'New order', href: '/orders/new', sf: '' },
-  { id: 'photograph', title: 'Photograph engine', href: '/intake', sf: '' },
+  { id: 'receive-engine', title: 'Receive engine', href: '/objects/new', sf: '' },
   { id: 'add-item', title: 'Add part', href: '/orders/create-item', sf: '' },
   { id: 'new-transaction', title: 'New transaction', href: '/finance/new', sf: '' },
   { id: 'search', title: 'Search', href: '/search', sf: '' },
@@ -169,6 +185,8 @@ function input(overrides: SourceOverrides = {}): BuildHomeViewModelInput {
     items: [],
     payroll: [],
     intakeJobs: [] as HomeIntakeJob[],
+    deviceId: DEVICE_ID,
+    stuckIntakePhotos: 0,
     money:
       permissions.canViewMoney && modules.accounting && ready.operations
         ? buildHomeMoney(operations, windows.current, windows.previous)
@@ -457,21 +475,80 @@ describe('home view model', () => {
     assert.deepEqual(model.trends, []);
   });
 
-  it('drops search from quick actions and holds back photograph until intake is open', () => {
-    const idle = buildHomeViewModel(input());
-    const busy = buildHomeViewModel(input({ intakeJobs: [{ id: 'j1', state: 'in_session' }] }));
+  it('offers only commands as quick actions — never a browse destination', () => {
+    const model = buildHomeViewModel(
+      input({ intakeJobs: [heldIntakeJob()], stuckIntakePhotos: 2 }),
+    );
 
-    assert.ok(!idle.quickActions.some((action) => action.id === 'search'));
-    assert.ok(!idle.quickActions.some((action) => action.id === 'photograph'));
-    assert.ok(busy.quickActions.some((action) => action.id === 'photograph'));
-    assert.ok(idle.quickActions.length <= 4);
+    assert.ok(model.quickActions.length > 0);
+    assert.ok(!model.quickActions.some((action) => action.id === 'search'));
+    for (const action of model.quickActions) {
+      assert.ok(
+        ['resume-intake', 'retry-intake-photos', 'capture', 'compose'].includes(
+          action.command.kind,
+        ),
+        `${action.id} runs ${action.command.kind}`,
+      );
+    }
   });
 
-  it('never offers a quick action that is only a dock destination', () => {
-    const model = buildHomeViewModel(input());
-    const dockDestinations = ['/(tabs)/work', '/(tabs)/accounting', '/(tabs)/profile'];
+  it('resumes the engine this phone is holding instead of opening a filtered list', () => {
+    const idle = buildHomeViewModel(input());
+    const busy = buildHomeViewModel(input({ intakeJobs: [heldIntakeJob()] }));
 
-    assert.ok(!model.quickActions.some((action) => dockDestinations.includes(action.href)));
+    assert.ok(!idle.quickActions.some((action) => action.id === 'intake.resume'));
+
+    const resume = busy.quickActions.find((action) => action.id === 'intake.resume');
+    assert.ok(resume);
+    assert.equal(resume.detail, 'U398539');
+    assert.deepEqual(resume.command, {
+      kind: 'resume-intake',
+      jobId: 'j1',
+      sessionId: 's1',
+    });
+    // Work already begun leads work not yet begun.
+    assert.equal(busy.quickActions[0].id, 'intake.resume');
+    assert.ok(busy.quickActions.length <= 4);
+  });
+
+  it('will not offer Continue for a session another phone or person holds', () => {
+    const otherDevice = buildHomeViewModel(
+      input({ intakeJobs: [heldIntakeJob({ claimDeviceId: 'device_2' })] }),
+    );
+    const otherWorker = buildHomeViewModel(
+      input({ intakeJobs: [heldIntakeJob({ claimedByUid: 'u2' })] }),
+    );
+    const unclaimed = buildHomeViewModel(
+      input({ intakeJobs: [heldIntakeJob({ state: 'open', activeSessionId: null })] }),
+    );
+
+    for (const model of [otherDevice, otherWorker, unclaimed]) {
+      assert.ok(!model.quickActions.some((action) => action.id === 'intake.resume'));
+    }
+  });
+
+  it('leads with the photos stuck on this phone, and drops the action once they clear', () => {
+    const stuck = buildHomeViewModel(
+      input({ intakeJobs: [heldIntakeJob()], stuckIntakePhotos: 3 }),
+    );
+    const clear = buildHomeViewModel(input({ intakeJobs: [heldIntakeJob()] }));
+
+    assert.equal(stuck.quickActions[0].id, 'intake.retry-photos');
+    assert.equal(stuck.quickActions[0].detail, '3');
+    assert.equal(stuck.quickActions[0].tone, 'blocked');
+    assert.ok(!clear.quickActions.some((action) => action.id === 'intake.retry-photos'));
+  });
+
+  it('withholds intake commands from a reader the shell gives no intake action', () => {
+    const model = buildHomeViewModel(
+      input({
+        actions: ACTIONS.filter((action) => action.id !== 'receive-engine'),
+        intakeJobs: [heldIntakeJob()],
+        stuckIntakePhotos: 2,
+      }),
+    );
+
+    assert.ok(!model.quickActions.some((action) => action.id.startsWith('intake.')));
   });
 
   it('orders activity newest first and routes each row at its own order', () => {

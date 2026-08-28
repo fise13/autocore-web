@@ -216,11 +216,57 @@ export type HomeAttentionItem = {
 
 /** ——— Quick actions ——— */
 
+export type HomeQuickActionId =
+  | 'intake.retry-photos'
+  | 'intake.resume'
+  | 'scan'
+  | 'engine.receive'
+  | 'order.new'
+  | 'part.new'
+  | 'transaction.new'
+  | 'document.capture';
+
+/**
+ * What a quick action *does* (IA §9).
+ *
+ * There is deliberately no `navigate` case. Quick actions start work, and a
+ * section is not work — the previous model carried a bare `href`, so nothing in
+ * the type system stopped "Photograph engine" from meaning "open the engines
+ * list filtered to incoming". Every command below either resumes something this
+ * device already holds, unblocks something stuck on it, opens a capture
+ * surface, or raises a composer. None of them can express a browse destination.
+ */
+export type HomeQuickActionCommand =
+  /**
+   * Reopen the capture session this phone already holds. Offered only for a
+   * session claimed by this reader on this device, so the tap opens the camera
+   * with no round-trip and cannot take a bay from a colleague.
+   */
+  | { kind: 'resume-intake'; jobId: string; sessionId: string }
+  /** Push the photos still sitting on this phone. Runs in place — no screen. */
+  | { kind: 'retry-intake-photos' }
+  /** Open a camera. */
+  | { kind: 'capture'; surface: 'scan' | 'document' }
+  /** Raise a composer for a new record. */
+  | { kind: 'compose'; entity: 'engine' | 'order' | 'part' | 'transaction' };
+
+/**
+ * `continue` is work already begun, `blocked` is work this phone is holding up.
+ * Both are states of the business, so they are allowed colour; a plain create
+ * shortcut is not.
+ */
+export type HomeQuickActionTone = 'default' | 'continue' | 'blocked';
+
 export type HomeQuickAction = {
-  id: string;
+  id: HomeQuickActionId;
+  /** Imperative. The verb is the label — "Continue", not "Open intake". */
   title: string;
-  subtitle?: string;
-  href: string;
+  /** Live particulars the action carries — a serial, a count. May be absent. */
+  detail: string | null;
+  /** What will happen, one clause. Spoken by VoiceOver, never a second line. */
+  hint: string;
+  command: HomeQuickActionCommand;
+  tone: HomeQuickActionTone;
 };
 
 /** ——— Activity ——— */
@@ -268,10 +314,21 @@ export type HomePreferences = {
 
 /** ——— Source snapshot ——— */
 
-/** Minimal intake shape Home reads — keeps the metric maths free of the package. */
+/**
+ * Minimal intake shape Home reads — keeps the metric maths free of the package.
+ *
+ * The assignment fields are here because Home offers Continue, and Continue is
+ * only honest when this device already holds the claim. Answering that needs
+ * the same three fields `canOpenSessionImmediately` reads, and nothing more.
+ */
 export type HomeIntakeJob = {
   id: string;
   state: string;
+  activeSessionId: string | null;
+  claimedByUid: string | null;
+  claimDeviceId: string | null;
+  /** What to call this engine on a button — serial, else engine code. */
+  label: string;
 };
 
 export type HomeDataQuality = 'ok' | 'partial' | 'stale' | 'error';

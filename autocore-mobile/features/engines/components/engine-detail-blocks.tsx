@@ -6,7 +6,7 @@ import { ChevronRightIcon, CopyIcon } from '@/assets/icons';
 import { Button, Text, toast } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { fontFamily, haptics } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { pressedRowFill, withAlpha } from '@/theme/color-utils';
 import type { MotorEntity } from '@/types/motor';
 
 import { EngineGlyph } from './engine-glyph';
@@ -29,7 +29,7 @@ export function EngineIdentity({
   const { colors, isDark } = useTheme();
   const [pressed, setPressed] = useState(false);
   const grade = engineQualityGrade(motor);
-  const pressedFill = withAlpha(colors.muted, isDark ? 0.55 : 0.85);
+  const pressedFill = pressedRowFill(colors.muted, isDark);
 
   const copySerial = async () => {
     await Clipboard.setStringAsync(serial);

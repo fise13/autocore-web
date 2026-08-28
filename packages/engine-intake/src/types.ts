@@ -578,7 +578,19 @@ export type PrepareIntakePhotoResponse = {
   downloadToken: string;
   url: string;
   contentType: string;
+  /** The bytes are already in Storage — skip the PUT and go straight to finalize. */
   alreadyUploaded?: boolean;
+  /**
+   * The photo document is already complete on the server: bytes stored, URL
+   * written, progress counted. There is nothing left for the client to do, and
+   * `finalize` must not be called again.
+   *
+   * Distinct from `alreadyUploaded`, which only says the *bytes* arrived — that
+   * case still needs a finalize to write the URL onto the photo row. Conflating
+   * the two is what made a killed-then-relaunched app re-finalize a finished
+   * photo and take a hard validation error for it.
+   */
+  alreadyFinalized?: boolean;
 };
 
 export type FinalizeIntakePhotoRequest = {

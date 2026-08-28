@@ -33,7 +33,7 @@ const CATEGORY_HINTS: Record<(typeof NOTIFICATION_CATEGORIES)[number], string> =
   team: 'Invitations and role changes',
   scan: 'Scan results',
   sales: 'Major sales and daily summaries',
-  system: 'Subscription, sync, and errors',
+  system: 'Subscription and system alerts',
 };
 
 export function NotificationsSettingsScreen() {
@@ -52,7 +52,7 @@ export function NotificationsSettingsScreen() {
         />
       </ListSection>
 
-      <ListSection title="Channels" footer={!loaded ? 'Loading…' : syncing ? 'Syncing…' : undefined}>
+      <ListSection title="Channels" footer={!loaded ? 'Loading…' : syncing ? 'Saving…' : undefined}>
         <CollectionSwitchRow
           title="Push"
           subtitle="Instant alerts (critical ones even during quiet hours)"

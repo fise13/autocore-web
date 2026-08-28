@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   aggregateUploadProgress,
+  pickUploadProgress,
   PROGRESS_NOTIFY_INTERVAL_MS,
   shouldNotifyProgress,
 } from './upload-progress';
@@ -42,6 +43,19 @@ describe('aggregateUploadProgress', () => {
 
   it('is empty for no uploads', () => {
     assert.deepEqual(aggregateUploadProgress({}), { bytesSent: 0, totalBytes: 0, ratio: null });
+  });
+});
+
+describe('pickUploadProgress', () => {
+  it('keeps only the requested photo ids', () => {
+    const picked = pickUploadProgress(
+      {
+        a: { bytesSent: 10, totalBytes: 100 },
+        b: { bytesSent: 20, totalBytes: 100 },
+      },
+      ['b'],
+    );
+    assert.deepEqual(picked, { b: { bytesSent: 20, totalBytes: 100 } });
   });
 });
 

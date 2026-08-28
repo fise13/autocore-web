@@ -2,385 +2,250 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  buildCompletionProps,
-  buildSessionLiveActivityProps,
   liveActivityContentKey,
-  pickActiveIntakeSession,
+  normalizeLiveActivityQueue,
   resolveDesiredLiveActivity,
-  syncCountsFromJobs,
-  type LiveActivityInput,
-  type LiveActivitySession,
-  type SyncJobLike,
+  shouldCelebrateSyncSuccess,
+  succeededLiveActivityProps,
+  type LiveActivityQueue,
 } from './live-activity-model';
 
-const NOW = new Date('2026-08-13T09:00:00.000Z');
+const queue = (partial: Partial<LiveActivityQueue> = {}): LiveActivityQueue => ({
+  done: 0,
+  total: 0,
+  pending: 0,
+  blocked: 0,
+  uploading: 0,
+  uploadRatio: null,
+  ...partial,
+});
 
-function input(partial: Partial<LiveActivityInput> = {}): LiveActivityInput {
-  return {
-    enabled: true,
-    online: true,
-    photos: [],
-    completedInWave: 0,
-    waveTotal: 0,
-    ...partial,
-  };
-}
-
-function job(partial: Partial<SyncJobLike> & { status: SyncJobLike['status'] }): SyncJobLike {
-  return { nextRetryAt: null, errorInfo: null, ...partial };
-}
-
-describe('syncCountsFromJobs', () => {
-  it('tallies rows by status', () => {
-    const counts = syncCountsFromJobs(
-      input({
-        photos: [
-          job({ status: 'queued' }),
-          job({ status: 'queued' }),
-          job({ status: 'uploading' }),
-          job({ status: 'failed' }),
-        ],
-      }),
-    );
-    assert.equal(counts.byStatus.queued, 2);
-    assert.equal(counts.byStatus.uploading, 1);
-    assert.equal(counts.byStatus.failed, 1);
+describe('normalizeLiveActivityQueue', () => {
+  it('lifts total to cover done + pending + blocked', () => {
+    assert.deepEqual(normalizeLiveActivityQueue(queue({ done: 3, pending: 5 })), {
+      done: 3,
+      total: 8,
+      pending: 5,
+      blocked: 0,
+      uploading: 0,
+      uploadRatio: null,
+    });
   });
 
-  it('takes the soonest scheduled retry, not the last one seen', () => {
-    const counts = syncCountsFromJobs(
-      input({
-        photos: [
-          job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:05:00.000Z' }),
-          job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:01:00.000Z' }),
-          job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:09:00.000Z' }),
-        ],
-      }),
+  it('floors junk counts rather than painting NaN on the Island', () => {
+    assert.deepEqual(
+      normalizeLiveActivityQueue(queue({ done: -1, total: 1.9, pending: Number.NaN })),
+      { done: 0, total: 1, pending: 0, blocked: 0, uploading: 0, uploadRatio: null },
     );
-    assert.equal(counts.nextRetryAt, '2026-08-13T09:01:00.000Z');
-  });
-
-  it('ignores an unreadable retry timestamp instead of producing an invalid date', () => {
-    const counts = syncCountsFromJobs(
-      input({ photos: [job({ status: 'retry_scheduled', nextRetryAt: 'nonsense' })] }),
-    );
-    assert.equal(counts.nextRetryAt, null);
-  });
-
-  it('collects blocking codes once each, and only from failed rows', () => {
-    const counts = syncCountsFromJobs(
-      input({
-        photos: [
-          job({ status: 'failed', errorInfo: { code: 'AUTH_EXPIRED' } }),
-          job({ status: 'failed', errorInfo: { code: 'AUTH_EXPIRED' } }),
-          job({ status: 'failed', errorInfo: { code: 'FILE_TOO_LARGE' } }),
-          job({ status: 'queued', errorInfo: { code: 'SERVER_5XX' } }),
-        ],
-      }),
-    );
-    assert.deepEqual(counts.blockingCodes, ['AUTH_EXPIRED', 'FILE_TOO_LARGE']);
   });
 });
 
 describe('resolveDesiredLiveActivity', () => {
-  it('stays idle without a signed-in company with intake access', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({ enabled: false, photos: [job({ status: 'queued' })] }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'idle');
-  });
-
-  it('stays idle on an empty queue — a permanent island teaches people to ignore it', () => {
-    assert.equal(resolveDesiredLiveActivity(input(), NOW).kind, 'idle');
-  });
-
-  it('presents progress while uploading', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [job({ status: 'uploading' }), job({ status: 'queued' })],
-        completedInWave: 3,
-        waveTotal: 5,
+  it('stays idle without intake permission', () => {
+    assert.deepEqual(
+      resolveDesiredLiveActivity({
+        enabled: false,
+        queue: queue({ pending: 4, total: 4 }),
       }),
-      NOW,
+      { kind: 'idle' },
     );
+  });
+
+  it('stays idle when the queue is empty — even mid-session', () => {
+    assert.equal(
+      resolveDesiredLiveActivity({ enabled: true, queue: queue() }).kind,
+      'idle',
+    );
+    assert.equal(
+      resolveDesiredLiveActivity({ enabled: true, queue: queue({ done: 8, total: 8 }) }).kind,
+      'idle',
+    );
+    assert.equal(resolveDesiredLiveActivity({ enabled: true, queue: null }).kind, 'idle');
+  });
+
+  it('shows synced/total while photos are still leaving', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 3, total: 8, pending: 5 }),
+    });
     assert.equal(desired.kind, 'active');
     if (desired.kind !== 'active') return;
     assert.equal(desired.props.status, 'SYNCING');
-    assert.equal(desired.props.headline, '3/5');
-    assert.equal(desired.props.caption, 'photos');
-    assert.equal(desired.props.determinate, true);
     assert.equal(desired.props.mode, 'sync');
-    assert.equal(desired.props.symbol, 'icloud.and.arrow.up.fill');
+    assert.equal(desired.props.headline, '3/8');
+    // The banner has room for one noun, and `3/8` alone on a Lock Screen says
+    // nothing about what was counted.
+    assert.equal(desired.props.title, 'Engine photos');
+    assert.equal(desired.props.subject, '');
+    assert.equal(desired.props.detail, '');
+    assert.doesNotMatch(desired.props.title, /documenting/i);
+    assert.equal(desired.props.progress, 3 / 8);
+    assert.equal(desired.props.determinate, true);
+    assert.equal(desired.props.symbol, 'arrow.triangle.2.circlepath');
+    assert.equal(desired.props.accent, '#0A84FF');
   });
 
-  it('calls an offline queue a pause, and never uses failure language', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({ online: false, photos: [job({ status: 'waiting_for_network' }), job({ status: 'waiting_for_network' })] }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.equal(desired.props.status, 'WAITING_FOR_NETWORK');
-    assert.equal(desired.props.symbol, 'wifi.slash');
-    assert.equal(desired.props.caption, 'queued');
-    assert.equal(desired.props.determinate, false, 'no fake progress while parked');
-    assert.doesNotMatch(`${desired.props.title} ${desired.props.detail}`, /fail|error/i);
-  });
-
-  it('keeps the retry title timeless and hands the countdown to the widget', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:00:30.000Z' })],
+  it('moves the bar with live bytes while the count is still 0/2', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({
+        done: 0,
+        total: 2,
+        pending: 2,
+        uploading: 1,
+        uploadRatio: 0.5,
       }),
-      NOW,
-    );
+    });
     assert.equal(desired.kind, 'active');
     if (desired.kind !== 'active') return;
-    assert.equal(desired.props.status, 'RETRYING');
-    assert.equal(desired.props.title, 'Waiting to retry');
-    assert.doesNotMatch(desired.props.title, /\d/, 'a baked-in number would go stale in a second');
-    assert.equal(desired.props.retryAtMs, Date.parse('2026-08-13T09:00:30.000Z'));
+    assert.equal(desired.props.headline, '0/2');
+    assert.equal(desired.props.progress, 0.25);
   });
 
-  it('escalates to ACTION_REQUIRED only when a person can fix it', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'failed', errorInfo: { code: 'AUTH_EXPIRED' } })] }),
-      NOW,
-    );
+  it('keeps the same N/M frame when photos are parked with no signal', () => {
+    // Offline is not a failure. The photos are on the phone; the count is the news.
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 0, total: 6, pending: 6 }),
+    });
     assert.equal(desired.kind, 'active');
     if (desired.kind !== 'active') return;
-    assert.equal(desired.props.status, 'ACTION_REQUIRED');
-    assert.equal(desired.props.caption, 'needs you');
+    assert.equal(desired.props.status, 'SYNCING');
+    assert.equal(desired.props.headline, '0/6');
+    assert.equal(desired.props.accent, '#0A84FF');
+    // Same label as a photo uploading at full speed: the label names the
+    // subject, and the queue's mood is not the subject.
+    assert.equal(desired.props.title, 'Engine photos');
+    assert.doesNotMatch(`${desired.props.title} ${desired.props.detail}`, /waiting|connection|offline/i);
   });
 
-  it('reports a bad deploy as FAILED — signing in again would not help', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'failed', errorInfo: { code: 'DEPLOY_REQUIRED' } })] }),
-      NOW,
-    );
+  it('uses a quiet fail only when the remaining photos need the person', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 4, total: 6, pending: 0, blocked: 2 }),
+    });
     assert.equal(desired.kind, 'active');
     if (desired.kind !== 'active') return;
     assert.equal(desired.props.status, 'FAILED');
+    assert.equal(desired.props.headline, '4/6');
+    assert.equal(desired.props.symbol, 'exclamationmark.triangle.fill');
     assert.equal(desired.props.accent, '#FF453A');
+    assert.equal(desired.props.title, 'Photos need you');
   });
 
-  it('shows a blocked count on its own — "0/3" reads like stalled progress', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [
-          job({ status: 'failed', errorInfo: { code: 'FILE_TOO_LARGE' } }),
-          job({ status: 'failed', errorInfo: { code: 'FILE_TOO_LARGE' } }),
-          job({ status: 'failed', errorInfo: { code: 'FILE_TOO_LARGE' } }),
-        ],
-      }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.equal(desired.props.headline, '3');
-    assert.equal(desired.props.caption, 'blocked');
+  it('never lets the label grow into a sentence about the queue', () => {
+    // The Island is two rows of chrome. A label that narrates state is how a
+    // count turns into a paragraph nobody reads.
+    for (const input of [
+      queue({ done: 3, total: 8, pending: 5 }),
+      queue({ done: 4, total: 6, pending: 0, blocked: 2 }),
+      queue({ done: 0, total: 6, pending: 6 }),
+    ]) {
+      const desired = resolveDesiredLiveActivity({ enabled: true, queue: input });
+      assert.equal(desired.kind, 'active');
+      if (desired.kind !== 'active') continue;
+      assert.ok(desired.props.title.split(' ').length <= 3, desired.props.title);
+      assert.ok(desired.props.title.length <= 20, desired.props.title);
+      assert.doesNotMatch(desired.props.title, /\d/);
+    }
   });
 
-  it('lets live uploads outrank stale failures', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [
-          job({ status: 'uploading' }),
-          job({ status: 'failed', errorInfo: { code: 'FILE_TOO_LARGE' } }),
-        ],
-        completedInWave: 1,
-        waveTotal: 2,
-      }),
-      NOW,
-    );
+  it('keeps syncing — not fail — while other photos can still move', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 2, pending: 3, blocked: 1 }),
+    });
     assert.equal(desired.kind, 'active');
     if (desired.kind !== 'active') return;
     assert.equal(desired.props.status, 'SYNCING');
-    assert.equal(desired.props.blocked, 1, 'the failure is still carried alongside');
-  });
-
-  it('never emits a progress value outside 0–1', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'queued' })], completedInWave: 99, waveTotal: 1 }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.ok(desired.props.progress >= 0 && desired.props.progress <= 1);
+    assert.equal(desired.props.headline, '2/6');
   });
 });
 
-describe('pickActiveIntakeSession', () => {
-  it('prefers an in-session job over a paused one', () => {
-    const session = pickActiveIntakeSession([
-      {
-        state: 'paused',
-        locationCode: 'BAY-1',
-        serialCode: 'OLD',
-        capturedCount: 1,
-        requiredCount: 8,
-      },
-      {
-        state: 'in_session',
-        locationCode: 'BAY-3',
-        serialCode: '1NZ-FE',
-        capturedCount: 4,
-        requiredCount: 12,
-      },
-    ]);
-    assert.ok(session);
-    assert.equal(session?.paused, false);
-    assert.equal(session?.subject, 'BAY-3');
-    assert.equal(session?.captured, 4);
-    assert.equal(session?.required, 12);
-  });
-
-  it('falls through location code → serial → VIN', () => {
-    assert.equal(
-      pickActiveIntakeSession([
-        { state: 'in_session', serialCode: '1NZ-FE', donorVin: 'JT123' },
-      ])?.subject,
-      '1NZ-FE',
-    );
-    assert.equal(
-      pickActiveIntakeSession([{ state: 'paused', donorVin: 'JT123' }])?.subject,
-      'JT123',
-    );
-    assert.equal(pickActiveIntakeSession([{ state: 'in_session' }])?.subject, '');
-  });
-
-  it('returns null when nobody is documenting', () => {
-    assert.equal(
-      pickActiveIntakeSession([{ state: 'open' }, { state: 'awaiting_verification' }]),
-      null,
-    );
-  });
-});
-
-describe('resolveDesiredLiveActivity session rank', () => {
-  const documenting: LiveActivitySession = {
-    paused: false,
-    subject: '1NZ-FE',
-    captured: 4,
-    required: 12,
-  };
-
-  it('lets a live session outrank a healthy upload', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [job({ status: 'uploading' }), job({ status: 'queued' })],
-        completedInWave: 3,
-        waveTotal: 5,
-        session: documenting,
-      }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.equal(desired.props.mode, 'session');
-    assert.equal(desired.props.symbol, 'camera.fill');
-    assert.equal(desired.props.headline, '4/12');
-    assert.equal(desired.props.title, 'Documenting');
-    assert.equal(desired.props.subject, '1NZ-FE');
-  });
-
-  it('lets a blocked queue outrank a live session', () => {
-    const desired = resolveDesiredLiveActivity(
-      input({
-        photos: [job({ status: 'failed', errorInfo: { code: 'AUTH_EXPIRED' } })],
-        session: documenting,
-      }),
-      NOW,
-    );
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.equal(desired.props.mode, 'sync');
-    assert.equal(desired.props.status, 'ACTION_REQUIRED');
-    assert.equal(desired.props.symbol, 'exclamationmark.circle.fill');
-  });
-
-  it('presents a session when the upload queue is empty', () => {
-    const desired = resolveDesiredLiveActivity(input({ session: documenting }), NOW);
-    assert.equal(desired.kind, 'active');
-    if (desired.kind !== 'active') return;
-    assert.equal(desired.props.mode, 'session');
-  });
-
-  it('stays idle with no session and an empty queue', () => {
-    assert.equal(resolveDesiredLiveActivity(input(), NOW).kind, 'idle');
-  });
-});
-
-describe('buildSessionLiveActivityProps', () => {
-  it('uses amber copy when the session is paused', () => {
-    const props = buildSessionLiveActivityProps({
-      paused: true,
-      subject: 'Bay 3',
-      captured: 2,
-      required: 10,
+describe('succeededLiveActivityProps', () => {
+  it('paints a Watch-style check from the last syncing count', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 2, total: 3, pending: 1 }),
     });
-    assert.equal(props.title, 'Intake paused');
-    assert.equal(props.accent, '#FF9F0A');
-    assert.equal(props.headline, '2/10');
+    assert.equal(desired.kind, 'active');
+    if (desired.kind !== 'active') return;
+    assert.equal(shouldCelebrateSyncSuccess(desired.props), true);
+    const success = succeededLiveActivityProps(desired.props);
+    assert.equal(success.status, 'SUCCEEDED');
+    assert.equal(success.title, 'Sync complete');
+    assert.equal(success.headline, '3/3');
+    assert.equal(success.progress, 1);
+    assert.equal(success.symbol, 'checkmark.circle.fill');
+    assert.equal(success.accent, '#30D158');
+    assert.ok(success.title.split(' ').length <= 3);
+    assert.ok(success.title.length <= 20);
+  });
+
+  it('does not celebrate a fail frame or an empty last snapshot', () => {
+    const failed = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 4, total: 6, pending: 0, blocked: 2 }),
+    });
+    assert.equal(failed.kind, 'active');
+    if (failed.kind !== 'active') return;
+    assert.equal(shouldCelebrateSyncSuccess(failed.props), false);
+    assert.equal(shouldCelebrateSyncSuccess(null), false);
+    assert.equal(
+      shouldCelebrateSyncSuccess(succeededLiveActivityProps(failed.props)),
+      false,
+    );
+  });
+
+  it('still celebrates a 0/N frame that was in flight — the last photo has no  N/N tick', () => {
+    const desired = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 0, total: 1, pending: 1 }),
+    });
+    assert.equal(desired.kind, 'active');
+    if (desired.kind !== 'active') return;
+    assert.equal(shouldCelebrateSyncSuccess(desired.props), true);
+    assert.equal(succeededLiveActivityProps(desired.props).headline, '1/1');
   });
 });
 
 describe('liveActivityContentKey', () => {
-  it('collapses identical frames so a throttled update is not wasted', () => {
-    const a = resolveDesiredLiveActivity(input({ photos: [job({ status: 'queued' })] }), NOW);
-    const b = resolveDesiredLiveActivity(input({ photos: [job({ status: 'queued' })] }), NOW);
-    assert.equal(liveActivityContentKey(a), liveActivityContentKey(b));
-  });
-
-  it('changes when only the retry time moved — the countdown depends on it', () => {
-    const first = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:00:30.000Z' })] }),
-      NOW,
-    );
-    const second = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'retry_scheduled', nextRetryAt: '2026-08-13T09:02:00.000Z' })] }),
-      NOW,
-    );
-    assert.notEqual(liveActivityContentKey(first), liveActivityContentKey(second));
-  });
-
-  it('changes when the Island switches from upload to documenting', () => {
-    const upload = resolveDesiredLiveActivity(
-      input({ photos: [job({ status: 'queued' })] }),
-      NOW,
-    );
-    const session = resolveDesiredLiveActivity(
-      input({
-        photos: [job({ status: 'queued' })],
-        session: { paused: false, subject: '1NZ-FE', captured: 4, required: 12 },
-      }),
-      NOW,
-    );
-    assert.notEqual(liveActivityContentKey(upload), liveActivityContentKey(session));
-  });
-
-  it('has a stable idle identity', () => {
+  it('is idle for an empty queue and changes when a photo lands', () => {
     assert.equal(liveActivityContentKey({ kind: 'idle' }), 'idle');
-  });
-});
-
-describe('buildCompletionProps', () => {
-  it('ends on a success frame rather than vanishing mid-upload', () => {
-    const props = buildCompletionProps(18);
-    assert.equal(props.status, 'SYNCED');
-    assert.equal(props.title, '18 photos synced');
-    assert.equal(props.progress, 1);
-    assert.equal(props.pending, 0);
-    assert.equal(props.symbol, 'checkmark.circle.fill');
-    assert.equal(props.mode, 'sync');
+    const a = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 1, pending: 2, total: 3 }),
+    });
+    const b = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 2, pending: 1, total: 3 }),
+    });
+    assert.notEqual(liveActivityContentKey(a), liveActivityContentKey(b));
   });
 
-  it('reads naturally for a single photo', () => {
-    assert.equal(buildCompletionProps(1).title, '1 photo synced');
+  it('changes when bytes move even if the photo count has not', () => {
+    const a = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ pending: 2, total: 2, uploading: 1, uploadRatio: 0.2 }),
+    });
+    const b = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ pending: 2, total: 2, uploading: 1, uploadRatio: 0.8 }),
+    });
+    assert.notEqual(liveActivityContentKey(a), liveActivityContentKey(b));
   });
 
-  it('never reports a negative count', () => {
-    assert.equal(buildCompletionProps(-4).total, 0);
+  it('treats the success frame as a different update than the last syncing count', () => {
+    const syncing = resolveDesiredLiveActivity({
+      enabled: true,
+      queue: queue({ done: 2, total: 3, pending: 1 }),
+    });
+    assert.equal(syncing.kind, 'active');
+    if (syncing.kind !== 'active') return;
+    const success = succeededLiveActivityProps(syncing.props);
+    assert.notEqual(
+      liveActivityContentKey(syncing),
+      liveActivityContentKey({ kind: 'active', props: success }),
+    );
   });
 });

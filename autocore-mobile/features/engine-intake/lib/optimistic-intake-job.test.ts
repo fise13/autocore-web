@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  applyIdentityOverrides,
   applyOptimisticClaim,
   applyOptimisticFieldComplete,
   applyReadyJobOverrides,
   buildOptimisticIntakeJob,
+  identityOverrideSettled,
   mergeIntakeJobs,
 } from './optimistic-intake-job';
 
@@ -152,6 +154,33 @@ describe('applyOptimisticClaim', () => {
     assert.equal(ready.state, 'awaiting_verification');
     assert.equal(claimed.state, 'in_session');
     assert.equal(claimed.assignment.activeSessionId, 'session_2');
+  });
+});
+
+describe('applyIdentityOverrides', () => {
+  it('patches serial fields on a server job the overlay does not own', () => {
+    const job = buildOptimisticIntakeJob({
+      companyId: 'acme',
+      jobId: 'job_1',
+      sessionId: 'session_1',
+      uid: 'user_1',
+      displayName: null,
+      deviceId: 'device_1',
+      identity: { serialCode: 'OLD', brandName: 'Cummins', engineCode: 'ISX' },
+    });
+    const [patched] = applyIdentityOverrides([job], {
+      job_1: { serialCode: 'NEW', brandName: 'Cummins', engineCode: 'ISX15' },
+    });
+    assert.equal(patched?.expectedIdentity.serialCode, 'NEW');
+    assert.equal(patched?.expectedIdentity.engineCode, 'ISX15');
+    assert.equal(
+      identityOverrideSettled(patched!, {
+        serialCode: 'NEW',
+        brandName: 'Cummins',
+        engineCode: 'ISX15',
+      }),
+      true,
+    );
   });
 });
 

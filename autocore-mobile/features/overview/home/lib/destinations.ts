@@ -41,7 +41,7 @@ export function homeMetricDestination(id: HomeMetricId): HomeDestination {
     case 'parts.low_stock':
       return { pathname: '/warehouse', params: { lowStock: '1' } };
     case 'intake.in_progress':
-      return { pathname: '/intake', params: { filter: 'active' } };
+      return { pathname: '/objects/engines', params: { filter: 'incoming' } };
     case 'earnings.claimable':
       return { pathname: '/earnings' };
   }
@@ -52,9 +52,9 @@ export function homeAttentionDestination(id: HomeAttentionId): HomeDestination {
   switch (id) {
     case 'intake.quarantine':
     case 'intake.awaiting_verification':
-      return { pathname: '/intake', params: { filter: 'ready' } };
+      return { pathname: '/objects/engines', params: { filter: 'incoming' } };
     case 'intake.rework':
-      return { pathname: '/intake', params: { filter: 'active' } };
+      return { pathname: '/objects/engines', params: { filter: 'incoming' } };
     case 'orders.waiting_parts':
       return { pathname: '/orders', params: { filter: 'waiting' } };
     case 'parts.low_stock':

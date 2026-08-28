@@ -117,3 +117,88 @@ export function canShowSessionForLocalClaim(input: {
   if (input.hasPendingClaimCommand) return true;
   return input.overlaySessionIds.includes(input.sessionId);
 }
+
+/**
+ * Whether the camera should leave because the bay claim is actually gone.
+ *
+ * The session screen used to treat any Firestore snapshot that did not yet
+ * name this `sessionId` as a lost claim — including the window after Continue
+ * opens the camera, while the claim is in flight and the optimistic overlay
+ * is the only record of it. That painted "Session claim was released" and
+ * dumped the worker back to Engines the moment they opened the shutter.
+ *
+ * Stay in the camera whenever this device still holds the session locally,
+ * even if the server copy is paused or the lease looks stale. Kick only for
+ * a cancelled engine/session, or a bay someone else holds.
+ */
+export function isSessionClaimLost(input: {
+  jobState: string;
+  sessionState: string | null | undefined;
+  assignmentSessionId: string | null | undefined;
+  claimedByUid: string | null | undefined;
+  uid: string;
+  routeSessionId: string;
+  overlaySessionIds: readonly string[];
+  hasPendingClaimCommand: boolean;
+}): boolean {
+  if (input.jobState === 'cancelled') return true;
+  if (input.sessionState === 'cancelled') return true;
+
+  if (
+    canShowSessionForLocalClaim({
+      sessionId: input.routeSessionId,
+      overlaySessionIds: input.overlaySessionIds,
+      hasPendingClaimCommand: input.hasPendingClaimCommand,
+    })
+  ) {
+    return false;
+  }
+
+  if (
+    input.assignmentSessionId === input.routeSessionId &&
+    input.claimedByUid === input.uid
+  ) {
+    return false;
+  }
+
+  if (input.claimedByUid && input.claimedByUid !== input.uid) {
+    return true;
+  }
+
+  return true;
+}
+
+/**
+ * iOS reports `inactive` for Control Center, permission prompts, and the
+ * camera coming online — none of those are leaving the app. Pause the
+ * session only when the process is actually backgrounded.
+ */
+export function shouldPauseIntakeSession(appState: string): boolean {
+  return appState === 'background';
+}
+
+/**
+ * The server refused because the engine is not where this phone thought it was.
+ *
+ * Not a failure of the tap — a disagreement about state, and the server is
+ * right. Two red cards reading "Job is not ready for verification" and "Job is
+ * not awaiting verification" are what this looked like before: internal state
+ * names shown to a person standing in a yard, with a Retry button that could
+ * only ever produce the same answer.
+ *
+ * Pure — no React Native — so the node test runner can load it.
+ */
+export function isJobStateMismatchError(error: unknown): boolean {
+  const text = String(
+    error && typeof error === 'object' && 'message' in error
+      ? ((error as { message?: unknown }).message ?? '')
+      : (error ?? ''),
+  ).toLowerCase();
+  return (
+    text.includes('not ready for verification') ||
+    text.includes('not awaiting verification') ||
+    text.includes('cannot be claimed while') ||
+    text.includes('no longer open for photos') ||
+    text.includes('cannot transition from')
+  );
+}

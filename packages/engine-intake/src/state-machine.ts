@@ -79,17 +79,36 @@ export function canTransitionEngineIntakeSession(
 const PHOTO_UPLOAD_SESSION_STATES: readonly EngineIntakeSessionState[] = [
   "active",
   "paused",
+  // A finished session still has bytes owed to it. Finish completes the
+  // *session*, not the transfer: on a yard connection the last photos routinely
+  // land minutes later, sometimes after the app was killed and relaunched.
+  "completed_local",
+  "completed",
 ];
 const PHOTO_UPLOAD_JOB_STATES: readonly EngineIntakeJobState[] = [
   "in_session",
   "paused",
   "rework",
+  // Ready for review. Photos shot before Finish may still be arriving; they
+  // belong to this engine and simply raise its documentation.
+  "awaiting_verification",
+  "quarantine",
 ];
 
 /**
- * Photos are captured on-device, then uploaded later — often after the worker
- * left the camera and the session was paused. Upload is transport, not a new
- * capture, so a paused session must still accept the files.
+ * Whether a captured photo may still be uploaded.
+ *
+ * Upload is *transport*, not capture. That distinction is the whole point of
+ * this predicate, and getting it wrong had an expensive consequence: because a
+ * finished session refused late bytes, the phone's queue answered by taking the
+ * bay claim back — which server-side means `claim_job`, which drags the job out
+ * of `awaiting_verification` and into `in_session`. A straggling photo therefore
+ * pulled a finished engine off the reviewer's Ready list and left it stuck in
+ * Documenting with no Finish left to send, while the phone still believed it
+ * was Ready and offered a review that the server then refused.
+ *
+ * Nothing about accepting the file needed a live claim. Who may *shoot* is a
+ * claim question; where already-shot bytes belong is not.
  */
 export function canAcceptIntakePhotoUpload(input: {
   sessionState: string;
@@ -99,6 +118,25 @@ export function canAcceptIntakePhotoUpload(input: {
     PHOTO_UPLOAD_SESSION_STATES.includes(
       input.sessionState as EngineIntakeSessionState,
     ) && PHOTO_UPLOAD_JOB_STATES.includes(input.jobState as EngineIntakeJobState)
+  );
+}
+
+/**
+ * Whether the upload is arriving after its session already closed.
+ *
+ * Such a photo is accepted, but it must not resurrect the claim or move the job
+ * backwards — the reviewer's queue is the one thing a late file may never
+ * disturb.
+ */
+export function isLateIntakePhotoUpload(input: {
+  sessionState: string;
+  jobState: string;
+}): boolean {
+  return (
+    input.sessionState === "completed" ||
+    input.sessionState === "completed_local" ||
+    input.jobState === "awaiting_verification" ||
+    input.jobState === "quarantine"
   );
 }
 

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DEFAULT_ENGINE_INTAKE_REQUIREMENTS,
   canAcceptIntakePhotoUpload,
+  isLateIntakePhotoUpload,
   canFinishFieldDocumentation,
   canReleaseEngineForSale,
   canTransitionEngineIntakeJob,
@@ -302,8 +303,43 @@ test("paused sessions still accept photos the worker already captured", () => {
     canAcceptIntakePhotoUpload({ sessionState: "paused", jobState: "paused" }),
     true,
   );
+});
+
+test("a finished session still accepts the photos it is owed", () => {
+  // Finish ends the *session*, not the transfer. On a yard connection the last
+  // photos routinely arrive minutes later, and refusing them here is what drove
+  // the phone to retake the bay claim — which pulled the engine back out of the
+  // reviewer's Ready list.
+  assert.equal(
+    canAcceptIntakePhotoUpload({
+      sessionState: "completed",
+      jobState: "awaiting_verification",
+    }),
+    true,
+  );
   assert.equal(
     canAcceptIntakePhotoUpload({ sessionState: "completed", jobState: "in_session" }),
+    true,
+  );
+  assert.equal(
+    isLateIntakePhotoUpload({
+      sessionState: "completed",
+      jobState: "awaiting_verification",
+    }),
+    true,
+  );
+  assert.equal(
+    isLateIntakePhotoUpload({ sessionState: "active", jobState: "in_session" }),
     false,
   );
+});
+
+test("a released or cancelled engine takes no more photos", () => {
+  for (const jobState of ["verified", "closed", "rejected", "cancelled", "open"]) {
+    assert.equal(
+      canAcceptIntakePhotoUpload({ sessionState: "completed", jobState }),
+      false,
+      jobState,
+    );
+  }
 });
