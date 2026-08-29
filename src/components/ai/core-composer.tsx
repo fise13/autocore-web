@@ -53,7 +53,8 @@ type VoiceRec = {
 
 function SpeechCtor(): (new () => VoiceRec) | null {
   if (typeof window === "undefined") return null;
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+  const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+  return Ctor ? (Ctor as unknown as new () => VoiceRec) : null;
 }
 
 export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps) {
