@@ -145,7 +145,6 @@ const AREA_PRIORITY: Partial<Record<AssistantContext["areaId"], string>> = {
   warehouse: "inventory",
   engines: "engines",
   sales: "engines",
-  engine_intake: "engines",
   work_orders: "workOrders",
 };
 

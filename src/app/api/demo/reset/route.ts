@@ -7,6 +7,7 @@ import { getAdminAuth } from "@/infrastructure/firebase/admin";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {

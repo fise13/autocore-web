@@ -4,7 +4,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 
-import { EmptyState, Screen, ScreenScroll, toast } from '@/components/ui';
+import { EmptyState, Screen, ScreenScroll, StickyActionBar, toast } from '@/components/ui';
 import type { NativeContextMenuAction } from '@/components/ui/native-context-menu';
 import { CarIcon } from '@/assets/icons';
 import {
@@ -40,8 +40,9 @@ import type { WarehouseEntity } from '@/types/warehouse';
  * Canonical Engine object — opened from Search, Work, Engines, AI, Intake.
  *
  * One document, read top to bottom: the photo is the field, the motor and its
- * serial are the identity, the verbs sit under them as a ruled action row, and
- * everything below is a packing slip on hairline frames.
+ * serial are the identity, and everything below is a packing slip on hairline
+ * frames. The verbs live in a docked bar so Sell stays reachable no matter how
+ * far down the intake notes run.
  */
 export function EngineObjectScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -181,6 +182,20 @@ export function EngineObjectScreen() {
     );
   }
 
+  // `documentationLine` reports the danger tone only when the intake checklist
+  // is missing a shot the sale gate requires.
+  const canOpenIntake = can('engine_intake_view');
+  const sellGate =
+    docLine?.tone === 'danger'
+      ? {
+          label: `Sell — ${docLine.detail.replace(/ blocks? sale$/, '')} needed`,
+          hint: canOpenIntake ? 'Tap to finish documentation' : 'Documentation is incomplete',
+          onPress: canOpenIntake
+            ? () => openEnginesList(router, { filter: 'incoming' })
+            : undefined,
+        }
+      : null;
+
   const title = engineVariantTitle(motor);
   const notes = motor.notes?.trim();
   const sold = Boolean(motor.soldDate) || motor.status === 'sold';
@@ -190,7 +205,9 @@ export function EngineObjectScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen>
+      {/* No floating dock on this route — `Screen`'s default floor vignette
+          would only lay a black gradient over the action bar. */}
+      <Screen brandWash={false}>
         <EngineHero
           urls={photos}
           onBack={goBack}
@@ -200,7 +217,7 @@ export function EngineObjectScreen() {
           onAction={onHeroAction}
         />
 
-        <ScreenScroll tabBarInset topFade={false} contentStyle={{ paddingBottom: spacing[10] }}>
+        <ScreenScroll topFade={false} contentStyle={{ paddingBottom: spacing[8] }}>
           <View
             style={{
               paddingHorizontal: eng.pad,
@@ -208,19 +225,7 @@ export function EngineObjectScreen() {
               gap: eng.section,
             }}
           >
-            <View style={{ gap: eng.block }}>
-              <EngineIdentity motor={motor} serial={serial} title={title} />
-
-              <EngineActionCluster
-                canSell={canSell}
-                canAddToOrder={canAddToOrder}
-                canRelocate={canRelocate}
-                relocating={assignLocation.isPending}
-                onSell={() => sellSheetRef.current?.present(motor)}
-                onAddToOrder={() => addToOrderFlow.addMotorToOrder(motor.id)}
-                onRelocate={() => locationSheetRef.current?.present()}
-              />
-            </View>
+            <EngineIdentity motor={motor} serial={serial} title={title} />
 
             <EngineChapter title="Details">
               <EngineSpecList rows={specs} />
@@ -237,15 +242,28 @@ export function EngineObjectScreen() {
                 <EngineDocumentationRow
                   line={docLine}
                   onPress={
-                    can('engine_intake_view')
-                      ? () => openEnginesList(router, { filter: 'incoming' })
-                      : undefined
+                    canOpenIntake ? () => openEnginesList(router, { filter: 'incoming' }) : undefined
                   }
                 />
               </EngineChapter>
             ) : null}
           </View>
         </ScreenScroll>
+
+        <StickyActionBar>
+          <View style={{ flex: 1 }}>
+            <EngineActionCluster
+              canSell={canSell}
+              canAddToOrder={canAddToOrder}
+              canRelocate={canRelocate}
+              relocating={assignLocation.isPending}
+              sellGate={sellGate}
+              onSell={() => sellSheetRef.current?.present(motor)}
+              onAddToOrder={() => addToOrderFlow.addMotorToOrder(motor.id)}
+              onRelocate={() => locationSheetRef.current?.present()}
+            />
+          </View>
+        </StickyActionBar>
       </Screen>
 
       <SellMotorSheet

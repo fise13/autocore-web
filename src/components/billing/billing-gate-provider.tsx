@@ -24,7 +24,11 @@ import { claimPendingBillingIntent } from "@/lib/billing/claim-pending-billing-i
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
 import { refreshCompanyBillingRemote } from "@/lib/billing/internal-billing.client";
 import { ProBillingFeature } from "@/lib/billing/entitlements";
-import { readPendingBillingIntent } from "@/lib/marketing/pending-billing-intent";
+import { usePaddleSubscribe } from "@/hooks/use-paddle-subscribe";
+import {
+  clearPendingBillingIntent,
+  readPendingBillingIntent,
+} from "@/lib/marketing/pending-billing-intent";
 import { readPendingMarketingCheckout } from "@/lib/marketing/pending-checkout";
 import { syncCompanyBillingState } from "@/lib/billing/sync-company-billing.client";
 import { userCopy } from "@/lib/user-copy";
@@ -53,6 +57,7 @@ type BillingGateProviderProps = {
 export function BillingGateProvider({ companyId, children }: BillingGateProviderProps) {
   const { profile } = useAuth();
   const { setRetainCustomerId } = usePaddleCheckout();
+  const { subscribe, ready: paddleReady, configured: paddleConfigured } = usePaddleSubscribe();
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -123,7 +128,33 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
 
   useEffect(() => {
     if (!companyId || !canClaimMarketingCheckout || billingIntentClaimTriggered.current) return;
-    if (!readPendingBillingIntent()) return;
+    const intent = readPendingBillingIntent();
+    if (!intent) return;
+
+    if (intent.type === "trial") {
+      if (subscriptionIsPro) {
+        clearPendingBillingIntent();
+        billingIntentClaimTriggered.current = true;
+        return;
+      }
+      if (!paddleConfigured) {
+        clearPendingBillingIntent();
+        billingIntentClaimTriggered.current = true;
+        return;
+      }
+      if (!paddleReady) return;
+      billingIntentClaimTriggered.current = true;
+      void subscribe({ interval: "monthly", companyId })
+        .then((opened) => {
+          if (opened) clearPendingBillingIntent();
+          else billingIntentClaimTriggered.current = false;
+        })
+        .catch((error) => {
+          console.warn("Paddle trial checkout skipped:", error);
+          billingIntentClaimTriggered.current = false;
+        });
+      return;
+    }
 
     billingIntentClaimTriggered.current = true;
 
@@ -132,19 +163,19 @@ export function BillingGateProvider({ companyId, children }: BillingGateProvider
         if (claimed === "pro") {
           setCelebrationOpen(true);
           setCelebrationPhase("celebrating");
-          return;
-        }
-        if (claimed === "trial") {
-          toast({
-            title: userCopy.billing.trialStartedTitle,
-            description: userCopy.billing.trialStartedDescription,
-          });
         }
       })
       .catch((error) => {
         console.warn("Billing intent claim skipped in billing gate:", error);
       });
-  }, [canClaimMarketingCheckout, companyId, toast]);
+  }, [
+    canClaimMarketingCheckout,
+    companyId,
+    paddleConfigured,
+    paddleReady,
+    subscribe,
+    subscriptionIsPro,
+  ]);
 
   useEffect(() => {
     if (!companyId || !canClaimMarketingCheckout || pendingClaimTriggered.current) return;

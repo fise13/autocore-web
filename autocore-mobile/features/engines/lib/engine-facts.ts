@@ -33,6 +33,16 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+/**
+ * A shelf code is read character by character off a printed label, so it earns
+ * the monospace face. A named place — "Back yard", "Warehouse 2" — is a phrase,
+ * and setting a phrase in mono stretches its spacing until it reads as a code
+ * that someone typed wrong.
+ */
+function looksLikeShelfCode(value: string): boolean {
+  return !value.includes(' ') && /\d/.test(value);
+}
+
 /** Whole days on the lot — the number that decides whether it is stale stock. */
 export function daysOnLot(motor: MotorEntity, now = new Date()): number | null {
   const arrival = motor.arrivalDate;
@@ -57,8 +67,7 @@ export function engineSpecRows(motor: MotorEntity, now = new Date()): EngineSpec
     label: 'Location',
     value: location ?? 'Unplaced',
     tone: location ? 'default' : 'warning',
-    // A shelf code is read off a label; "Unplaced" is a sentence about one.
-    mono: Boolean(location),
+    mono: location ? looksLikeShelfCode(location) : false,
   });
 
   const configuration = clean(motor.configuration);

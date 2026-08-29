@@ -19,7 +19,7 @@ type AutocompleteDockProps = {
   onInteractionStart?: () => void;
 };
 
-function ChipStrip({ suggestions, query, onSelect }: Omit<AutocompleteDockProps, 'onInteractionStart'>) {
+function ChipStrip({ suggestions, onSelect }: Omit<AutocompleteDockProps, 'onInteractionStart'>) {
   return (
     <ScrollView
       horizontal
@@ -28,8 +28,13 @@ function ChipStrip({ suggestions, query, onSelect }: Omit<AutocompleteDockProps,
       contentContainerStyle={styles.strip}
     >
       {suggestions.map((option, index) => (
+        // Keyed by the suggestion itself, never by the query. With the query in
+        // the key every keystroke unmounted and remounted the whole strip, so
+        // the outgoing chips animated out over the incoming ones and the row
+        // rendered doubled. Sources dedupe through `uniqueAutocompleteOptions`,
+        // so a lowercased value is unique within a list.
         <AutocompleteChip
-          key={`${query}:${option.value}:${index}`}
+          key={option.value.toLowerCase()}
           option={option}
           index={index}
           onPress={() => onSelect(index)}

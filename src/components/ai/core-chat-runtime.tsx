@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type ChatStatus } from "ai";
+import { DefaultChatTransport, type ChatStatus, type FileUIPart } from "ai";
 import {
   createContext,
   useCallback,
@@ -23,7 +23,7 @@ type CoreChatValue = {
   status: ChatStatus;
   error: Error | undefined;
   busy: boolean;
-  ask: (text: string) => void;
+  ask: (text: string, files?: FileUIPart[]) => void;
   stop: () => void;
   regenerate: () => void;
   clearError: () => void;
@@ -124,10 +124,14 @@ export function CoreChatRuntime({
   const busy = status === "streaming" || status === "submitted";
 
   const ask = useCallback(
-    (text: string) => {
+    (text: string, files?: FileUIPart[]) => {
       const trimmed = text.trim();
-      if (!trimmed || busy) return;
-      void sendMessage({ text: trimmed });
+      if (busy) return;
+      if (!trimmed && !files?.length) return;
+      void sendMessage({
+        text: trimmed || userCopy.ai.attachedFiles,
+        files,
+      });
     },
     [busy, sendMessage],
   );

@@ -182,7 +182,6 @@ export function DashboardTopBar() {
 
     if (isWarehouseRoute) return businessNavCopy.inventoryCollection.consumables;
     if (isSoldRoute) return businessNavCopy.business.sales;
-    if (pathname.startsWith("/engine-intake")) return businessNavCopy.business.engineIntake;
 
     const sectionByMode: Partial<Record<SidebarMode, string>> = {
       work_orders: businessNavCopy.business.workOrders,
@@ -330,7 +329,9 @@ export function DashboardTopBar() {
           <DashboardImportProgress variant="compact" />
           <DocumentImportTopBarIsland />
 
-          {isWarehouseRoute ? <WarehouseTopBarSelector /> : null}
+          {isWarehouseRoute || isMotorRoute || isSpecificView ? (
+            <WarehouseTopBarSelector />
+          ) : null}
 
           {showAvailabilityFilter ? (
             <div className="autocore-segmented-tabs inline-flex rounded-lg p-0.5">

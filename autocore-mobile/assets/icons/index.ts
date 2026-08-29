@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
   BarChart3,
   Bell,
@@ -22,16 +23,24 @@ import {
   ClipboardList,
   Clock,
   Cloud,
+  Banknote,
   Coins,
   Copy,
+  CreditCard,
+  Landmark,
+  Split,
+  Undo2,
   Download,
   Ellipsis,
   ExternalLink,
   FileStack,
   FileText,
   Flashlight,
+  Globe,
   HelpCircle,
+  House,
   Images,
+  Layers,
   LayoutGrid,
   ListFilter,
   LifeBuoy,
@@ -40,8 +49,11 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MessageSquarePlus,
+  Mic,
   Megaphone,
   Package,
+  Pencil,
   Phone,
   Plus,
   Printer,
@@ -74,6 +86,8 @@ export const FileTextIcon = createIcon(FileText, 'FileTextIcon');
 export const UsersIcon = createIcon(Users, 'UsersIcon');
 export const MegaphoneIcon = createIcon(Megaphone, 'MegaphoneIcon');
 export const SettingsIcon = createIcon(Settings2, 'SettingsIcon');
+export const HouseIcon = createIcon(House, 'HouseIcon');
+export const LayersIcon = createIcon(Layers, 'LayersIcon');
 export const HelpCircleIcon = createIcon(HelpCircle, 'HelpCircleIcon');
 export const ActivityIcon = createIcon(Activity, 'ActivityIcon');
 
@@ -86,6 +100,7 @@ export const FilterIcon = createIcon(ListFilter, 'FilterIcon');
 export const ArrowRightIcon = createIcon(ArrowRight, 'ArrowRightIcon');
 export const ArrowLeftIcon = createIcon(ArrowLeft, 'ArrowLeftIcon');
 export const ArrowUpRightIcon = createIcon(ArrowUpRight, 'ArrowUpRightIcon');
+export const ArrowUpIcon = createIcon(ArrowUp, 'ArrowUpIcon');
 export const ChevronDownIcon = createIcon(ChevronDown, 'ChevronDownIcon');
 export const ChevronUpIcon = createIcon(ChevronUp, 'ChevronUpIcon');
 export const ChevronRightIcon = createIcon(ChevronRight, 'ChevronRightIcon');
@@ -117,11 +132,20 @@ export const CloudIcon = createIcon(Cloud, 'CloudIcon');
 export const WifiOffIcon = createIcon(WifiOff, 'WifiOffIcon');
 export const ImagesIcon = createIcon(Images, 'ImagesIcon');
 export const CameraIcon = createIcon(Camera, 'CameraIcon');
+export const GlobeIcon = createIcon(Globe, 'GlobeIcon');
+export const MicIcon = createIcon(Mic, 'MicIcon');
+export const PencilIcon = createIcon(Pencil, 'PencilIcon');
+export const MessageSquarePlusIcon = createIcon(MessageSquarePlus, 'MessageSquarePlusIcon');
 
 // Analytics
 export const TrendingUpIcon = createIcon(TrendingUp, 'TrendingUpIcon');
 export const TrendingDownIcon = createIcon(TrendingDown, 'TrendingDownIcon');
 export const CoinsIcon = createIcon(Coins, 'CoinsIcon');
+export const BanknoteIcon = createIcon(Banknote, 'BanknoteIcon');
+export const CreditCardIcon = createIcon(CreditCard, 'CreditCardIcon');
+export const LandmarkIcon = createIcon(Landmark, 'LandmarkIcon');
+export const SplitIcon = createIcon(Split, 'SplitIcon');
+export const Undo2Icon = createIcon(Undo2, 'Undo2Icon');
 
 // People
 export const UserRoundIcon = createIcon(UserRound, 'UserRoundIcon');

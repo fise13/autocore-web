@@ -7,6 +7,7 @@ import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-as
 import { SpecificColumnDef } from "@/domain/specific-category";
 import { withSpecificLocationColumn, SPECIFIC_LOCATION_COLUMN_KEY } from "@/lib/specific/specific-location-column";
 import { resolveSpecificRecordLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
+import { ExcelGridHeaderCell } from "@/components/grid/excel-column-resizer";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import { GridPhotoCell, GridPhotoCellDisabledHint } from "@/components/grid/grid-photo-cell";
@@ -18,6 +19,7 @@ import {
 import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { GridZoomControl } from "@/components/motors/grid-zoom-control";
+import { useExcelColumnResize } from "@/hooks/use-excel-column-resize";
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
@@ -25,6 +27,7 @@ import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
+import { applyColumnWidthOverrides } from "@/lib/grid/column-resize";
 import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
@@ -204,9 +207,14 @@ export function SpecificExcelGrid({
   );
 
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize();
   const layout = useMemo(
-    () => buildSpecificMotorGridLayout(columnSchema, gridZoom, { containerWidth: scroll.width }),
-    [columnSchema, gridZoom, scroll.width],
+    () =>
+      applyColumnWidthOverrides(
+        buildSpecificMotorGridLayout(columnSchema, gridZoom, { containerWidth: scroll.width }),
+        widthOverrides,
+      ),
+    [columnSchema, gridZoom, scroll.width, widthOverrides],
   );
   const headerMapping = layout.mapping;
   const editableColEnd = layout.dataColumnCount;
@@ -1183,7 +1191,10 @@ export function SpecificExcelGrid({
         onBlur={handleBlur}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
+          className={cn(
+            "absolute inset-0 overflow-auto bg-background excel-grid-scroll",
+            isResizing && "cursor-col-resize select-none",
+          )}
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
@@ -1238,29 +1249,24 @@ export function SpecificExcelGrid({
               {layout.columns.map((column, colIdx) => {
                 if (colIdx < visible.colStart || colIdx > visible.colEnd) return null;
                 return (
-                  <button
+                  <ExcelGridHeaderCell
                     key={column.id}
-                    type="button"
-                    className={cn(
-                      "absolute top-0 flex border-r px-2 font-semibold tracking-[0.01em] text-muted-foreground",
-                      column.align === "center"
-                        ? "items-center justify-center"
-                        : "items-center justify-start",
+                    title={column.title}
+                    width={column.width}
+                    left={layout.xOffsets[colIdx] ?? 0}
+                    height={layout.headerHeight}
+                    fontSize={gridHeaderFontSizePx(gridZoom, layout.density.scale)}
+                    align={column.align}
+                    buttonClassName={cn(
+                      "px-2 tracking-[0.01em]",
                       colIdx > 0 && canEdit && "hover:bg-muted/60",
                     )}
-                    style={{
-                      left: layout.xOffsets[colIdx],
-                      width: column.width,
-                      height: layout.headerHeight,
-                      fontSize: `${gridHeaderFontSizePx(gridZoom, layout.density.scale)}px`,
-                    }}
-                    onClick={() => {
+                    onSelectColumn={() => {
                       if (!isEditableColumn(colIdx)) return;
                       setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
                     }}
-                  >
-                    {column.title}
-                  </button>
+                    onResizeMouseDown={(event) => beginColumnResize(column.id, column.width, event)}
+                  />
                 );
               })}
             </div>

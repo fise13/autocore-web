@@ -11,6 +11,7 @@ import { usePanelActive } from "@/components/layout/panel-active-context";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { SpecificColumnManagerDialog } from "@/components/specific/specific-column-manager-dialog";
 import { SpecificExcelGrid } from "@/components/specific/specific-excel-grid";
+import { WarehouseLocationsStrip } from "@/components/warehouse/warehouse-locations-strip";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { useSpecificCategoriesRealtime } from "@/hooks/use-specific-categories-realtime";
@@ -28,6 +29,12 @@ import {
 } from "@/infrastructure/firestore/specific-category-repository";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { userCopy } from "@/lib/user-copy";
+import { resolveSpecificRecordLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
+import {
+  ALL_LOCATION_FILTER,
+  labelMatchesLocationFilter,
+  type WarehouseLocationFilter,
+} from "@/lib/warehouse/warehouse-location-filter";
 
 const specificCategoryRepository = createSpecificCategoryRepository();
 const financialRepository = createFinancialOperationRepository();
@@ -53,10 +60,15 @@ export function SpecificRecordsWorkspace({
   const canEdit = can(profile, "inventory_edit");
   const [category, setCategory] = useState(initialCategory);
   const [sellDialog, setSellDialog] = useState<SellDialogState | null>(null);
+  const [locationFilter, setLocationFilter] = useState<WarehouseLocationFilter>(ALL_LOCATION_FILTER);
 
   useEffect(() => {
     setCategory(initialCategory);
   }, [initialCategory]);
+
+  useEffect(() => {
+    setLocationFilter(ALL_LOCATION_FILTER);
+  }, [category.id]);
 
   const allCategories = useSpecificCategoriesRealtime(specificCategoryRepository, companyId);
   const { records, loading } = useSpecificRecordsRealtime(
@@ -90,10 +102,25 @@ export function SpecificRecordsWorkspace({
   );
   const headerMapping = useMemo(() => schemaToHeaderMapping(columnSchema), [columnSchema]);
 
+  const locationItems = useMemo(
+    () =>
+      records.map((record) => ({
+        primaryLocationCode: resolveSpecificRecordLocationLabel(record),
+      })),
+    [records],
+  );
+
+  const locationScopedRecords = useMemo(() => {
+    if (locationFilter.kind === "all") return records;
+    return records.filter((record) =>
+      labelMatchesLocationFilter(resolveSpecificRecordLocationLabel(record), locationFilter),
+    );
+  }, [locationFilter, records]);
+
   const filteredRecords = useMemo(() => {
-    const searched = filterSpecificRecords(records, workspace.search);
+    const searched = filterSpecificRecords(locationScopedRecords, workspace.search);
     return filterSpecificRecordsByAvailability(searched, workspace.availability, headerMapping);
-  }, [headerMapping, records, workspace.availability, workspace.search]);
+  }, [headerMapping, locationScopedRecords, workspace.availability, workspace.search]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -172,6 +199,12 @@ export function SpecificRecordsWorkspace({
         </div>
       ) : null}
 
+      <WarehouseLocationsStrip
+        items={locationItems}
+        filter={locationFilter}
+        onChange={setLocationFilter}
+      />
+
       <div className="min-h-0 flex-1">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -179,7 +212,7 @@ export function SpecificRecordsWorkspace({
           </div>
         ) : (
           <SpecificExcelGrid
-            records={records}
+            records={locationScopedRecords}
             search={workspace.search}
             category={category}
             columnSchema={columnSchema}

@@ -37,7 +37,12 @@ export const EngineStatusPill = memo(function EngineStatusPill({
   const label = engineStatusLabel(motor);
 
   return (
-    <Badge variant={statusBadgeVariant(tone)} emphasis="subtle" accessibilityLabel={`Status ${label}`}>
+    <Badge
+      variant={statusBadgeVariant(tone)}
+      emphasis="subtle"
+      dot
+      accessibilityLabel={`Status ${label}`}
+    >
       {label}
     </Badge>
   );

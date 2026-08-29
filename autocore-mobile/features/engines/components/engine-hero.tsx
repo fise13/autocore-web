@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
-import { View, useWindowDimensions } from 'react-native';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ScrollView, TouchableOpacity } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -14,21 +14,31 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ArrowLeftIcon, EllipsisIcon, LayoutGridIcon } from '@/assets/icons';
-import { Button, IconButton, Skeleton, Text } from '@/components/ui';
+import { ArrowLeftIcon, EllipsisIcon } from '@/assets/icons';
+import { Skeleton, Text } from '@/components/ui';
 import {
   presentNativeMenu,
   type NativeContextMenuAction,
 } from '@/components/ui/native-context-menu';
 import { useTheme } from '@/hooks';
-import { haptics, spacing } from '@/theme';
-import { withAlpha } from '@/theme/color-utils';
+import { getColors, haptics, spacing, tokens } from '@/theme';
 
 import { EngineGlyph } from './engine-glyph';
-import { EnginePhotoDots } from './engine-photo-dots';
-import { eng, engType } from '../layout';
+import { eng } from '../layout';
 
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+/**
+ * Chrome that always sits on a photo reads against the image, not the page, so
+ * it takes the dark scheme's ink in both themes — the light theme's near-black
+ * foreground would vanish into a dark shot.
+ */
+const onPhotoInk = getColors('dark').foreground;
+
+/** 4:3 is the field camera's native frame; the cap protects short screens. */
+function heroHeight(width: number, windowHeight: number): number {
+  return Math.min(Math.round((width * 3) / 4), Math.round(windowHeight * 0.52));
+}
 
 function HeroSlide({
   url,
@@ -93,9 +103,77 @@ function HeroSlide({
 }
 
 /**
- * The photo field — edge-to-edge pager with Apple Photos motion.
+ * Round nav control. Frosted over a photo, solid card when the hero is empty —
+ * a dark scrim floating on the page background reads as a rendering fault.
+ */
+function HeroNavButton({
+  onPress,
+  accessibilityLabel,
+  onPhoto,
+  children,
+}: {
+  onPress: () => void;
+  accessibilityLabel: string;
+  onPhoto: boolean;
+  children: ReactNode;
+}) {
+  const { colors } = useTheme();
+  const [pressed, setPressed] = useState(false);
+
+  const face = (
+    <View
+      style={{
+        width: eng.nav,
+        height: eng.nav,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: onPhoto ? colors.overlay : colors.card,
+        borderWidth: onPhoto ? 0 : eng.rule,
+        borderColor: colors.border,
+      }}
+    >
+      {children}
+    </View>
+  );
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      // The 36pt face keeps the photo readable; hitSlop carries it to 44pt.
+      hitSlop={(eng.hit - eng.nav) / 2}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      onPress={onPress}
+      style={{
+        width: eng.nav,
+        height: eng.nav,
+        borderRadius: eng.pillRadius,
+        overflow: 'hidden',
+        opacity: pressed ? tokens.opacity.pressed : 1,
+      }}
+    >
+      {onPhoto ? (
+        // Always the dark tint, in both themes: this sits on a photo, not on the
+        // page. A light frost would swallow the white glyph. On Android the
+        // default blurMethod is 'none', so the scrim under it carries the
+        // contrast on its own.
+        <BlurView intensity={28} tint="dark" style={{ flex: 1 }}>
+          {face}
+        </BlurView>
+      ) : (
+        face
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * The photo field — edge-to-edge 4:3 pager with Apple Photos motion.
  *
- * Swipe between shots in-place; tap or "All photos" opens the immersive viewer.
+ * Swipe between shots in place; tap opens the immersive viewer. Position is a
+ * counter in the corner rather than a dot row, because eight dots is a smear
+ * and the intake sets run well past eight.
  */
 export function EngineHero({
   urls,
@@ -114,15 +192,13 @@ export function EngineHero({
 }) {
   const { width, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const scrollRef = useRef<Animated.ScrollView>(null);
   const scrollX = useSharedValue(0);
   const [index, setIndex] = useState(0);
 
   const empty = urls.length === 0;
-  const height = empty
-    ? insets.top + eng.nav + spacing[2]
-    : Math.min(Math.round(width * 0.78), Math.round(windowHeight * 0.42));
+  const height = empty ? insets.top + eng.nav + spacing[2] : heroHeight(width, windowHeight);
 
   const reportIndex = useCallback(
     (next: number) => {
@@ -147,14 +223,6 @@ export function EngineHero({
     if (!actions || actions.length === 0 || !onAction) return;
     presentNativeMenu({ actions, onPressAction: onAction });
   }, [actions, onAction]);
-
-  const openGallery = useCallback(() => {
-    haptics.light();
-    onOpenPhoto(index);
-  }, [index, onOpenPhoto]);
-
-  const scrimTop = withAlpha(colors.background, isDark ? 0.72 : 0.55);
-  const scrimBottom = withAlpha(colors.background, isDark ? 0.82 : 0.62);
 
   return (
     <View style={{ backgroundColor: colors.background }}>
@@ -186,27 +254,6 @@ export function EngineHero({
           </AnimatedScrollView>
         )}
 
-        {!empty ? (
-          <>
-            <LinearGradient
-              pointerEvents="none"
-              colors={[scrimTop, 'transparent']}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: insets.top + eng.nav + spacing[6],
-              }}
-            />
-            <LinearGradient
-              pointerEvents="none"
-              colors={['transparent', scrimBottom]}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: spacing[16] }}
-            />
-          </>
-        ) : null}
-
         <View
           pointerEvents="box-none"
           style={{
@@ -219,32 +266,24 @@ export function EngineHero({
             justifyContent: 'space-between',
           }}
         >
-          <IconButton
-            size="sm"
-            variant="outline"
-            accessibilityLabel="Back"
-            onPress={onBack}
-            style={{ backgroundColor: colors.card }}
-          >
-            <ArrowLeftIcon size="sm" color={colors.foreground} strokeWidth={1.9} />
-          </IconButton>
+          <HeroNavButton accessibilityLabel="Back" onPress={onBack} onPhoto={!empty}>
+            <ArrowLeftIcon
+              size="sm"
+              color={empty ? colors.foreground : onPhotoInk}
+              strokeWidth={1.9}
+            />
+          </HeroNavButton>
 
           {actions && actions.length > 0 && onAction ? (
-            <IconButton
-              size="sm"
-              variant="outline"
-              accessibilityLabel="More actions"
-              onPress={openMenu}
-              style={{ backgroundColor: colors.card }}
-            >
+            <HeroNavButton accessibilityLabel="More actions" onPress={openMenu} onPhoto={!empty}>
               <EngineGlyph
                 sf="ellipsis"
                 fallback={EllipsisIcon}
                 size={17}
-                color={colors.foreground}
+                color={empty ? colors.foreground : onPhotoInk}
                 weight="semibold"
               />
-            </IconButton>
+            </HeroNavButton>
           ) : (
             <View style={{ width: eng.nav }} />
           )}
@@ -253,62 +292,40 @@ export function EngineHero({
         {!empty && urls.length > 1 ? (
           <View
             pointerEvents="none"
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`Photo ${index + 1} of ${urls.length}`}
             style={{
               position: 'absolute',
-              bottom: spacing[3],
-              left: 0,
-              right: 0,
-              alignItems: 'center',
+              right: eng.pad,
+              bottom: eng.stack,
+              borderRadius: eng.pillRadius,
+              overflow: 'hidden',
             }}
           >
-            <EnginePhotoDots count={urls.length} scrollX={scrollX} pageWidth={width} tone="overlay" />
+            <View
+              style={{
+                paddingHorizontal: spacing[2],
+                paddingVertical: spacing[1],
+                backgroundColor: colors.overlay,
+              }}
+            >
+              <Text
+                variant="caption2"
+                maxFontSizeMultiplier={1.15}
+                style={{
+                  color: onPhotoInk,
+                  fontWeight: '600',
+                  fontVariant: ['tabular-nums'],
+                  letterSpacing: 0.2,
+                }}
+              >
+                {index + 1}/{urls.length}
+              </Text>
+            </View>
           </View>
         ) : null}
       </View>
-
-      {!empty ? (
-        <View
-          style={{
-            paddingHorizontal: eng.pad,
-            paddingTop: eng.inline,
-            paddingBottom: urls.length > 1 ? 0 : eng.micro,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: eng.stack,
-            }}
-          >
-            {urls.length > 1 ? (
-              <Text
-                variant="caption1"
-                color="muted"
-                style={engType.count}
-                accessibilityRole="text"
-                accessibilityLabel={`Photo ${index + 1} of ${urls.length}`}
-              >
-                Photo {index + 1} of {urls.length}
-              </Text>
-            ) : (
-              <View style={{ flex: 1 }} />
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              inline
-              accessibilityLabel={urls.length > 1 ? `Open all ${urls.length} photos` : 'View photo full screen'}
-              leftIcon={<LayoutGridIcon size="sm" color={colors.foreground} strokeWidth={1.85} />}
-              onPress={openGallery}
-            >
-              {urls.length > 1 ? 'All photos' : 'View photo'}
-            </Button>
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }

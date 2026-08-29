@@ -5,7 +5,6 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { ROLE_PERMISSIONS, type UserRole } from "@/domain/user";
 import { defaultCompanyAppConfig } from "@/domain/company-config";
 import { DEMO_ACCOUNT_EMAIL, DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
-import { resetDemoWorkspaceData } from "@/lib/demo/demo-reset.server";
 import { seedDemoWorkspaceData } from "@/lib/demo/demo-seed.server";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
 
@@ -64,11 +63,17 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
     }
   }
 
-  for (const role of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
-    await companyRef
-      .collection("roles")
-      .doc(role)
-      .set(
+  const ownerPermissions = ROLE_PERMISSIONS.owner;
+  const trialEnd = new Date();
+  trialEnd.setFullYear(trialEnd.getFullYear() + 10);
+  const appConfig = {
+    ...defaultCompanyAppConfig(),
+    onboardingCompleted: true,
+  };
+
+  await Promise.all([
+    ...(Object.keys(ROLE_PERMISSIONS) as UserRole[]).map((role) =>
+      companyRef.collection("roles").doc(role).set(
         {
           companyId: DEMO_COMPANY_ID,
           role,
@@ -77,65 +82,49 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
           updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
-      );
-  }
-
-  const ownerPermissions = ROLE_PERMISSIONS.owner;
-
-  await companyRef.collection("employees").doc(uid).set(
-    {
-      uid,
-      companyId: DEMO_COMPANY_ID,
-      email: DEMO_ACCOUNT_EMAIL,
-      fullName: "Демо AutoCore",
-      role: "owner",
-      permissions: ownerPermissions,
-      invitedBy: uid,
-      isActive: true,
-      lastActiveAt: FieldValue.serverTimestamp(),
-      createdAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
-
-  await db.collection("users").doc(uid).set(
-    {
-      name: "Демо AutoCore",
-      email: DEMO_ACCOUNT_EMAIL,
-      role: "owner",
-      companyId: DEMO_COMPANY_ID,
-      permissions: ownerPermissions,
-      isActive: true,
-      onboardingCompleted: true,
-      createdAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
-
-  const billingRef = companyRef.collection("billing").doc("subscription");
-  const billingSnap = await billingRef.get();
-  if (!billingSnap.exists) {
-    const trialEnd = new Date();
-    trialEnd.setFullYear(trialEnd.getFullYear() + 10);
-    await billingRef.set({
-      plan: "pro",
-      status: "trialing",
-      proActive: true,
-      provider: "internal",
-      trialUsed: true,
-      currentPeriodEnd: Timestamp.fromDate(trialEnd),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-  }
-
-  const appConfig = {
-    ...defaultCompanyAppConfig(),
-    onboardingCompleted: true,
-  };
-  await companyRef
-    .collection("settings")
-    .doc("app")
-    .set(
+      ),
+    ),
+    companyRef.collection("employees").doc(uid).set(
+      {
+        uid,
+        companyId: DEMO_COMPANY_ID,
+        email: DEMO_ACCOUNT_EMAIL,
+        fullName: "Демо AutoCore",
+        role: "owner",
+        permissions: ownerPermissions,
+        invitedBy: uid,
+        isActive: true,
+        lastActiveAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    db.collection("users").doc(uid).set(
+      {
+        name: "Демо AutoCore",
+        email: DEMO_ACCOUNT_EMAIL,
+        role: "owner",
+        companyId: DEMO_COMPANY_ID,
+        permissions: ownerPermissions,
+        isActive: true,
+        onboardingCompleted: true,
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    companyRef.collection("billing").doc("subscription").set(
+      {
+        plan: "pro",
+        status: "trialing",
+        proActive: true,
+        provider: "internal",
+        trialUsed: true,
+        currentPeriodEnd: Timestamp.fromDate(trialEnd),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    ),
+    companyRef.collection("settings").doc("app").set(
       {
         onboardingCompleted: true,
         modules: appConfig.modules,
@@ -148,14 +137,21 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
-    );
+    ),
+  ]);
 
   await seedDemoWorkspaceData(uid);
 }
 
+/**
+ * Issues a Firebase custom token for the shared demo account.
+ *
+ * Must stay well under the Vercel function budget. A full workspace wipe on
+ * every visit previously walked ~30 Firestore collections sequentially from
+ * `fra1` and timed out (~15s → 503). Reset stays on logout (`/api/demo/reset`).
+ */
 export async function createDemoCustomToken(): Promise<string> {
   const { uid } = await ensureDemoAuthUser();
-  await resetDemoWorkspaceData(uid);
   await ensureDemoWorkspace(uid);
   return getAdminAuth().createCustomToken(uid);
 }

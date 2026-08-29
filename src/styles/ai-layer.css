@@ -277,6 +277,118 @@
   animation-delay: 110ms;
 }
 
+/* ── Thinking orb (Core chat, matches mobile expo-thinking-orbs) ──────── */
+
+.core-orb {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  isolation: isolate;
+  box-shadow: 0 0 14px color-mix(in oklab, var(--ai) 38%, transparent);
+}
+
+.core-orb__body,
+.core-orb__sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.core-orb__body {
+  background:
+    radial-gradient(circle at 32% 28%, color-mix(in oklab, var(--ai) 55%, white) 0%, transparent 42%),
+    radial-gradient(circle at 70% 78%, color-mix(in oklab, var(--ai) 70%, black) 0%, transparent 55%),
+    var(--ai);
+}
+
+.core-orb__sheen {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in oklab, white 45%, transparent) 70deg,
+    transparent 140deg
+  );
+  mix-blend-mode: soft-light;
+  animation: core-orb-spin 2.4s linear infinite;
+}
+
+@keyframes core-orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes core-orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.92);
+  }
+}
+
+.core-orb[data-state="working"] .core-orb__body {
+  animation: core-orb-breathe 1.6s var(--ai-ease-inout) infinite;
+}
+
+.core-lockup {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.core-composer-pill {
+  min-height: 3.25rem;
+  border-radius: 9999px;
+  background: var(--secondary);
+}
+
+.core-composer-pill:focus-within {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.core-composer-lift {
+  padding-bottom: max(1.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+}
+
+.core-menu-glyph {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+}
+
+.core-menu-glyph span {
+  display: block;
+  height: 1.5px;
+  border-radius: 9999px;
+  background: var(--foreground);
+}
+
+.core-menu-glyph span:first-child {
+  width: 16px;
+}
+
+.core-menu-glyph span:last-child {
+  width: 12px;
+}
+
+.core-menu-notify {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--ai);
+}
+
 /* ── Reduced motion ───────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -285,7 +397,9 @@
   .ai-glyph__pulse,
   .ai-entry-button,
   .ai-entry-button__halo,
-  .ai-rise {
+  .ai-rise,
+  .core-orb__sheen,
+  .core-orb__body {
     animation: none !important;
     transition-duration: 1ms !important;
   }

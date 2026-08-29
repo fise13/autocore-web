@@ -63,6 +63,22 @@ export function DiagnosticsSettingsScreen() {
               router.push('/design-system');
             }}
           />
+          <CollectionRow
+            title="Dock playground"
+            subtitle="Liquid glass tab — + opens Ask Core"
+            onPress={() => {
+              haptics.selection();
+              router.push('/playground');
+            }}
+          />
+          <CollectionRow
+            title="Ask Core"
+            subtitle="ChatGPT-style Core route"
+            onPress={() => {
+              haptics.selection();
+              router.push('/playground/core');
+            }}
+          />
         </ListSection>
       ) : null}
 

@@ -1,16 +1,16 @@
-# Graph Report - autocore-web  (2026-08-28)
+# Graph Report - autocore-web  (2026-08-29)
 
 ## Corpus Check
-- 3310 files · ~2,852,151 words
+- 3345 files · ~2,786,830 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 19102 nodes · 59023 edges · 661 communities (524 shown, 137 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 613 edges (avg confidence: 0.72)
+- 19302 nodes · 59583 edges · 680 communities (542 shown, 138 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 638 edges (avg confidence: 0.73)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bff7a12f`
+- Built from commit: `272c840b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -490,42 +490,49 @@
 - expo-widgets
 - ai-ui-blocks.ts
 - TeamScreen
+- warehouse-search.ts
+- route.ts
 - expo-apple-authentication
-- expo-image-manipulator
-- expo-router
 - 9. Quick actions
-- expo-splash-screen
+- mc-animated-sparkline.tsx
 - react-native-gesture-handler
 - engine-facts.ts
 - company-switch-overlay.tsx
 - react-native-screens
-- @base-ui/react
-- import-rules-engine.ts
+- include
+- return-to.ts
 - autocore-ai-button.tsx
 - theme.ts
-- @tanstack/react-query
+- parseMotorQualityGrade
 - layout.tsx
 - route.ts
-- @autocore/avatars
-- @autocore/billing
-- react-native-svg
-- @shopify/react-native-skia
+- import-progress-banner.tsx
+- use-panel-lifecycle.ts
+- print.ts
+- 9. Quick actions
 - @autocore/billing
 - OfflineQueue
 - namespaces.ts
-- tailwindcss
+- lib
 - @react-native-async-storage/async-storage
 - 1. THE THREE DIALS (Core Configuration)
 - tailwindcss
 - skeleton-row.tsx
+- @autocore/org
 - @autocore/avatars
 - nanoid
 - @autocore/engine-intake
 - scan-ai-client.server.ts
+- expo-auth-session
+- MemoryStorage
+- expo-camera
 - universal-links.ts
+- expo-linking
 - expo-image-picker
+- expo-sharing
 - @autocore/rbac
 - styles.ts
+- assistant-state.ts
 - react-native-reanimated
 - @tanstack/react-query
 - zustand
@@ -534,26 +541,35 @@
 - WorkOsColorScheme
 - expo-splash-screen
 - Deep links — Universal Links and web fallback
+- scan-learning.server.ts
 - run-tests.mjs
 - @shopify/react-native-skia
-- expo-font
+- create-inventory-item.server.ts
+- typography.ts
+- lib
+- tw-animate-css
 - react
 - tool-activity.tsx
 - @shopify/flash-list
 - @tanstack/react-query-persist-client
 - setup-apple-iap-keys.mjs
 - typography.ts
-- lib
+- check-seo-origins.mjs
+- @autocore/org
 - zustand
 - date-fns
-- @gorhom/bottom-sheet
+- engine-intake-camera
 - Required environment variables
 - @autocore/avatars
+- @autocore/avatars
 - @autocore/billing
+- PersistenceFlushReason
 - compose
 - @assets/*
 - react-dom
+- photo-upload-session.ts
 - @autocore/billing
+- expo-background-task
 - react-native-web
 - active-job-hero.tsx
 - activity-row.tsx
@@ -578,122 +594,123 @@
 - capture.sh
 - @base-ui/react
 - firestore-rules.test.ts
+- expo-print
 - zod
-- expo-linear-gradient
+- expo-symbols
 - Mint Paddle Customer Portal session URLs from Next.js
-- @assets/*
+- expo-web-browser
 - expo-auth-session
-- expo-background-task
+- merge-intake-photos.ts
 - Cancel a Paddle subscription from Next.js
 - expo-status-bar
 - nativewind
-- nativewind
+- @tanstack/react-query
 - migrate-paddle-live.ts
 - react-native-worklets
 - app_url
+- @autocore/avatars
 - gsap
 - legal-content.ts
 - next-themes
-- @autocore/domain-search
+- @autocore/billing
 - @paddle/paddle-js
 - engine-intake-native-camera.tsx
 - intake-job-tile.tsx
 - @react-native-community/netinfo
-- class-variance-authority
 - push-apple-env-to-vercel.sh
 - tailwind-merge
 - @tauri-apps/api
-- @tauri-apps/plugin-clipboard-manager
-- @tauri-apps/plugin-opener
-- web-vitals
-- zod
-- next
+- @assets/*
+- expo-web-browser
+- NHTSA vPIC client
+- firebase
+- @tanstack/react-query
+- @tanstack/react-virtual
 - @barba/core
 - react-zoom-pan-pinch
 - firebase-admin
-- @radix-ui/react-use-controllable-state
+- @autocore/avatars
 - recharts
 - server-only
 - resend
-- @sparticuz/chromium
-- @streamdown/code
 - @tanstack/react-query
 - streamdown
 - @streamdown/cjk
-- @tanstack/react-query-devtools
-- @tauri-apps/plugin-notification
 - use-stick-to-bottom
+- streamdown
+- @tanstack/react-query-devtools
 - patch-expo-file-system-upload.mjs
 - ai-prompts.ts
-- page.tsx
-- intake-job-tile.tsx
-- skeleton-block.tsx
+- @tauri-apps/plugin-notification
+- @vercel/functions
+- core-chat-store.ts
 - @autocore/rbac
+- format_output
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 859 edges
-2. `useTheme()` - 609 edges
-3. `normalizeCompanyId()` - 443 edges
+1. `cn()` - 869 edges
+2. `useTheme()` - 624 edges
+3. `normalizeCompanyId()` - 438 edges
 4. `getAdminFirestore()` - 345 edges
-5. `userCopy` - 302 edges
-6. `Text` - 290 edges
-7. `useAuth()` - 198 edges
-8. `haptics` - 170 edges
-9. `getFirestoreDb()` - 160 edges
-10. `Button()` - 143 edges
+5. `userCopy` - 305 edges
+6. `Text` - 294 edges
+7. `useAuth()` - 202 edges
+8. `haptics` - 175 edges
+9. `getFirestoreDb()` - 155 edges
+10. `tokens` - 149 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `IntakeBayWidgetLayout()` --indirect_call--> `value()`  [INFERRED]
   autocore-mobile/features/live-activity/widgets/intake-bay-widget.tsx → src/lib/import/business/import-plan.test.ts
 - `TodayWidgetLayout()` --indirect_call--> `value()`  [INFERRED]
   autocore-mobile/features/live-activity/widgets/today-widget.tsx → src/lib/import/business/import-plan.test.ts
+- `formatterFor()` --indirect_call--> `value()`  [INFERRED]
+  autocore-mobile/features/overview/home/components/home-trends.tsx → src/lib/import/business/import-plan.test.ts
+- `series()` --indirect_call--> `value()`  [INFERRED]
+  autocore-mobile/features/overview/home/lib/scoring.test.ts → src/lib/import/business/import-plan.test.ts
 - `series()` --indirect_call--> `value()`  [INFERRED]
   autocore-mobile/features/overview/home/lib/trends.test.ts → src/lib/import/business/import-plan.test.ts
-- `useScanExperience()` --indirect_call--> `orderLabel()`  [INFERRED]
-  autocore-mobile/features/scan/hooks/use-scan-experience.ts → src/domain/notifications/event-registry.ts
-- `deleteCompanyAsOwner()` --indirect_call--> `sub()`  [INFERRED]
-  src/infrastructure/firestore/invite-org-service.server.ts → autocore-mobile/lib/subscriptions/apple-id-ownership.test.ts
 
 ## Import Cycles
 - 1-file cycle: `autocore-mobile/lib/vehicles/vehicle-catalog.ts -> autocore-mobile/lib/vehicles/vehicle-catalog.ts`
 - 1-file cycle: `src/lib/vehicles/vehicle-catalog.ts -> src/lib/vehicles/vehicle-catalog.ts`
 - 3-file cycle: `src/components/billing/billing-gate-provider.tsx -> src/components/billing/pro-paywall-dialog.tsx -> src/components/billing/plan-comparison-table.tsx -> src/components/billing/billing-gate-provider.tsx`
 - 3-file cycle: `src/lib/documents/document-context.ts -> src/lib/documents/render-model/types.ts -> src/lib/documents/warranty/resolve-warranty.ts -> src/lib/documents/document-context.ts`
-- 3-file cycle: `src/infrastructure/firestore/specific-category-repository.ts -> src/lib/specific/specific-category-schema.ts -> src/lib/specific/specific-table.ts -> src/infrastructure/firestore/specific-category-repository.ts`
 - 3-file cycle: `src/infrastructure/firestore/specific-category-repository.ts -> src/lib/specific/specific-category-schema.ts -> src/lib/specific/specific-header-mapping.ts -> src/infrastructure/firestore/specific-category-repository.ts`
+- 3-file cycle: `src/infrastructure/firestore/specific-category-repository.ts -> src/lib/specific/specific-category-schema.ts -> src/lib/specific/specific-table.ts -> src/infrastructure/firestore/specific-category-repository.ts`
 - 4-file cycle: `src/components/billing/billing-gate-provider.tsx -> src/components/billing/pro-paywall-dialog.tsx -> src/components/billing/plan-comparison-table.tsx -> src/hooks/use-billing-actions.ts -> src/components/billing/billing-gate-provider.tsx`
 - 4-file cycle: `src/lib/documents/company-brand.ts -> src/lib/documents/document-context.ts -> src/lib/documents/render-model/types.ts -> src/lib/documents/header/build-document-header-model.ts -> src/lib/documents/company-brand.ts`
 - 4-file cycle: `src/infrastructure/firestore/specific-category-repository.ts -> src/lib/specific/specific-category-schema.ts -> src/lib/specific/specific-header-mapping.ts -> src/lib/specific/specific-table.ts -> src/infrastructure/firestore/specific-category-repository.ts`
 
-## Communities (661 total, 137 thin omitted)
+## Communities (680 total, 138 thin omitted)
 
 ### Community 0 - "cn"
-Cohesion: 0.02
-Nodes (176): useShimmer(), CheckIcon, CopyIcon, WifiOffIcon, NOTIFICATION_ROW_DIVIDER_INSET, TabScreenPlaceholder(), TabScreenPlaceholderProps, ConnectivityMode (+168 more)
+Cohesion: 0.01
+Nodes (251): backdropIn(), backdropOut(), dialogIn(), dialogOut(), ENTER_FADE, EXIT_FADE, popoverIn(), popoverOut() (+243 more)
 
 ### Community 1 - "utils.ts"
-Cohesion: 0.13
-Nodes (14): DocumentRow, DocumentRowProps, useScheme(), EvidenceRingLabel, EvidenceRingLabelProps, useScheme(), PermissionGateCard, PermissionGateCardProps (+6 more)
+Cohesion: 0.11
+Nodes (17): BrowseTile, BrowseTileProps, useScheme(), DocumentRow, DocumentRowProps, useScheme(), EvidenceRingLabel, EvidenceRingLabelProps (+9 more)
 
 ### Community 2 - "index.ts"
-Cohesion: 0.06
-Nodes (96): FinChartLegend(), chartVariantForTrend(), FinInlineChart, FinCurvePoint, FinSkiaCurveChart(), ActivityRow, FinActivity(), FinDetailHeader() (+88 more)
+Cohesion: 0.05
+Nodes (73): DocumentationChecklistItem, DocumentationChecklistItemState, isDocumentationChecklistReady(), isEngineIntakeSessionStale(), warehouseLifecycleLabel(), EngineIntakePriority, EngineIntakeSource, IntakeAiInspectionResult (+65 more)
 
 ### Community 3 - "warehouse-excel-grid.tsx"
 Cohesion: 0.02
-Nodes (212): usePressAnimation(), ChevronDownIcon, ExternalLinkIcon, Share2Icon, useAuth(), AuthShell(), AuthShellProps, ProgressBar() (+204 more)
+Nodes (195): ArrowRightIcon, ChevronDownIcon, ExternalLinkIcon, Loader2Icon, AppleSignInButton(), AppleSignInButtonProps, resolveAppleSignInEnabled(), AppleIcon() (+187 more)
 
 ### Community 4 - "useTheme"
-Cohesion: 0.02
-Nodes (135): backdropIn(), backdropOut(), dialogIn(), dialogOut(), ENTER_FADE, EXIT_FADE, popoverIn(), popoverOut() (+127 more)
+Cohesion: 0.03
+Nodes (63): WorkspaceAccessScreen(), CompanyAvatar(), CompanyAvatarProps, CompanyAvatarSize, fontMap, radiusMap, sizeMap, AnimatedTabScreen (+55 more)
 
 ### Community 5 - "button.tsx"
 Cohesion: 0.01
-Nodes (327): GradientAvatarFallback(), GradientAvatarFallbackProps, useAssistant(), AIWorkspace(), assistantHasVisibleContent(), mergeReasoning(), MessageView(), SuggestionChip() (+319 more)
+Nodes (323): AccountLanguageSettingsCard(), Suggestion(), SuggestionProps, Suggestions(), SuggestionsProps, AttachmentsContext, LocalAttachmentsContext, PromptInput() (+315 more)
 
 ### Community 6 - "useAuth"
 Cohesion: 0.02
-Nodes (189): DocumentImportViewerProps, DocumentImportsList(), DocumentImportsListProps, STATUS_LABELS, dateOnlyFormatter, dateTimeFormatter, DocumentsHistoryPanel(), matchesSearch() (+181 more)
+Nodes (118): EcosystemDeviceShowcase(), EcosystemDeviceShowcaseProps, KeynoteDesktopUi(), KeynoteDesktopUiProps, Kpi(), KeynotePhoneUi(), KeynotePhoneUiProps, KeynoteSyncBeam() (+110 more)
 
 ### Community 7 - "product-experience.tsx"
 Cohesion: 0.15
@@ -701,251 +718,251 @@ Nodes (10): ThroughputBars, ThroughputBarsProps, TrendSparkline, TrendSparklineP
 
 ### Community 8 - "build-render-model.ts"
 Cohesion: 0.03
-Nodes (100): metadata, ActionMode, ActionStatus, AuthActionContent(), AuthActionShell(), AuthActionShellProps, resolveMode(), metadata (+92 more)
+Nodes (164): PlusIcon, ScreenScroll(), AcPayrollList(), AcPayrollListProps, PayrollRow(), PayrollStatusBadge(), statusColors(), FinChartLegend() (+156 more)
 
 ### Community 10 - "login-screen.tsx"
-Cohesion: 0.04
-Nodes (79): operationAccountDetail(), CoMixedSplit(), CoMixedSplitProps, formatDraft(), CreateOperationScreen(), parseAmountInput(), readPreset(), accountDetail() (+71 more)
+Cohesion: 0.09
+Nodes (28): LiquidGlassTabBarInner(), isTabRouteName(), NO_TRANSITION, resolveTabRouteName(), TAB_ORDER, TabRouteName, TabTransitionContext, TabTransitionContextValue (+20 more)
 
 ### Community 11 - "useSession"
-Cohesion: 0.23
-Nodes (16): queryDocsSignature(), engineIntakeJobDocument(), listenDistinctMapped(), mapAssignment(), mapEvent(), mapJob(), mapPhoto(), mapReworkRequest() (+8 more)
+Cohesion: 0.06
+Nodes (88): ServiceTagDocument(), ServiceTagDocumentProps, DocumentPage(), DocumentPageProps, isSectionEnabled(), buildLaborLinesForDocument(), buildPartLinesForDocument(), classifyServiceOrder() (+80 more)
 
 ### Community 12 - "order-detail-screen.tsx"
-Cohesion: 0.05
-Nodes (58): DocumentPreviewDialog(), DocumentScaledPreviewFrame(), useDocumentPreviewScale(), RenderDocument(), IPhoneSimulatorFrame(), IPhoneSimulatorFrameProps, EASE, InteractiveSaleExperience() (+50 more)
+Cohesion: 0.17
+Nodes (25): FirebaseLikeError, logAppleIdToken(), logAppleNonce(), logAppleTag(), logFirebaseCredential(), logFirebaseSignInResult(), serializeAppleAuthError(), AppleJsRedirectStarted (+17 more)
 
 ### Community 13 - "haptics"
 Cohesion: 0.06
-Nodes (63): BackfillBody, POST(), GET(), RouteContext, POST(), QueueBody, POST(), GET() (+55 more)
+Nodes (60): BackfillBody, POST(), GET(), RouteContext, POST(), QueueBody, POST(), GET() (+52 more)
 
 ### Community 14 - "invite-org-service.server.ts"
 Cohesion: 0.07
-Nodes (44): GRID_PLACEHOLDER_VALUES, IMPORT_GRID_BASE_LAYER, IMPORT_GRID_BASE_LAYER_SHORT, isGridPlaceholder(), joinGridFragments(), PLACEHOLDER_SET, sanitizeGridText(), MOTOR_BRAND_VS_ENGINE_RULES (+36 more)
+Nodes (47): GRID_PLACEHOLDER_VALUES, IMPORT_GRID_BASE_LAYER, IMPORT_GRID_BASE_LAYER_SHORT, isGridPlaceholder(), joinGridFragments(), PLACEHOLDER_SET, sanitizeGridText(), appendToGridCell() (+39 more)
 
 ### Community 15 - "index.ts"
-Cohesion: 0.06
-Nodes (72): cloneHeroMotors(), cloneSaleMotors(), ColId, HERO_COLUMN_DEFS, HeroColId, HeroMotor, HeroMotorsTheater(), HeroMotorsTheaterProps (+64 more)
+Cohesion: 0.10
+Nodes (45): PageTransitionContext, PageTransitionContextValue, PageTransitionProvider(), PageTransitionProviderProps, usePageTransition(), AppRouter, AuthSessionKind, consumeAuthJourneyHandoff() (+37 more)
 
 ### Community 16 - "can"
-Cohesion: 0.04
-Nodes (60): IntakePhotoThumbItem, IntakePhotoThumbs(), ringColor(), intakePhotoPreviewUri(), IntakePhotoThumbStatus, localIntakePhotoAsEntity(), LocalIntakePhotoInput, mergeIntakePhotos() (+52 more)
+Cohesion: 0.08
+Nodes (45): LEGACY_CATEGORY_IDS, migrateInventoryTaxonomyUseCase(), normalizeCompanyConfigForTaxonomy(), normalizeCompanySpecificCategoryForTaxonomy(), CompanyConfigSidebarSync(), specificCategoryRepository, CompanyAppConfig, CompanyModuleKey (+37 more)
 
 ### Community 17 - "accounting-screen.tsx"
 Cohesion: 0.03
-Nodes (154): commandFailureAbortsDrainWave(), DrainWorkItem, DrainWorkKind, orderIntakeDrainWork(), SETUP_SKIP, isClaimGoneError(), isClaimGoneMessage(), isClaimHeldByOtherMessage() (+146 more)
+Nodes (131): commandFailureAbortsDrainWave(), DrainWorkItem, DrainWorkKind, orderIntakeDrainWork(), SETUP_SKIP, isClaimGoneError(), isClaimGoneMessage(), isClaimHeldByOtherMessage() (+123 more)
 
 ### Community 18 - "index.ts"
-Cohesion: 0.12
-Nodes (17): ButtonShape, ButtonSize, ButtonVariant, buildNativeButtonModifiers(), mapBorderShape(), mapButtonStyle(), mapControlSize(), SwiftButtonStyle (+9 more)
+Cohesion: 0.16
+Nodes (13): ButtonShape, ButtonSize, ButtonVariant, buildNativeButtonModifiers(), mapBorderShape(), mapButtonStyle(), mapControlSize(), SwiftButtonStyle (+5 more)
 
 ### Community 19 - "normalizeCompanyId"
 Cohesion: 0.05
-Nodes (100): IntakeAcceptDraft, IntakeAcceptSheet, IntakeAcceptSheetRef, IntakeCreateIdentityDraft, IntakeCreateSerialSheet, IntakeCreateSerialSheetRef, EngineIntakeSessionScreen(), makeWorkerCommand() (+92 more)
+Nodes (92): IntakeAcceptDraft, IntakeAcceptSheetRef, IntakeCamera, IntakeCameraHandle, IntakeCreateIdentityDraft, IntakeCreateSerialSheetRef, EngineIntakeSessionScreen(), makeWorkerCommand() (+84 more)
 
 ### Community 21 - "getFirebaseDb"
-Cohesion: 0.07
-Nodes (51): orgErrorResponse(), POST(), normalizeOptionalString(), POST(), ProfilePayload, mapPaddleCheckoutError(), POST(), readInterval() (+43 more)
+Cohesion: 0.06
+Nodes (76): buildLedgerVolumeSeries(), LedgerDayBucket, buildActivity(), dayLabel(), entryTitle(), sentenceCase(), TITLES, buildFinanceModel() (+68 more)
 
 ### Community 22 - "scan-screen.tsx"
-Cohesion: 0.09
-Nodes (27): CommercialProposalDocument(), CommercialProposalDocumentProps, EngineWarrantyDocument(), EngineWarrantyDocumentProps, EngineWaybillDocument(), EngineWaybillDocumentProps, InvoiceDocument(), InvoiceDocumentProps (+19 more)
+Cohesion: 0.05
+Nodes (54): INVITE_FILTER_OPTIONS, InviteStatusFilter, TeamInviteStatusFilters(), TeamInviteStatusFiltersProps, buildInviteJoinUrl(), mapToOrgError(), ORG_ERROR_CODES, ORG_ERROR_COPY (+46 more)
 
 ### Community 23 - "document-context.ts"
-Cohesion: 0.06
-Nodes (52): AppProviders(), StoreShotsAuthProvider(), ErrorBoundary(), ExpoRouterErrorBoundaryProps, clearHomeSnapshots(), g, clearScheduledQueryDataApplies(), CachedRealtimeSnapshot (+44 more)
+Cohesion: 0.03
+Nodes (116): PageProps, AccountingWorkspaceSkeleton(), DocumentImportDataPanel(), DocumentImportDataPanelProps, ExtractedEngine, ExtractedPayload, parseExtracted(), DocumentImportRealtimeToast() (+108 more)
 
 ### Community 24 - "inventory-taxonomy.ts"
-Cohesion: 0.13
-Nodes (23): DonorFormBody(), CreateDonorInput, DONOR_STATUSES, DonorStatus, DonorVehicle, UpdateDonorInput, donorRepository, createDonorRepository() (+15 more)
+Cohesion: 0.02
+Nodes (250): canAccessMyEarnings(), canAccessOverview(), UserEntity, sellSpecificWithFinancialOperationUseCase(), createSpecificCategoryUseCase(), deleteSpecificCategoryUseCase(), renameSpecificCategoryUseCase(), unsellSpecificWithFinancialOperationUseCase() (+242 more)
 
 ### Community 25 - "app-tab-bar.tsx"
-Cohesion: 0.03
-Nodes (129): EllipsisIcon, MapPinIcon, ScreenActionFooter(), ScreenActionFooterProps, styles, TabDockVignette(), CatalogRow, catalogRowPosition (+121 more)
+Cohesion: 0.15
+Nodes (22): ENGINE_QUALITY_FILTER_SEGMENTS, EngineQualityFilterValue, EngineQualityMark, EngineQualityMarkProps, qualityBadgeVariant(), ENGINE_QUALITY_FILTERS, ENGINE_QUALITY_GRADE_MARKS, engineMatchesQualityFilter() (+14 more)
 
 ### Community 26 - "auth-provider.tsx"
-Cohesion: 0.02
-Nodes (111): AuthDivider(), AnimatedPath, AppLoadingLogo(), AppLoadingLogoProps, AppLoadingLogoStatic(), DrawablePath(), easeInOut, InAppBannerProvider() (+103 more)
+Cohesion: 0.10
+Nodes (38): decodeVinBatch(), decodeVinExtended(), getMakes(), getModels(), getVpicClient(), isAbortError(), previewBody(), RETRYABLE_STATUS (+30 more)
 
 ### Community 27 - "specific-category-repository.ts"
-Cohesion: 0.07
-Nodes (36): AccountingScreen(), newOperationHref(), NewOperationPreset, FinanceOverviewHandlers, FinNotice(), toneAccent(), LedgerAdvanceDirection(), FinanceScreen() (+28 more)
+Cohesion: 0.06
+Nodes (71): orgErrorResponse(), POST(), normalizeOptionalString(), POST(), ProfilePayload, mapPaddleCheckoutError(), POST(), readInterval() (+63 more)
 
 ### Community 28 - "notification-repository.server.ts"
-Cohesion: 0.05
-Nodes (76): GET(), POST(), GET(), POST(), GET(), PATCH(), ACCOUNTING_ROLES, getNotificationEventDefinition() (+68 more)
+Cohesion: 0.04
+Nodes (88): initAdmin(), main(), readCompanyIdArg(), GET(), POST(), GET(), GET(), PATCH() (+80 more)
 
 ### Community 29 - "document-types.ts"
 Cohesion: 0.05
-Nodes (94): DELETE(), POST(), RouteContext, POST(), RouteContext, serializeBatch(), serializeFile(), GET() (+86 more)
+Nodes (84): GET(), POST(), DELETE(), POST(), RouteContext, POST(), RouteContext, serializeBatch() (+76 more)
 
 ### Community 30 - "admin.ts"
-Cohesion: 0.11
-Nodes (23): PageProps, DocumentImportRealtimeToast(), DocumentImportToastCard(), DocumentImportWorkspace(), DocumentImportsListWorkspace(), DOCUMENT_IMPORT_STATUSES, DocumentImportAiStatus, DocumentImportJob (+15 more)
+Cohesion: 0.07
+Nodes (48): canReleaseWithChecklist(), CATEGORY_TO_ITEMS, ChecklistEngineHints, checklistHitsForCategory(), ChecklistPhotoEvidence, CYLINDER_IDS, defFor(), DOCUMENTATION_CHECKLIST_GROUP_LABELS (+40 more)
 
 ### Community 31 - "company-id.ts"
-Cohesion: 0.06
-Nodes (45): POST(), RouteContext, GET(), RouteContext, EnginePatch, PATCH(), RouteContext, sanitizeEngines() (+37 more)
+Cohesion: 0.04
+Nodes (66): PrinterIcon, acTimeline, AcAccountTiles, AcAccountTilesProps, AccountTile(), TileDef, AcAdvancesOverview(), AcAdvancesOverviewProps (+58 more)
 
 ### Community 32 - "login-screen.tsx"
-Cohesion: 0.03
-Nodes (119): InvitePageProps, AuthDivider(), AuthJourneyReveal(), AuthJourneyRevealProps, AuthJourneyStaggerGroup(), AuthJourneyStaggerGroupProps, AuthJourneyBackdrop(), AuthJourneyBrandPanel() (+111 more)
+Cohesion: 0.04
+Nodes (93): companyId, POST(), RevokeBody, GET(), RouteContext, CreateItemPayload, parseOptionalNumber(), POST() (+85 more)
 
 ### Community 33 - "setup-wizard-ui.tsx"
-Cohesion: 0.03
-Nodes (87): getMotionComponent(), motionComponentCache, MotionHTMLProps, Shimmer, ShimmerComponent(), TextShimmerProps, AccountingOperationCard(), CapabilitiesCard() (+79 more)
+Cohesion: 0.05
+Nodes (50): MOTOR_QUALITY_GRADES, parseMotorQualityGrade(), ENGINE_INTAKE_JOB_STATES, ENGINE_INTAKE_PRIORITIES, ENGINE_INTAKE_SESSION_MODES, ENGINE_INTAKE_SESSION_STATES, ENGINE_INTAKE_SOURCES, EngineIntakeCommand (+42 more)
 
 ### Community 34 - "import-batch-admin.ts"
-Cohesion: 0.04
-Nodes (83): POST(), RouteContext, POST(), convertQuoteToWorkOrderUseCase(), createQuoteUseCase(), quoteCreatedEvent(), createWorkOrderUseCase(), transitionWorkOrderStatusUseCase() (+75 more)
+Cohesion: 0.03
+Nodes (114): BanknoteIcon, CreditCardIcon, LandmarkIcon, SplitIcon, Undo2Icon, operationAccountDetail(), AcTransferSheetProps, CoAmountField() (+106 more)
 
 ### Community 35 - "notifyFirestoreSnapshotError"
-Cohesion: 0.04
-Nodes (98): CATALOG_BAR_AT_TOP, catalogBarState, useCatalogNavBarHeight(), useIntakePhotoUploadProgress(), isIntakeOutboxDeployIssue(), pickIntakeOutboxPhotoIssue(), buildOptimisticIntakeJob(), UnitSubtitle() (+90 more)
+Cohesion: 0.05
+Nodes (61): BillingGateProvider(), CheckoutCompletedPayload, OpenCheckoutParams, PaddleCheckoutContext, PaddleCheckoutContextValue, PaddleProvider(), usePaddleCheckout(), MarketingPaddlePlan() (+53 more)
 
 ### Community 36 - "work-orders-workspace.tsx"
-Cohesion: 0.07
-Nodes (48): APP_ICON, ensureLiveActivityAppIconUri(), EN_WIDGET_COPY, WidgetCopy, buildIntakeBayWidgetProps(), buildPayWidgetProps(), buildScanWidgetProps(), buildTodayWidgetProps() (+40 more)
+Cohesion: 0.09
+Nodes (42): EN_WIDGET_COPY, WidgetCopy, buildIntakeBayWidgetProps(), buildPayWidgetProps(), buildScanWidgetProps(), buildTodayWidgetProps(), countIntakeAwaitingFromJobs(), countIntakeBayFromJobs() (+34 more)
 
 ### Community 37 - "work-order.ts"
 Cohesion: 0.07
-Nodes (43): INVITE_FILTER_OPTIONS, InviteStatusFilter, TeamInviteStatusFilters(), TeamInviteStatusFiltersProps, buildInviteJoinUrl(), mapToOrgError(), ORG_ERROR_CODES, ORG_ERROR_COPY (+35 more)
+Nodes (37): ChaosItem, FaqItem, GoLiveStep, LandingContent, MessageWorkflow, ROI_DEFAULTS, SceneItem, TrustPillar (+29 more)
 
 ### Community 38 - "use-mission-control-data.ts"
-Cohesion: 0.03
-Nodes (118): ArrowLeftIcon, FlashlightIcon, DockItem(), CatalogNavBar(), HorizontalFilterBarProps, HorizontalFilterOption, TabLayout, Tab (+110 more)
+Cohesion: 0.11
+Nodes (16): GridCommand, GridCommandBus, GridMutation, GridCellAddress, GridEditorSession, columnFromContentX(), pointerContentCoords(), resolvePointerCell() (+8 more)
 
 ### Community 39 - "activity-log-journal.tsx"
-Cohesion: 0.03
-Nodes (133): FinanceMetricRouteId, attentionInterrupts(), buildHomeAttention(), clampUrgency(), plural(), SEVERITY_RANK, ATTENTION_RESTATES_METRIC, buildHomeViewModel() (+125 more)
+Cohesion: 0.07
+Nodes (50): AuthGate(), MemoAppTree, paywallImport(), styles, SubscriptionRequiredScreen, WorkspaceAccessScreen, workspaceImport(), useAuthHasAccess() (+42 more)
 
 ### Community 40 - "apple-js-sign-in.ts"
 Cohesion: 0.02
-Nodes (242): qrcode, qrcode, createWarehouseUseCase(), AccountSettingsPanelProps, filterAccountingCategorySuggestions(), MixedPaymentSplit(), MixedPaymentSplitProps, buildMotorContext() (+234 more)
+Nodes (292): qrcode, PERMISSIONS, qrcode, ActionMode, ActionStatus, AuthActionShellProps, createWarehouseUseCase(), AccountSettingsPanelProps (+284 more)
 
 ### Community 41 - "scan-resolve.server.ts"
-Cohesion: 0.05
-Nodes (63): createClientSchema, createVehicleSchema, createWorkOrderSchema, workOrderLaborLineSchema, workOrderMotorLineSchema, workOrderPartLineSchema, workOrderPricingSchema, clientRepository (+55 more)
+Cohesion: 0.10
+Nodes (41): ExcelGridCellWrite, ExcelGridInteraction, selectionIsSingleCell(), singleCellRangeFromSelection(), useExcelGridInteraction(), UseExcelGridInteractionParams, buildClearWrites(), buildFillDownWrites() (+33 more)
 
 ### Community 42 - "business-migration.tsx"
-Cohesion: 0.02
-Nodes (169): ErApiResponse, fetchLiveRates(), GET(), BalanceSnapshot, calculateCashBalanceUseCase(), ACCOUNTING_CATEGORY_SUGGESTIONS, buildAccountingCategorySuggestions(), AccountingWorkspace() (+161 more)
+Cohesion: 0.13
+Nodes (36): companyBrandingFromRecord(), adminToDate(), isFiniteDate(), mapAdminClient(), mapAdminCompany(), mapAdminEmployee(), mapAdminMotor(), mapAdminVehicle() (+28 more)
 
 ### Community 43 - "business-sidebar.tsx"
 Cohesion: 0.06
 Nodes (63): DomainAutocomplete, DomainAutocompleteHandle, DomainAutocompleteProps, DomainDictionaryPersistenceProps, repository, DomainDictionaryContext, DomainDictionaryContextValue, DomainDictionaryProvider() (+55 more)
 
 ### Community 44 - "warehouse-workspace.tsx"
-Cohesion: 0.10
-Nodes (29): FormField(), FormFieldProps, FormHelper(), FormLabel(), FormLabelProps, FormStack(), FormStackProps, FormPanel() (+21 more)
+Cohesion: 0.03
+Nodes (157): recoverSessionWorkspace(), createClientSchema, createVehicleSchema, createWorkOrderSchema, workOrderLaborLineSchema, workOrderMotorLineSchema, workOrderPartLineSchema, workOrderPricingSchema (+149 more)
 
 ### Community 45 - "auth-provider.tsx"
-Cohesion: 0.08
-Nodes (43): parseMotorQualityGrade(), syncMotorCatalogUseCase(), softDeleteMotorUseCase(), applyCellValue(), columnAt(), columnIdAt(), ContextMenuState, EditorState (+35 more)
+Cohesion: 0.07
+Nodes (63): createMotorUseCase(), softDeleteMotorUseCase(), upsertMotorUseCase(), assignAssetLocation(), GridEditorOverlay(), PanelActiveContext, usePanelActive(), applyCellValue() (+55 more)
 
 ### Community 46 - "domain-dictionary.ts"
-Cohesion: 0.06
-Nodes (51): ExternalLink(), ExternalLinkProps, DesktopShellProvider(), isEditableTarget(), isTextField(), openInNewSurface(), readClipboard(), resolveAppContextMenuActions() (+43 more)
+Cohesion: 0.09
+Nodes (34): DesktopShellProvider(), DesktopActionId, Handler, handlers, runDesktopAction(), NativeCommand, DesktopDeepLink, DesktopMenuAction (+26 more)
 
 ### Community 47 - "user.ts"
 Cohesion: 0.05
-Nodes (64): DocumentPreviewPage(), DocumentPreviewPageProps, DocumentPreviewActions(), DocumentPreviewActionsProps, DocumentPreviewClient(), DocumentPreviewClientProps, DocumentPreviewFrame(), DocumentPreviewFrameProps (+56 more)
+Nodes (59): DocumentRenderPage(), DocumentRenderPageProps, CommercialProposalDocument(), CommercialProposalDocumentProps, EngineWarrantyDocument(), EngineWarrantyDocumentProps, EngineWaybillDocument(), EngineWaybillDocumentProps (+51 more)
 
 ### Community 48 - "motor.ts"
 Cohesion: 0.09
 Nodes (37): Menu, MenuEvent, Mutex, NewWindowFeatures, NewWindowResponse, Option, handle_urls(), picks_out_scheme_urls_only() (+29 more)
 
 ### Community 49 - "use-mission-control-data.ts"
-Cohesion: 0.03
-Nodes (111): PageProps, getOperationsUseCase(), ActivityJournalFiltersBar(), ActivityJournalRow, ActivityLogJournal(), ActivityLogJournalProps, moduleIcons, severityBadgeClass (+103 more)
+Cohesion: 0.07
+Nodes (54): GET(), RouteContext, ProcessWorkOrderEventsResult, processWorkOrderEventsUseCase(), splitBrandingParagraphs(), CompanyDocumentConfig, DOCUMENT_SECTION_KEYS, DOCUMENT_SECTION_LABELS (+46 more)
 
 ### Community 50 - "marketing-seo.ts"
 Cohesion: 0.06
-Nodes (67): isAppLocale(), ContactPage(), generateMetadata(), PageProps, DownloadMobilePage(), generateMetadata(), PageProps, DownloadPage() (+59 more)
+Nodes (71): isAppLocale(), ContactPage(), generateMetadata(), PageProps, DownloadMobilePage(), generateMetadata(), PageProps, DownloadPage() (+63 more)
 
 ### Community 51 - "analyze.ts"
 Cohesion: 0.05
-Nodes (82): DuplicateGroup, DuplicateResolution, ReviewRowStatus, fold(), applyAiFallback(), ApplyAiOptions, rowSample(), buildRow() (+74 more)
+Nodes (78): DuplicateGroup, DuplicateResolution, ReviewRow, ReviewRowStatus, applyAiFallback(), ApplyAiOptions, rowSample(), analyzeTable() (+70 more)
 
 ### Community 52 - "billing-gate-provider.tsx"
-Cohesion: 0.06
-Nodes (63): businessImportAiMetadata(), CANONICAL_FIELD_SET, createBusinessImportAiProvider(), discoverWith(), FailureLog, guarded(), isBusinessImportAiConfigured(), keepCanonicalFields() (+55 more)
+Cohesion: 0.05
+Nodes (71): businessImportAiMetadata(), CANONICAL_FIELD_SET, createBusinessImportAiProvider(), discoverWith(), FailureLog, guarded(), isBusinessImportAiConfigured(), keepCanonicalFields() (+63 more)
 
 ### Community 53 - "inventory.ts"
-Cohesion: 0.04
-Nodes (56): DocumentImportDataPanel(), DocumentImportDataPanelProps, ExtractedEngine, ExtractedPayload, parseExtracted(), DocumentImportViewer(), DocumentImportWorkspaceProps, HorizontalResizableSplit() (+48 more)
+Cohesion: 0.29
+Nodes (8): useIsOnline(), CommittedOnlineResult, NetInfoLike, netInfoSaysOnline(), resolveCommittedOnline(), FirestoreNetworkHead(), networkOp, runNetworkOp()
 
 ### Community 54 - "compute-my-earnings.ts"
 Cohesion: 0.07
-Nodes (55): GET(), GenerateBody, POST(), GET(), RouteContext, companyBrandingFromRecord(), CreateWarrantyInput, EngineWarranty (+47 more)
+Nodes (36): DocumentPreviewDialog(), DocumentScaledPreviewFrame(), useDocumentPreviewScale(), IPhoneSimulatorFrame(), IPhoneSimulatorFrameProps, EASE, InteractiveSaleExperience(), Phase (+28 more)
 
 ### Community 55 - "work-order.ts"
-Cohesion: 0.10
-Nodes (33): allStoreSkus(), skuForPlan(), iapTrace(), readErrorCode(), toPurchaseFailure(), asRawProduct(), connect(), disconnect() (+25 more)
+Cohesion: 0.09
+Nodes (34): POST(), RouteContext, POST(), convertQuoteToWorkOrderUseCase(), createQuoteUseCase(), quoteCreatedEvent(), createWorkOrderUseCase(), transitionWorkOrderStatusUseCase() (+26 more)
 
 ### Community 56 - "motors-workspace.tsx"
 Cohesion: 0.06
 Nodes (25): WORK_OS_DESIGN_DOC_0, WORK_OS_DESIGN_DOC_1, WORK_OS_DESIGN_DOC_2, WORK_OS_DESIGN_DOC_3, WORK_OS_DESIGN_DOC_4, WORK_OS_DESIGN_DOC_5, WORK_OS_DESIGN_DOC_6, WORK_OS_DESIGN_DOC_7 (+17 more)
 
 ### Community 57 - "getFirestoreDb"
-Cohesion: 0.08
-Nodes (51): DocumentHeaderPreview(), DocumentHeaderPreviewInput, DocumentHeaderPreviewProps, sampleMeta(), DocumentPdfEmptyState(), DocumentPdfEmptyStateProps, BrandingLivePreviewInput, CompanyBranding (+43 more)
+Cohesion: 0.06
+Nodes (58): DocumentHeaderPreview(), DocumentHeaderPreviewInput, DocumentHeaderPreviewProps, sampleMeta(), DocumentPdfEmptyState(), DocumentPdfEmptyStateProps, BrandingLivePreview(), BrandingLivePreviewInput (+50 more)
 
 ### Community 58 - "snapshot-builders.ts"
-Cohesion: 0.04
-Nodes (54): DownloadPagesCopy, DownloadPlatformGrid(), EASE, HeroRevealProps, PlatformKind, ScrollRevealProps, useDesktopAvailability(), ChaosItem (+46 more)
+Cohesion: 0.06
+Nodes (55): buildHomeActivity(), CLOSED_STATUSES, eventAt(), statusTone(), ATTENTION_RESTATES_METRIC, buildHomeViewModel(), comparisonNote(), DomainGate (+47 more)
 
 ### Community 59 - "route.ts"
-Cohesion: 0.09
-Nodes (38): POST(), POST(), PUT(), DELETE(), PATCH(), RouteContext, GET(), POST() (+30 more)
+Cohesion: 0.48
+Nodes (6): getPaddleLiveCidrs(), ipv4ToNumber(), isAllowedPaddleWebhookRequest(), isIpv4InCidr(), normalizeIpv4(), PaddleIpsResponse
 
 ### Community 60 - "document-queue.ts"
-Cohesion: 0.04
-Nodes (83): LEGACY_CATEGORY_IDS, CompanyAppConfigForm(), CompanyAppConfigFormProps, MODULE_KEYS, MODULE_KEYS, SetupWizardProps, CategoryGridTile(), CategoryGridTileProps (+75 more)
+Cohesion: 0.06
+Nodes (51): deleteSpecificRecordUseCase(), ensureSpecificCategorySchemaUseCase(), ContextMenuState, DisplayRow, EditorState, isDateColumn(), isInteractiveGridTarget(), SpecificExcelGridProps (+43 more)
 
 ### Community 61 - "cross-route-transition.ts"
-Cohesion: 0.02
-Nodes (163): resolveUserAvatarSeed(), PERMISSIONS, ROLE_PERMISSIONS, DashboardLayoutProps, metadata, SpecificCategoryRedirectPage(), metadata, AccountMenu() (+155 more)
+Cohesion: 0.11
+Nodes (27): SidebarPreferencesContext, SidebarPreferencesContextValue, SidebarPreferencesProvider(), countMotorsByFilter(), getPinnedFilters(), inventoryItemMatchesPinnedFilter(), inventoryItemNeedsAttention(), itemIsRecent() (+19 more)
 
 ### Community 62 - "work-order-composer.tsx"
-Cohesion: 0.05
-Nodes (65): commitMotorExcelImport(), normalizeSerial(), createBrandUseCase(), createMotorUseCase(), deleteBrandUseCase(), isDerivedCatalogId(), applyMotorImportJobUseCase(), isDerivedCatalogId() (+57 more)
+Cohesion: 0.07
+Nodes (41): bucketEnd(), bucketStarts(), buildBuckets(), FINANCE_PERIODS, financePeriod(), labelFor(), resolveFinanceWindow(), resolvePreviousWindow() (+33 more)
 
 ### Community 63 - "build-overview.server.ts"
-Cohesion: 0.08
-Nodes (44): useClientsRealtime(), useCompanyAppConfig(), useInventoryCatalog(), useMotorsRealtime(), useNotificationInboxRealtime(), useOperationsRealtime(), usePayrollTransactionsRealtime(), touchLastActive() (+36 more)
+Cohesion: 0.01
+Nodes (235): resolveUserAvatarSeed(), AuthActionContent(), AuthActionShell(), resolveMode(), PageProps, DashboardLayoutProps, metadata, SpecificCategoryRedirectPage() (+227 more)
 
 ### Community 64 - "motor-import-admin.ts"
 Cohesion: 0.09
-Nodes (60): ApplyBody, claimApplyJob(), POST(), CancelBody, POST(), GET(), POST(), ProcessBody (+52 more)
+Nodes (63): POST(), ApplyBody, claimApplyJob(), POST(), CancelBody, POST(), GET(), POST() (+55 more)
 
 ### Community 65 - "types.ts"
-Cohesion: 0.06
-Nodes (54): createMotorImportJobUseCase(), buildSpecificRowsFromSheet(), callableMotorImportAiClient, MOTOR_HEADER, preview(), workbook(), conflictFields(), duplicateMotorRows() (+46 more)
+Cohesion: 0.09
+Nodes (37): createMotorImportJobUseCase(), MotorImportRepository, MOTOR_HEADER, preview(), workbook(), conflictFields(), duplicateMotorRows(), enrichMotorRowsWithDuplicates() (+29 more)
 
 ### Community 66 - "sign-in-with-apple-credential.ts"
-Cohesion: 0.07
-Nodes (48): PlanOffer, UseSubscriptionResult, dateMs(), appleIdHoldsSubscription(), NOW, sub(), comparePlans(), highestPlan() (+40 more)
+Cohesion: 0.05
+Nodes (86): checklistWhisper(), DocumentationChecklist, overrideChecklistItem(), canFinishWarehouseCapture(), DEFAULT_ENGINE_INTAKE_REQUIREMENTS, defaultEngineIntakeIdentity(), defaultEngineIntakePhotoPackage(), emptyEngineIntakeAssignment() (+78 more)
 
 ### Community 67 - "team-screen.tsx"
-Cohesion: 0.14
-Nodes (25): generateDocumentPdfWithRetry(), ApplyPdfExportLayoutOptions, applyPdfExportLayoutScript(), computePdfFitScale(), MeasurePdfPageOptions, MeasurePdfPageResult, measurePdfPageScript(), PDF_PAGE_ROOT_SELECTORS (+17 more)
+Cohesion: 0.09
+Nodes (38): generateDocumentPdfWithRetry(), ApplyPdfExportLayoutOptions, applyPdfExportLayoutScript(), computePdfFitScale(), MeasurePdfPageOptions, MeasurePdfPageResult, measurePdfPageScript(), PDF_PAGE_ROOT_SELECTORS (+30 more)
 
 ### Community 68 - "DesignSystemGenerator"
-Cohesion: 0.05
-Nodes (42): BM25, detect_domain(), _load_csv(), Lowercase, split, remove punctuation, filter short words, Build BM25 index from documents, Score all documents against query, Load CSV and return list of dicts, Core search function using BM25 (+34 more)
+Cohesion: 0.06
+Nodes (40): BM25, detect_domain(), _load_csv(), Lowercase, split, remove punctuation, filter short words, Build BM25 index from documents, Score all documents against query, Load CSV and return list of dicts, Core search function using BM25 (+32 more)
 
 ### Community 69 - "index.ts"
-Cohesion: 0.05
-Nodes (80): DocumentationChecklistItem, DocumentationChecklistItemState, isDocumentationChecklistReady(), isEngineIntakeSessionStale(), warehouseLifecycleLabel(), EngineIntakeJob, EngineIntakePriority, EngineIntakeSession (+72 more)
+Cohesion: 0.04
+Nodes (74): resolveWarehouseId(), syncWarehouseGridRowUseCase(), ExcelColumnResizerProps, ExcelGridHeaderCell(), ExcelGridHeaderCellProps, clampContextMenuPosition(), GridContextMenu(), GridContextMenuItem() (+66 more)
 
 ### Community 70 - "scan-service.ts"
-Cohesion: 0.10
-Nodes (43): AiDomainContext, AI_MUST_NOT_GUESS, collectPendingNormalizations(), NORMALIZABLE_FIELDS, NormalizationOutcome, normalizeDeterministically(), outcome(), PendingNormalization (+35 more)
+Cohesion: 0.09
+Nodes (31): FormField(), FormFieldProps, FormHelper(), FormLabel(), FormLabelProps, FormStack(), FormStackProps, FormPanel() (+23 more)
 
 ### Community 71 - "auth-gate.tsx"
-Cohesion: 0.07
-Nodes (62): robots(), sitemap(), SITEMAP_CHANGE_FREQUENCY, SITEMAP_PRIORITY, isProductNavActive(), SiteNavKeyLink, SiteNavLinkHref, legacyPathToLocalized() (+54 more)
+Cohesion: 0.09
+Nodes (49): SUPPORTED_LOCALES, metadata, legacyPathToLocalized(), LOCALE_PREFIX, localeFromPathname(), localizedPath(), stripLocalePrefix(), toMarketingInternalPath() (+41 more)
 
 ### Community 72 - "auth-journey-coordinator.tsx"
 Cohesion: 0.11
@@ -953,271 +970,271 @@ Nodes (26): geistMono, geistSans, metadata, viewport, CookieConsentBanner(), Pha
 
 ### Community 73 - "warehouse-location-filter-bar.tsx"
 Cohesion: 0.05
-Nodes (44): ArrowRightIcon, Loader2Icon, AppleSignInButton(), AppleSignInButtonProps, resolveAppleSignInEnabled(), AppleIcon(), BrandIconProps, GoogleIcon() (+36 more)
+Nodes (46): metadata, AIProductWorkspace(), AIWorkspace(), assistantHasVisibleContent(), assistantTurnStarted(), CoreChatHeader(), fallbackShortcuts(), fileParts() (+38 more)
 
 ### Community 74 - "excel-import-engine-rows.ts"
-Cohesion: 0.03
-Nodes (145): canMechanicClaimWorkOrder(), isAssignedToWorkOrder(), companyId, accessErrorBody(), POST(), requestSchema, GET(), Body (+137 more)
+Cohesion: 0.06
+Nodes (62): canMechanicClaimWorkOrder(), CLAIMABLE_WORK_ORDER_STATUSES, ClaimEligibilityResult, CLOSED_WORK_ORDER_STATUSES, computeOpenWorkOrderCounts(), countOpenAssignedWorkOrders(), evaluateClaimEligibility(), findFirstUnassignedLaborLineId() (+54 more)
 
 ### Community 75 - "download-experience.tsx"
-Cohesion: 0.08
-Nodes (53): AuthJourneyShell(), PageTransitionContext, PageTransitionContextValue, PageTransitionProvider(), PageTransitionProviderProps, usePageTransition(), buildLoginUrl(), isLoopingDestination() (+45 more)
+Cohesion: 0.11
+Nodes (33): contentTypeFromPath(), DELETE(), GET(), POST(), POST(), POST(), InventoryEditAccessError, readBearerToken() (+25 more)
 
 ### Community 76 - "pipeline.ts"
 Cohesion: 0.02
-Nodes (134): FilterIcon, PhoneIcon, IosLiftMenuItem, OrderTransitionContext, OrderTransitionContextValue, SourceLayout, useOrderTransition(), ordersSpring (+126 more)
+Nodes (144): CheckIcon, FilterIcon, PhoneIcon, EmptyState(), IosLiftMenu(), IosLiftMenuAnchor, IosLiftMenuItem, IosLiftMenuProps (+136 more)
 
 ### Community 77 - "motor-import-host.tsx"
-Cohesion: 0.07
-Nodes (70): arg(), loadEnvLocal(), main(), POST(), POST(), POST(), conflictCompanyName(), POST() (+62 more)
+Cohesion: 0.05
+Nodes (84): arg(), loadEnvLocal(), main(), POST(), POST(), POST(), POST(), conflictCompanyName() (+76 more)
 
 ### Community 78 - "getJson"
-Cohesion: 0.12
-Nodes (31): HIDDEN, IntakeOutboxBannerCopyInput, IntakeOutboxIssuePhoto, classifySyncError(), codeFromStatus(), describeSyncError(), diagnosticText(), errorCodeLooksOffline() (+23 more)
+Cohesion: 0.07
+Nodes (52): asArray(), dispatch(), ImportAiBody, POST(), callOpenRouterJson(), callImportAi(), callWarehouseImportAi(), ImportAiRequest (+44 more)
 
 ### Community 79 - "module-grid.tsx"
-Cohesion: 0.02
-Nodes (124): EcosystemDeviceShowcase(), EcosystemDeviceShowcaseProps, KeynoteDesktopUi(), KeynoteDesktopUiProps, Kpi(), KeynotePhoneUi(), KeynotePhoneUiProps, KeynoteSyncBeam() (+116 more)
+Cohesion: 0.11
+Nodes (52): hasPermission(), syncMotorCatalogUseCase(), adminCreateClient(), adminCreateFinancialOperation(), adminCreateVehicle(), adminCreateWorkOrder(), adminMarkMotorSold(), allocateWorkOrderNumberAdmin() (+44 more)
 
 ### Community 80 - "edit-profile-screen.tsx"
 Cohesion: 0.08
-Nodes (30): DocumentPdfRacingRenderer(), LogbookRail(), PitStopList(), DocumentPdfRenderer(), eventCountLabel(), renderSection(), TimelineList(), DocumentPdfHeader() (+22 more)
+Nodes (24): DocumentPdfRacingRenderer(), LogbookRail(), PitStopList(), DocumentPdfRenderer(), eventCountLabel(), renderSection(), TimelineList(), DocumentPdfHeader() (+16 more)
 
 ### Community 81 - "apple-sign-in.ts"
 Cohesion: 0.04
-Nodes (95): AuthActions, AuthActionsContext, AuthProvider(), ENRICH_RETRY_DELAYS_MS, HydrationPayload, persistSessionSnapshot(), readHydrationFromStore(), recoverSessionWorkspace() (+87 more)
+Nodes (95): AuthActions, AuthActionsContext, ENRICH_RETRY_DELAYS_MS, HydrationPayload, persistSessionSnapshot(), readHydrationFromStore(), STORE_SHOTS_AUTH_ACTIONS, useAuthActions() (+87 more)
 
 ### Community 82 - "site-urls.ts"
 Cohesion: 0.09
-Nodes (31): useNotificationPreferences(), stripUndefinedDeep(), mergeNotificationPreferences(), mobileGet(), backfillTeamNotifications(), fetchNotificationInbox(), fetchNotificationPreferences(), InboxResponse (+23 more)
+Nodes (47): LoginPage(), AuthDebugPanel(), AuthDebugPanelProps, getServerAuthDebugEntries(), SERVER_AUTH_DEBUG_ENTRIES, MarketingAppleSignInProps, useAppLocale(), AuthProvider() (+39 more)
 
 ### Community 83 - "generate-pdf.ts"
-Cohesion: 0.05
-Nodes (36): ContactExperience(), contactMailto(), EASE, HeroRevealProps, openProductDemo(), ScrollRevealProps, MarketingPricingIncludedItem, marketingSiteContent (+28 more)
+Cohesion: 0.04
+Nodes (58): ContactExperience(), contactMailto(), EASE, HeroRevealProps, openProductDemo(), ScrollRevealProps, MarketingPricingIncludedItem, marketingSiteContent (+50 more)
 
 ### Community 84 - "compilerOptions"
 Cohesion: 0.12
-Nodes (17): ./autocore-desktop/packages/types/src, ./packages/i18n/src, paths, ./packages/avatars/src, ./packages/design-tokens/src, ./packages/domain-search/src, ./packages/engine-intake/src, ./packages/org/src (+9 more)
+Nodes (17): ./assets/*, ./autocore-desktop/packages/types/src, ./packages/i18n/src, paths, ./packages/design-tokens/src, ./packages/domain-search/src, ./packages/engine-intake/src, ./packages/org/src (+9 more)
 
 ### Community 85 - "help-workspace.tsx"
-Cohesion: 0.09
-Nodes (41): POST(), readClientIp(), ResolveEmailResponse, hasPasswordProvider(), POST(), hasPasswordProvider(), POST(), POST() (+33 more)
+Cohesion: 0.04
+Nodes (63): ImportBatch, DirectoryPersonStatus, createClientSchema, STOCKTAKE_STATUSES, stocktakeDifference(), StocktakeLine, StocktakeSession, StocktakeStatus (+55 more)
 
 ### Community 86 - "modules-page-content.tsx"
 Cohesion: 0.06
-Nodes (43): SplitResult, splitText(), wrapLinesInElement(), wrapWords(), RevealOptions, useGsapMountReveal(), useGsapReveal(), useGsapSplitHeading() (+35 more)
+Nodes (47): SplitResult, splitText(), wrapLinesInElement(), wrapWords(), RevealOptions, useGsapMountReveal(), useGsapReveal(), useGsapSplitHeading() (+39 more)
 
 ### Community 87 - "dependencies"
 Cohesion: 0.04
-Nodes (49): ai, @ai-sdk/openai-compatible, @gsap/react, jszip, lucide-react, nanoid, next, @next/third-parties (+41 more)
+Nodes (49): ai, @ai-sdk/openai-compatible, class-variance-authority, @gsap/react, jszip, lucide-react, nanoid, next (+41 more)
 
 ### Community 88 - "index.ts"
 Cohesion: 0.13
 Nodes (11): billingFunctions, claimMarketingCheckout, createBillingPortalSession, createCheckoutSession, createMarketingCheckoutSession, ensureStripeCustomerId(), readUserEmail(), syncCompanyBilling (+3 more)
 
 ### Community 89 - "schemas.ts"
-Cohesion: 0.09
-Nodes (36): earningsTodayLabel(), EMPTY_WORK_COUNTS, fallback(), groupThousands(), plural(), ResolvedDetail, resolveEarnings(), resolveEngines() (+28 more)
+Cohesion: 0.10
+Nodes (22): Geometry, lineGeometry(), WorkspaceSpark, endOfWeek(), recentWeekWindows(), startOfDay(), startOfWeek(), WeekWindow (+14 more)
 
 ### Community 90 - "use-scan-experience.ts"
-Cohesion: 0.07
-Nodes (43): CreateOrderScreen(), useOrderCompositionForm(), UseOrderCompositionFormOptions, resolveInventoryUnitPrice(), compositionGrandTotal(), isSellOnlyComposition(), mapCompositionToWorkOrderLines(), mapOrderToCompositionDrafts() (+35 more)
+Cohesion: 0.04
+Nodes (86): AutocompleteInput, KeyboardFormShell(), DraftVerdict(), draftVariantLabel(), CreateInventoryItemScreen(), makePartCode(), parseNumber(), pickParam() (+78 more)
 
 ### Community 91 - "subscription-registry.ts"
-Cohesion: 0.08
-Nodes (51): deleteSpecificRecordUseCase(), assignAssetLocation(), AssignedAssetLocation, PanelActiveContext, usePanelActive(), ContextMenuState, DisplayRow, EditorState (+43 more)
+Cohesion: 0.12
+Nodes (43): BrandEngineHints, canonicalizeMotorBrand(), coerceBrandEnginePair(), ENGINE_PREFIX_TO_BRAND, inferBrandFromEngineCode(), inferBrandFromSerial(), isLikelyCarBrand(), isLikelyEngineCode() (+35 more)
 
 ### Community 92 - "dashboard-shell.tsx"
-Cohesion: 0.11
-Nodes (27): ALLOWED, contentTypeFromExtension(), extensionHint(), fileNameForIntakePhoto(), IntakePhotoFileExt, IntakePhotoPayload, IntakePhotoPayloadError, IntakePhotoPayloadResult (+19 more)
+Cohesion: 0.10
+Nodes (33): isIntakePhotoConflict(), companyPhotoSyncQueue, CountableOutboxPhoto, countJobOutboxPhotos(), JobPhotoSyncBar, jobPhotoSyncByJobId(), JobPhotoSyncCounts, jobPhotoSyncProgress() (+25 more)
 
 ### Community 93 - "scripts"
 Cohesion: 0.05
-Nodes (43): scripts, analyze, assets:generate-favicon, assets:sync-from-native, backfill:notifications, build, build:documents-css, deploy:billing-functions (+35 more)
+Nodes (44): scripts, analyze, assets:generate-favicon, assets:sync-from-native, backfill:notifications, build, build:documents-css, deploy:billing-functions (+36 more)
 
 ### Community 94 - "domain-dictionary.ts"
 Cohesion: 0.12
 Nodes (22): GLOBAL_DICTIONARIES, DomainDictionary, getGlobalDictionary(), globalCache, IndexedEntry, isSubsequence(), SCORE, searchDomain() (+14 more)
 
 ### Community 95 - "types.ts"
-Cohesion: 0.16
-Nodes (28): seedFreeCompanyBilling(), categoryRepository, createCompany(), ensureCompanyConsumablesWorkspace(), ensureDefaultCompany(), linkUserToCompany(), readOwnerProfile(), rethrowStep() (+20 more)
+Cohesion: 0.07
+Nodes (46): createBrandUseCase(), deleteBrandUseCase(), isDerivedCatalogId(), isDerivedCatalogId(), pruneUnusedMotorCatalogUseCase(), renameBrandUseCase(), sellMotorWithFinancialOperationUseCase(), ExcelGridViewProps (+38 more)
 
 ### Community 96 - "mobile-client.ts"
-Cohesion: 0.10
-Nodes (39): createExpenseOperationUseCase(), adjustStockUseCase(), applyImportJobUseCase(), ConsumeForWorkOrderResult, consumeForWorkOrderUseCase(), receiveStockUseCase(), RecordMovementResult, recordMovementUseCase() (+31 more)
+Cohesion: 0.11
+Nodes (37): part(), fold(), clamp01(), fromDictionaryScore(), extractArchive(), isJunkPath(), KNOWN_EXTENSIONS, flattenSources() (+29 more)
 
 ### Community 97 - "use-app-display-currency.ts"
-Cohesion: 0.14
-Nodes (20): classifyDocument(), DocumentClass, documentClassLabel(), ScoreMap, SIGNALS, DocumentLineItem, extractLines(), extractTotal() (+12 more)
+Cohesion: 0.09
+Nodes (35): isKnownPayload(), normalizePayload(), recentScans, registry, resolveScanPayload(), classifyDocument(), DocumentClass, documentClassLabel() (+27 more)
 
 ### Community 98 - "import-ai-client.ts"
-Cohesion: 0.06
-Nodes (55): CachedEntitlement, CachedSubscription, date(), deserialize(), iso(), readEntitlementCache(), readEntitlementCacheSync(), serialize() (+47 more)
+Cohesion: 0.03
+Nodes (115): stripUndefinedDeep(), mergeNotificationPreferences(), setJson(), mobileGet(), backfillTeamNotifications(), fetchNotificationInbox(), fetchNotificationPreferences(), InboxResponse (+107 more)
 
 ### Community 99 - "use-app-display-currency.ts"
-Cohesion: 0.06
-Nodes (62): migrateInventoryTaxonomyUseCase(), normalizeCompanyConfigForTaxonomy(), normalizeCompanySpecificCategoryForTaxonomy(), normalizeSpecificCategoryEntity(), ensureSpecificCategorySchemaUseCase(), updateSpecificColumnSchemaUseCase(), ReviewRow, BusinessImportOnboardingStep() (+54 more)
+Cohesion: 0.14
+Nodes (27): groupLabel(), GROUPS_BY_ID, InventoryGroupId, InventorySubcategoryId, InventoryTaxonomyGroup, InventoryTaxonomyKind, InventoryTaxonomySubcategory, presetForSubcategory() (+19 more)
 
 ### Community 100 - "ecosystem-device-showcase.tsx"
-Cohesion: 0.04
-Nodes (103): Can(), CanProps, RequirePermission(), RequirePermissionProps, RbacPolicy, EXPO_TAB_HREFS, isNavItemModuleEnabled(), isNavItemVisible() (+95 more)
+Cohesion: 0.03
+Nodes (89): CacheSettingsScreen(), DiagnosticsSettingsScreen(), formatMark(), getStartupSummary(), estimateCacheSizeBytes(), formatCacheSize(), isRetryableVerificationStatus(), verificationFailureForStatus() (+81 more)
 
 ### Community 101 - "subscription-registry.ts"
-Cohesion: 0.13
-Nodes (30): FirebaseLikeError, logAppleIdToken(), logAppleNonce(), logAppleTag(), logFirebaseCredential(), logFirebaseSignInResult(), serializeAppleAuthError(), AppleJsRedirectStarted (+22 more)
+Cohesion: 0.10
+Nodes (36): ActionRoute(), presentActionSheet(), ActionItem, AiCapability, AiCapabilityId, HomeSectionId, HomeSectionSpec, SearchScopeId (+28 more)
 
 ### Community 102 - "autocomplete-provider.tsx"
-Cohesion: 0.07
-Nodes (54): AuthGate(), MemoAppTree, paywallImport(), styles, SubscriptionRequiredScreen, WorkspaceAccessScreen, workspaceImport(), useAuthHasAccess() (+46 more)
+Cohesion: 0.02
+Nodes (183): metadata, WelcomePage(), calculateCashBalanceUseCase(), getOperationsUseCase(), quickCreateClientUseCase(), quickCreateVehicleUseCase(), EDITABLE_STATUSES, updateWorkOrderUseCase() (+175 more)
 
 ### Community 103 - "input-field.tsx"
-Cohesion: 0.06
-Nodes (63): AI_PROFILES, AiProfile, AiProfileId, clamp(), isRecoverableAiParseError(), resolveProfileMaxTokens(), resolveProfileModel(), warned (+55 more)
+Cohesion: 0.09
+Nodes (36): AI_PROFILES, AiProfile, AiProfileId, clamp(), isRecoverableAiParseError(), resolveProfileMaxTokens(), resolveProfileModel(), warned (+28 more)
 
 ### Community 104 - "normalizer.ts"
 Cohesion: 0.06
-Nodes (44): createImportJobUseCase(), backfillInventoryTaxonomyUseCase(), hasCompletedInventoryTaxonomyBackfill(), markInventoryTaxonomyBackfillComplete(), ensureDefaultWarehouseUseCase(), issueStockSaleUseCase(), lookupBarcodeUseCase(), transferStockUseCase() (+36 more)
+Nodes (40): DOMAIN_EVENT_TYPES, OPERATION_TYPES, INVENTORY_ITEM_STATUSES, INVENTORY_ITEM_TYPES, companySchema, createFinancialOperationSchema, createVehicleSchema, domainEventTypeSchema (+32 more)
 
 ### Community 105 - "tauri.conf.json"
 Cohesion: 0.05
 Nodes (37): autocore, icons/128x128@2x.png, icons/128x128.png, icons/32x32.png, icons/icon.icns, icons/icon.ico, app, security (+29 more)
 
 ### Community 106 - "page.tsx"
-Cohesion: 0.06
-Nodes (53): GET(), isChannel(), createIncomeOperationUseCase(), createOperationUseCase(), createRefundOperationUseCase(), createSaleOperationUseCase(), sellUsedPartWithFinancialOperationUseCase(), unsellMotorWithFinancialOperationUseCase() (+45 more)
+Cohesion: 0.20
+Nodes (19): OAuthProvider, logAppleAuthStep(), buildInitialsAvatarDataUrl(), createAppleOAuthProvider(), AppleRedirectBootstrapResult, bootstrapAppleRedirectOnce(), returnedFromOAuthProvider(), clearAppleRedirectPending() (+11 more)
 
 ### Community 107 - "record-classifier.ts"
-Cohesion: 0.17
-Nodes (21): downloadPdfFromApi(), downloadRemotePdf(), ensurePdfFile(), ensureWarrantyPdfFile(), getAuthHeaders(), printWarrantyDocument(), printWorkOrderDocument(), shareWarrantyDocument() (+13 more)
+Cohesion: 0.11
+Nodes (28): SLUG_TO_TYPE, orderShowsOilIntervalTag(), textMatches(), downloadPdfFromApi(), downloadRemotePdf(), ensurePdfFile(), ensureWarrantyPdfFile(), getAuthHeaders() (+20 more)
 
 ### Community 108 - "inbox-sync.ts"
-Cohesion: 0.10
-Nodes (42): toast(), hasPendingIntakeWork(), BackgroundTask, BackgroundTaskApi, hasQueuedWork(), syncBackgroundTaskRegistration(), TaskManager, TaskManagerApi (+34 more)
+Cohesion: 0.03
+Nodes (89): getMotionComponent(), motionComponentCache, MotionHTMLProps, Shimmer, ShimmerComponent(), TextShimmerProps, AccountingOperationCard(), CapabilitiesCard() (+81 more)
 
 ### Community 109 - "motion.ts"
-Cohesion: 0.12
-Nodes (32): applyDensityToColumns(), buildOffsetMetrics(), densityForContainerWidth(), DensityLayoutColumn, fitColumnWidths(), GridColumnFitHint, GridDensityBand, GridDensityProfile (+24 more)
+Cohesion: 0.09
+Nodes (38): DragState, applyColumnWidthOverrides(), clampExcelColumnWidth(), LayoutWithColumns, applyDensityToColumns(), buildOffsetMetrics(), densityForContainerWidth(), DensityLayoutColumn (+30 more)
 
 ### Community 110 - "my-earnings-screen.tsx"
-Cohesion: 0.07
-Nodes (35): HomeRoute(), AuthBootLoadingProps, APP_ICON, AuthBrandMark(), AuthBrandMarkProps, LOCKUP, LOGIN_FONT, LOGIN_GAP (+27 more)
+Cohesion: 0.13
+Nodes (16): colors, colorSchemes, contrastContract, dark, light, channel(), compositeOver(), contrastRatio() (+8 more)
 
 ### Community 111 - "load-document-context.ts"
-Cohesion: 0.10
-Nodes (17): compactRecord(), dedupeTrimmed(), DocumentPrintedFact, FieldCommitFact, fromDocumentPrinted(), fromInventorySoldTogether(), fromStockDepletion(), fromWorkOrderCompleted() (+9 more)
+Cohesion: 0.08
+Nodes (30): ACTIONS, POST(), COMPANY_DICTIONARY_CATEGORIES, CompanyDictionaryCategory, CompanyDictionaryEntry, KNOWLEDGE_EVENT_TYPES, KNOWLEDGE_FLAG_KEYS, KNOWLEDGE_PATTERN_KINDS (+22 more)
 
 ### Community 112 - "notification-service.ts"
-Cohesion: 0.16
-Nodes (24): CreateWarehouseLocationInput, DEFAULT_LOCATION_LABEL_SCHEME, LocationLabelScheme, normalizeLocationCode(), UpdateWarehouseLocationInput, WAREHOUSE_LOCATION_TYPES, WarehouseLocationType, isLocationType() (+16 more)
+Cohesion: 0.09
+Nodes (39): GET(), Params, buildLocationDisplayCode(), CreateWarehouseLocationInput, DEFAULT_LOCATION_LABEL_SCHEME, LocationLabelScheme, normalizeLocationCode(), unlocatedLocationDocId() (+31 more)
 
 ### Community 113 - "devDependencies"
 Cohesion: 0.07
 Nodes (29): eslint, eslint-config-next, firebase-tools, @next/bundle-analyzer, devDependencies, eslint, eslint-config-next, firebase-tools (+21 more)
 
 ### Community 114 - "use-theme.tsx"
-Cohesion: 0.17
-Nodes (24): EMPTY, seedCurrency(), syncMoneyFormatStore(), useCompanyDisplayCurrency(), useUserDisplayCurrency(), listenDocument(), companyKey(), readCachedDisplayCurrency() (+16 more)
+Cohesion: 0.10
+Nodes (36): HomeTrendWindowInput, deserializeHomeViewModel(), FAMILY_PERMISSION, fromPersistedPeriod(), HomeBriefEnvelope, homeBriefKey(), metricFamilyOf(), permits() (+28 more)
 
 ### Community 115 - "design-language.ts"
 Cohesion: 0.04
 Nodes (44): 10. Decisions — resolved 2026-07-31, 10a. Review finding — the app is all-or-nothing gated, 11. Implementation order (once approved), 1.1 Authentication, 1.2 Navigation, 1.3 Settings / Profile, 1.4 Existing backend (web repo, Vercel + Firebase), 1.5 Current user / subscription model (+36 more)
 
 ### Community 116 - "polish-document-labels.ts"
-Cohesion: 0.04
-Nodes (115): MovementType, upsertInventoryItemSchema, buildLocationDisplayCode(), unlocatedLocationDocId(), getAdminFirestore(), findDonorIdByVinAdmin(), persistDonorAdmin(), processInventoryEventForWorkOrder() (+107 more)
+Cohesion: 0.08
+Nodes (63): logAppleJs(), isAppleJsPopupEnabled(), AppleAuthInitConfig, AppleJsModeDecision, AppleJsModeLabel, AppleJsRuntimeMode, AppleSdkForensicCapture, AppleTokenIssuancePhase (+55 more)
 
 ### Community 117 - "search-registry.ts"
-Cohesion: 0.09
-Nodes (23): DocumentFrameOverlay(), styles, ImportCamera, ImportCameraHandle, ImportCameraProps, styles, ImportParseStatus, ImportSuccessView() (+15 more)
+Cohesion: 0.11
+Nodes (27): ALLOWED, contentTypeFromExtension(), extensionHint(), fileNameForIntakePhoto(), IntakePhotoFileExt, IntakePhotoPayload, IntakePhotoPayloadError, IntakePhotoPayloadResult (+19 more)
 
 ### Community 118 - "document-watermark-config.ts"
 Cohesion: 0.04
-Nodes (117): UseFinanceModelResult, useWindowOperations(), buildActivity(), dayLabel(), entryTitle(), sentenceCase(), TITLES, buildFinanceModel() (+109 more)
+Nodes (83): useEntitlementFor(), dateMs(), NOW, sub(), comparePlans(), highestPlan(), LEGACY_APPLE_SKUS, PlanAvailability (+75 more)
 
 ### Community 119 - "index.ts"
-Cohesion: 0.17
-Nodes (18): CompanyAvatar(), CompanyAvatarProps, CompanyAvatarSize, fontMap, radiusMap, sizeMap, companyMonogramLabel(), COMPANY_AVATAR_GRADIENTS (+10 more)
+Cohesion: 0.26
+Nodes (12): companyMonogramLabel(), COMPANY_AVATAR_GRADIENTS, companyAvatarGradient, companyAvatarGradientColors(), companyAvatarGradientCss(), pickCompanyAvatarGradient(), hashString(), pickUserAvatarGradient() (+4 more)
 
 ### Community 120 - "dependencies"
 Cohesion: 0.06
-Nodes (31): @autocore/billing, @autocore/domain-search, dependencies, @autocore/billing, @autocore/domain-search, background-execution, clsx, expo-apple-authentication (+23 more)
+Nodes (31): @autocore/domain-search, dependencies, @autocore/domain-search, date-fns, expo-auth-session, expo-camera, expo-haptics, expo-image (+23 more)
 
 ### Community 121 - "app.config.ts"
 Cohesion: 0.07
 Nodes (23): appleSignInFlag, associatedDomains, iosUrlScheme, plugins, universalLinksFlag, withDisableSwiftUICoreAutolink, withGoogleIosUrlScheme, withGoogleModularHeaders (+15 more)
 
 ### Community 122 - "order-composition-step.tsx"
-Cohesion: 0.08
-Nodes (40): CheckoutCompletedPayload, OpenCheckoutParams, PaddleCheckoutContext, PaddleCheckoutContextValue, PaddleProvider(), usePaddleCheckout(), usePaddleCountry(), MarketingPaddlePlan() (+32 more)
+Cohesion: 0.06
+Nodes (63): POST(), readClientIp(), ResolveEmailResponse, hasPasswordProvider(), POST(), hasPasswordProvider(), POST(), POST() (+55 more)
 
 ### Community 123 - "push-channel.ts"
-Cohesion: 0.12
-Nodes (30): InventoryCategory, groupLabel(), GROUPS_BY_ID, InventorySubcategoryId, InventoryTaxonomyGroup, InventoryTaxonomyKind, InventoryTaxonomySubcategory, presetForSubcategory() (+22 more)
+Cohesion: 0.11
+Nodes (35): CountableIntakePhoto, HIDDEN, intakeOutboxBannerCopy, IntakeOutboxBannerCopyInput, IntakeOutboxIssuePhoto, intakeSessionDoneCopy(), pickIntakeOutboxPhotoIssue(), classifySyncError() (+27 more)
 
 ### Community 124 - "marketing-routes.ts"
-Cohesion: 0.12
-Nodes (33): ActionItem, AiCapability, AiCapabilityId, HomeSectionId, HomeSectionSpec, SearchScopeId, ShellModel, ShellTabId (+25 more)
+Cohesion: 0.15
+Nodes (24): buildGeom(), ChartGeom, Point, styles, WorkTodayChart, buildInnerTicks(), ChartScale, ChartScaleOptions (+16 more)
 
 ### Community 125 - "excel-column-mapping.ts"
-Cohesion: 0.05
-Nodes (73): POST(), contentTypeFromPath(), DELETE(), GET(), POST(), POST(), POST(), authToken() (+65 more)
+Cohesion: 0.25
+Nodes (20): cellToString(), decodeText(), detectDelimiter(), parseDelimitedText(), parseWorkbook(), splitDelimited(), tableFromMatrix(), cellToString() (+12 more)
 
 ### Community 126 - "parse-document.ts"
-Cohesion: 0.11
-Nodes (31): sellSpecificWithFinancialOperationUseCase(), unsellSpecificWithFinancialOperationUseCase(), resolveCategory(), SoldSpecificsWorkspace(), specificCategoryRepository, financialRepository, SellDialogState, specificCategoryRepository (+23 more)
+Cohesion: 0.07
+Nodes (30): MotorImportProgressState, MotorImportReviewSnapshot, actionLabel(), canSwitchSheetToEngines(), ImportTypeBadge(), importTypeOptions(), MotorImportWizard(), MotorImportWizardProps (+22 more)
 
 ### Community 127 - "document-file-actions.ts"
-Cohesion: 0.16
-Nodes (15): POST(), RevokeBody, appleRevocationConfigured(), AppleRevokeNotConfiguredError, AppleSignInCredentials, AppleTokenResponse, base64Url(), exchangeAuthorizationCode() (+7 more)
+Cohesion: 0.18
+Nodes (13): appleRevocationConfigured(), AppleRevokeNotConfiguredError, AppleSignInCredentials, AppleTokenResponse, base64Url(), exchangeAuthorizationCode(), postForm(), readAppleSignInCredentials() (+5 more)
 
 ### Community 128 - "components.json"
 Cohesion: 0.08
 Nodes (23): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent (+15 more)
 
 ### Community 129 - "apple-mobile-sign-in.server.ts"
-Cohesion: 0.09
-Nodes (63): logAppleAuthError(), logAppleJs(), isAppleJsPopupEnabled(), AppleAuthInitConfig, AppleJsModeDecision, AppleJsModeLabel, AppleJsRuntimeMode, AppleSdkForensicCapture (+55 more)
+Cohesion: 0.11
+Nodes (20): DocumentFrameOverlay(), styles, ImportCamera, ImportCameraHandle, ImportCameraProps, styles, ImportParseStatus, ImportSuccessView() (+12 more)
 
 ### Community 130 - "operational-preview.tsx"
 Cohesion: 0.07
-Nodes (53): BarcodeScanSnapshot, GridSaveStatus, MotorExcelIoState, MotorImportProgressState, MotorImportReviewSnapshot, WarehouseExcelIoState, WarehouseImportProgressState, WorkspaceContext (+45 more)
+Nodes (47): POST(), DemoAuthResponse, POST(), AppleSignInBody, POST(), getAdminAuth(), verifiedAppleEmail(), AppleJwk (+39 more)
 
 ### Community 131 - "notification-inbox-screen.tsx"
-Cohesion: 0.06
-Nodes (64): CountableIntakePhoto, countVisibleIntakePhotos(), isIntakePhotoConflict(), VisibleIntakePhotoCount, reconcileIntakeAttentionNotification(), companyPhotoSyncQueue, CountableOutboxPhoto, countJobOutboxPhotos() (+56 more)
+Cohesion: 0.07
+Nodes (52): reconcileIntakeAttentionNotification(), openEngineIntakeSession(), drainIntakeOutbox(), getCompanyIntakeOutboxSnapshot(), getIntakeOutboxSnapshot, getSnapshot(), photoNeedsPersonRow(), purgeUnrecoverableIntakeOutbox() (+44 more)
 
 ### Community 132 - "warehouse-location-repository.ts"
-Cohesion: 0.06
-Nodes (47): useSessionBootstrapReady(), Listener, listeners, resetAppShellReady(), setAppShellReady(), applyNow(), drainOne(), flushScheduledQueryDataApplies() (+39 more)
+Cohesion: 0.08
+Nodes (27): Message(), MessageActionProps, MessageActions(), MessageActionsProps, MessageBranch(), MessageBranchContent(), MessageBranchContentProps, MessageBranchContext (+19 more)
 
 ### Community 133 - "use-notification-preferences.ts"
-Cohesion: 0.20
-Nodes (19): OAuthProvider, logAppleAuthStep(), createAppleOAuthProvider(), AppleRedirectBootstrapResult, bootstrapAppleRedirectOnce(), returnedFromOAuthProvider(), clearAppleRedirectPending(), hasPendingAppleRedirect() (+11 more)
+Cohesion: 0.06
+Nodes (39): AuthBootLoadingProps, APP_ICON, AuthBrandMark(), AuthBrandMarkProps, LOCKUP, LOGIN_FONT, LOGIN_GAP, LOGIN_ICON (+31 more)
 
 ### Community 134 - "include"
 Cohesion: 0.07
 Nodes (27): compilerOptions, paths, strict, exclude, extends, include, ../packages/avatars/src, ../packages/billing/src (+19 more)
 
 ### Community 135 - "financial-operation-repository.ts"
-Cohesion: 0.15
-Nodes (16): AppLocale, DownloadExperience(), DemoButtonProps, contacts, FooterLink, SiteFooter(), NAV_LINK_KEYS, SiteNav() (+8 more)
+Cohesion: 0.07
+Nodes (53): AutocoreNavGroup, AutocoreNavItem, BRAND_COLLECTIONS, buildAutocoreNavGroups(), BuildAutocoreNavGroupsInput, buildFlatBusinessNavItem(), shouldShowBrandsSidebarGroup(), BusinessSidebarInner() (+45 more)
 
 ### Community 136 - "dashboard-route-cache.tsx"
-Cohesion: 0.03
-Nodes (75): CATEGORY_NAV, categoryLabel(), DocumentCategory, DocumentsWorkspace(), DocumentsWorkspaceContent(), resolveCategory(), FooterLink(), SidebarFooter() (+67 more)
+Cohesion: 0.06
+Nodes (61): GET(), Body, POST(), AssignedAssetLocation, InventoryLocationBalance, MovementType, processInventoryEventForWorkOrder(), recordInventoryMovementAdmin() (+53 more)
 
 ### Community 137 - "firestore-commit-port.ts"
-Cohesion: 0.09
-Nodes (24): AccountingWorkspace, ActivityWorkspace, CachedRoutePanel(), CachedRoutePanelProps, DashboardRouteCache(), DashboardRouteCacheProps, DocumentsWorkspace, DonorsWorkspace (+16 more)
+Cohesion: 0.26
+Nodes (19): filterAutocompleteOptions(), uniqueAutocompleteOptions(), computeMatchRanges(), inferEngineFuelBadge(), readRecentValues(), mergeEngineCustomOptions(), searchAutocomplete(), searchCategories() (+11 more)
 
 ### Community 138 - "pipeline.ts"
-Cohesion: 0.06
-Nodes (66): IntakeBayRedirect(), pickParam(), redirectSystemPath(), enginesFilterFromBay(), IntakeBayFilter, IntakeRouter, openEngineIntakeBay(), openEngineIntakeSession() (+58 more)
+Cohesion: 0.12
+Nodes (28): IntakeBayRedirect(), pickParam(), enginesFilterFromBay(), IntakeBayFilter, IntakeRouter, openEngineIntakeBay(), EngineListFilter, parseEngineListFilter() (+20 more)
 
 ### Community 139 - "migration-row-builders.ts"
-Cohesion: 0.13
-Nodes (30): LoginPage(), AuthDebugPanel(), AuthDebugPanelProps, getServerAuthDebugEntries(), SERVER_AUTH_DEBUG_ENTRIES, useAppLocale(), finalizeSignedInUser(), useMarketingAuthBootstrap() (+22 more)
+Cohesion: 0.20
+Nodes (15): AppleAuthMode, getAppleAuthMode(), getAppleWebClientIdMisconfigurationIssue(), isAppleJsAuthMode(), getAppleJsDeveloperChecklist(), getAppleJsLocalDevLoginUrl(), getAppleJsLoginRedirectUri(), getAppleJsRedirectCallbackUri() (+7 more)
 
 ### Community 140 - "excel-sheet-config.ts"
 Cohesion: 0.06
@@ -1232,64 +1249,64 @@ Cohesion: 0.14
 Nodes (18): LoginLayout(), LoginLayoutProps, metadata, LandingContent, productContent, ProductSectionId, contact(), download() (+10 more)
 
 ### Community 143 - "styles.ts"
-Cohesion: 0.15
-Nodes (19): CLAIMABLE_WORK_ORDER_STATUSES, ClaimEligibilityResult, CLOSED_WORK_ORDER_STATUSES, computeOpenWorkOrderCounts(), countOpenAssignedWorkOrders(), evaluateClaimEligibility(), filterWorkOrdersByScope(), findFirstUnassignedLaborLineId() (+11 more)
+Cohesion: 0.12
+Nodes (26): xlsx, workbookBytes(), formatExportDate(), parseExcelDateValue(), appendUniqueSheet(), brandLabel(), buildMotorExportWorkbook(), engineLabel() (+18 more)
 
 ### Community 144 - "excel-export.ts"
-Cohesion: 0.17
-Nodes (20): initAdmin(), main(), readCompanyIdArg(), hasInboxNotification(), listTeamAdminRecipients(), appendEmployeeActivityLog(), getCompanyName(), removeMemberFromCompanyAsAdmin() (+12 more)
+Cohesion: 0.03
+Nodes (109): AppProviders(), HomeRoute(), AuthProvider(), StoreShotsAuthProvider(), ErrorBoundary(), ExpoRouterErrorBoundaryProps, clearHomeSnapshots(), useSessionBootstrapReady() (+101 more)
 
 ### Community 145 - "mobile-download-experience.tsx"
 Cohesion: 0.08
-Nodes (38): DemoAuthPayload, DemoPage(), DeckCallbackPage(), Loading(), AppLocaleContext, AppLocaleContextValue, AppLocaleProvider(), AuthProvider() (+30 more)
+Nodes (44): cloneHeroMotors(), cloneSaleMotors(), ColId, HERO_COLUMN_DEFS, HeroColId, HeroMotor, HeroMotorsTheater(), HeroMotorsTheaterProps (+36 more)
 
 ### Community 146 - "app-providers.tsx"
-Cohesion: 0.06
-Nodes (83): ServiceTagDocument(), ServiceTagDocumentProps, DocumentPage(), DocumentPageProps, isSectionEnabled(), buildLaborLinesForDocument(), buildPartLinesForDocument(), classifyServiceOrder() (+75 more)
+Cohesion: 0.07
+Nodes (49): GenerateBody, POST(), GET(), RouteContext, DocumentPreviewPage(), DocumentPreviewPageProps, DocumentTemplatePreviewPage(), DocumentTemplatePreviewPageProps (+41 more)
 
 ### Community 147 - "types.ts"
-Cohesion: 0.09
-Nodes (23): CreateInventoryItemInput, appendLocalFile(), createLocalFileFormData(), AvatarUploadResult, DocumentImportJobStatus, DocumentImportUploadResult, getDocumentImportStatus(), pollDocumentImportUntilSettled() (+15 more)
+Cohesion: 0.18
+Nodes (15): CommitLoopOptions, CommitStep, runCommitToCompletion(), analyzeBusinessFile(), AnalyzeResponse, authorizedPost(), commitBusinessPlan(), CommitPlanResponse (+7 more)
 
 ### Community 148 - "remote-macos-siwa.json"
 Cohesion: 0.14
 Nodes (13): description, identifier, https://app.myautocore.com/*, https://myautocore.com/*, macOS, main, siwa:allow-get-apple-id-credential, permissions (+5 more)
 
 ### Community 149 - "motors-import-empty-landing.tsx"
-Cohesion: 0.14
-Nodes (21): KnowledgePattern, KnowledgeScope, KnowledgeSuggestContext, scorePattern(), ScorePatternInput, wilsonLowerBound(), normalizeKey(), rankSuggestions() (+13 more)
+Cohesion: 0.10
+Nodes (19): AutocompleteOverlay, AutocompleteOverlayProps, ChipDockPanel(), DockPanelProps, ListDockPanel(), reportHeight(), HighlightedText, HighlightedTextProps (+11 more)
 
 ### Community 150 - "sidebar-preferences.ts"
-Cohesion: 0.01
-Nodes (227): PRESS_FADE_IN, PRESS_FADE_OUT, ScreenEnterConfig, useFadeIn(), usePageEnter(), useScaleEnter(), useStaggerFadeIn(), AnimatedIconWrapper (+219 more)
+Cohesion: 0.02
+Nodes (170): MailIcon, WifiOffIcon, AUTH_BUTTON_HEIGHT, AuthEmailChip(), AuthEmailChipProps, AuthOAuthButton(), AuthOAuthButtonProps, styles (+162 more)
 
 ### Community 151 - "warehouse-search.ts"
-Cohesion: 0.06
-Nodes (46): diffSnapshots(), FieldDiff, shouldAcceptLocalWrite(), DraftManager, DocInternal, EngineListener, getPersistenceEngine(), PersistenceEngine (+38 more)
+Cohesion: 0.05
+Nodes (50): PersistenceContext, PersistenceContextValue, PersistenceProvider(), diffSnapshots(), FieldDiff, shouldAcceptLocalWrite(), DraftManager, DocInternal (+42 more)
 
 ### Community 152 - "barba-navigation.ts"
-Cohesion: 0.08
-Nodes (35): endOfWeek(), recentWeekWindows(), startOfDay(), startOfWeek(), WeekWindow, buildWorkToday(), attentionLoadAt(), buildInsight() (+27 more)
+Cohesion: 0.10
+Nodes (49): AccountingAttentionAction, AttentionTone, CashFlowPeriod, InvoiceStatus, TransactionStatus, TrendTone, OverviewWeekBar, calculateCashBalance() (+41 more)
 
 ### Community 153 - "package.json"
 Cohesion: 0.12
 Nodes (16): firebase-functions, dependencies, firebase-admin, firebase-functions, devDependencies, typescript, engines, node (+8 more)
 
 ### Community 154 - "locales.ts"
-Cohesion: 0.29
-Nodes (18): KnowledgeEvent, applyFactToPatterns(), fieldOpsFromRecord(), patternsFromDocumentPrinted(), patternsFromFieldCommitted(), patternsFromImportCorrection(), patternsFromInventorySoldTogether(), patternsFromMotorSold() (+10 more)
+Cohesion: 0.03
+Nodes (174): Can(), CanProps, RequirePermission(), RequirePermissionProps, CATALOG_BAR_AT_TOP, catalogBarState, useCatalogNavBarHeight(), ListSkeleton() (+166 more)
 
 ### Community 155 - "billing-repository.ts"
-Cohesion: 0.07
-Nodes (47): ToastAction, ToastItem, ToastStore, ToastVariant, PendingAdd, useAddToOrderFlow(), CompositionRouter, navigateEditOrderWithMotor() (+39 more)
+Cohesion: 0.12
+Nodes (24): ScanUnknownSheetContent(), sheetPresentationKey(), useDevMockFallback(), useScanExperience(), isHttpUrl(), entityLinkLabel(), useMobileRelocate(), ScanResolveInput (+16 more)
 
 ### Community 156 - "inventory-import-repository.ts"
 Cohesion: 0.05
-Nodes (68): ensureLocationBalancesSeeded(), relocateStockUseCase(), syncItemLocationAssignmentUseCase(), ActivityAppendPayload, INVENTORY_DOCUMENT_STATUSES, INVENTORY_DOCUMENT_TYPES, InventoryDocument, InventoryDocumentStatus (+60 more)
+Nodes (89): createExpenseOperationUseCase(), adjustStockUseCase(), applyImportJobUseCase(), createImportJobUseCase(), backfillInventoryTaxonomyUseCase(), hasCompletedInventoryTaxonomyBackfill(), markInventoryTaxonomyBackfillComplete(), commitStocktakeUseCase() (+81 more)
 
 ### Community 157 - "document-pdf-empty-state.tsx"
-Cohesion: 0.14
-Nodes (18): CacheSettingsScreen(), DiagnosticsSettingsScreen(), formatMark(), getStartupSummary(), estimateCacheSizeBytes(), formatCacheSize(), events, formatIapTraceLines() (+10 more)
+Cohesion: 0.09
+Nodes (31): POST(), RouteContext, GET(), RouteContext, EnginePatch, PATCH(), RouteContext, sanitizeEngines() (+23 more)
 
 ### Community 158 - "breakpoints.ts"
 Cohesion: 0.06
@@ -1305,27 +1322,27 @@ Nodes (34): 10. DEVICE MOCKUP FRAME RULE, 11. ONBOARDING FLOW RULE, 12. FIRST SC
 
 ### Community 161 - "performance-tier-provider.tsx"
 Cohesion: 0.13
-Nodes (15): SidebarAnimatedSection(), SidebarAnimatedSectionProps, useSectionPin(), UseSectionPinOptions, GlassSurface(), GlassSurfaceProps, MarketingBarbaLayout(), MarketingBarbaLayoutProps (+7 more)
+Nodes (31): CompleteSetupPayload, isCompanyAppConfig(), POST(), normalizeSpecificCategoryEntity(), isInventoryGroupId(), isInventorySubcategoryId(), normalizeTaxonomyKey(), resolveGroupForCategoryName() (+23 more)
 
 ### Community 162 - "excel-column-mapping.ts"
-Cohesion: 0.15
-Nodes (18): buildEarningsSnapshot(), buildWeekDays(), CLOSED_FOR_TALLY, EARNINGS_PAYOUT_STATUS_LABELS, EarningsJobPreview, EarningsPayoutPreview, EarningsPayrollRow, EarningsSnapshot (+10 more)
+Cohesion: 0.06
+Nodes (50): MapPinIcon, CatalogAddButton(), CatalogRow, catalogRowPosition, CatalogRowProps, CatalogScreenHeader(), CatalogSectionHeader(), EngineLocationSheetProps (+42 more)
 
 ### Community 163 - "ScanDebounce"
-Cohesion: 0.08
-Nodes (52): buildSamples(), outDir, apiKey, [recipient, templateKey = "verification-code"], sample, codePanel(), detailPanel(), featureStrip() (+44 more)
+Cohesion: 0.21
+Nodes (13): codePanel(), noticePanel(), paragraph(), PARAGRAPH_TONE, ParagraphTone, buildPasswordResetEmail(), greeting(), IGNORE_NOTICE (+5 more)
 
 ### Community 164 - "page.tsx"
-Cohesion: 0.15
-Nodes (20): AppleSignInBody, POST(), verifiedAppleEmail(), AppleJwk, completeMobileAppleSignIn(), decodeJwtPart(), firebaseApiKey(), firebaseAuthHandlerUri() (+12 more)
+Cohesion: 0.14
+Nodes (24): updateSpecificColumnSchemaUseCase(), subcategoryLabel(), SpecificColumnDef, categoryDedupeKey(), dedupeCategories(), mapRecord(), readNumber(), relatedCategoryLocalIds() (+16 more)
 
 ### Community 165 - "cross-route-transition.ts"
-Cohesion: 0.01
-Nodes (281): canAccessOverview(), createSpecificCategoryUseCase(), deleteSpecificCategoryUseCase(), renameSpecificCategoryUseCase(), barcodeRepository, BarcodeScanProvider(), BarcodeScanProviderProps, itemRepository (+273 more)
+Cohesion: 0.10
+Nodes (16): compactRecord(), dedupeTrimmed(), DocumentPrintedFact, FieldCommitFact, fromDocumentPrinted(), fromInventorySoldTogether(), fromStockDepletion(), ImportCorrectionFact (+8 more)
 
 ### Community 166 - "column-mapper.ts"
-Cohesion: 0.04
-Nodes (76): resolveWarehouseId(), syncWarehouseGridRowUseCase(), GridFillHandle(), GridFillHandleProps, GridPhotoCellDisabledHint(), GridZoomControl(), useGridPersistenceAdapter(), applyCellValue() (+68 more)
+Cohesion: 0.15
+Nodes (26): redirectSystemPath(), CANONICAL_HOSTS, decodeSegment(), DEEP_LINK_HOME, deepLinkTargetKey(), deepLinkTargetToPath(), isCanonicalWebUrl(), isNeverClaimedPath() (+18 more)
 
 ### Community 167 - "compilerOptions"
 Cohesion: 0.14
@@ -1340,12 +1357,12 @@ Cohesion: 0.25
 Nodes (12): authCode, { clientSecret, header, payload }, flags, base64UrlJson(), decodeJwtPart(), generateAppleClientSecret(), loadPrivateKey(), parseArgs() (+4 more)
 
 ### Community 171 - "use-work-order-documents-realtime.ts"
-Cohesion: 0.22
-Nodes (14): PerformanceTierContext, PerformanceTierContextValue, PerformanceTierProvider(), PerformanceTierProviderProps, TIER_CONFIG, collectTierSignals(), detectPerformanceTier(), refinePerformanceTier() (+6 more)
+Cohesion: 0.16
+Nodes (23): ACCOUNTANT_PRIORS, anomalyScore(), buildComparison(), buildHomeMetricCandidates(), CandidateSpec, changeSignificanceScore(), clamp01(), COUNT_FORMAT (+15 more)
 
 ### Community 172 - "vercel.json"
-Cohesion: 0.14
-Nodes (13): fra1, crons, framework, src/app/api/assistant/**/*.ts, src/app/api/documents/**/*.ts, src/app/api/pdf/**/*.ts, functions, redirects (+5 more)
+Cohesion: 0.12
+Nodes (15): fra1, crons, framework, src/app/api/assistant/**/*.ts, src/app/api/demo/**/*.ts, src/app/api/documents/**/*.ts, src/app/api/pdf/**/*.ts, functions (+7 more)
 
 ### Community 173 - "generate-document-templates.mjs"
 Cohesion: 0.19
@@ -1357,7 +1374,7 @@ Nodes (6): @barba/core, BarbaCore, IBarbaOptions, ISchemaPage, ITransitionData, 
 
 ### Community 175 - "package.json"
 Cohesion: 0.12
-Nodes (16): nativeModulesDir, devDependencies, eas-cli, @types/react, typescript, expo, autolinking, install (+8 more)
+Nodes (15): nativeModulesDir, devDependencies, eas-cli, @types/react, typescript, expo, autolinking, install (+7 more)
 
 ### Community 176 - "app.js"
 Cohesion: 0.23
@@ -1368,36 +1385,36 @@ Cohesion: 0.23
 Nodes (6): ChartTooltipWeekdayStyle, DashboardDateStyle, formatChartAxisTick(), formatChartTooltipDate(), formatDate(), parseIsoCalendarDate()
 
 ### Community 178 - "use-barba-navigation.ts"
-Cohesion: 0.25
-Nodes (12): createVehicleSchema, CreateVehicleInput, UpdateVehicleInput, VehicleEntity, VehicleServiceHistoryEntry, createVehicleRepository(), mapServiceHistoryEntry(), mapVehicle() (+4 more)
+Cohesion: 0.05
+Nodes (50): EllipsisIcon, Share2Icon, NativeContextMenu(), NativeContextMenuAction, NativeContextMenuProps, presentNativeMenu(), PresentNativeMenuOptions, BAR_HEIGHTS (+42 more)
 
 ### Community 179 - "documents-history-panel.tsx"
-Cohesion: 0.16
-Nodes (23): buildGeom(), ChartGeom, Point, styles, WorkTodayChart, buildInnerTicks(), ChartScale, ChartScaleOptions (+15 more)
+Cohesion: 0.17
+Nodes (9): styles, TabLayout(), LiquidGlassTabBar, APP_ICON, ensureLiveActivityAppIconUri(), PayWidgetProps, assertLiveActivityAppGroup(), AutoCorePayWidget (+1 more)
 
 ### Community 180 - "scripts"
-Cohesion: 0.14
-Nodes (14): scripts, android, eas:init, eas:login, eas:whoami, ios, ios:provision, ios:release (+6 more)
+Cohesion: 0.13
+Nodes (15): scripts, android, dev, eas:init, eas:login, eas:whoami, ios, ios:provision (+7 more)
 
 ### Community 181 - "copy-tauri-downloads.mjs"
-Cohesion: 0.20
-Nodes (7): bundleDir, __dirname, macApp, macDmg, OUT_DIR, ROOT, TARGET_DIR
+Cohesion: 0.21
+Nodes (17): buildOptimisticIntakeJob(), ENGINE_LANE_SEGMENTS, ENGINE_LIST_FILTERS, INCOMING_JOB_STATES, INCOMING_MOTOR_STATUSES, isIncomingJobState(), isIncomingMotor(), motorStatusFromIntakeJob() (+9 more)
 
 ### Community 182 - "sign-in-with-apple-web.ts"
-Cohesion: 0.07
-Nodes (62): useAccountingData(), UseAccountingDataResult, CashFlowPeriod, InvoiceStatus, TrendTone, buildHomeActivity(), CLOSED_STATUSES, eventAt() (+54 more)
+Cohesion: 0.03
+Nodes (163): ErApiResponse, fetchLiveRates(), GET(), BalanceSnapshot, ACCOUNTING_CATEGORY_SUGGESTIONS, filterAccountingCategorySuggestions(), AdvancesOverview(), AdvancesOverviewProps (+155 more)
 
 ### Community 183 - "app-loading-logo.tsx"
-Cohesion: 0.06
-Nodes (52): FinSkiaCurveChartProps, styles, buildChartGeometry(), ChartGeometry, ChartGeometryInput, ChartPoint, monotoneTangents(), nearestIndex() (+44 more)
+Cohesion: 0.07
+Nodes (42): TabNavigateTarget, ActivityRow, HomeActivity, AttentionRow, HomeAttention, SEVERITY_WORD, HomeSparkline, HomeSparklineProps (+34 more)
 
 ### Community 184 - "duplicate-detector.ts"
-Cohesion: 0.20
-Nodes (16): UserCompanyMembership, isUnassignedCompanyId(), buildMobileSessionBootstrap(), isAssignedCompanyId(), mapCompanyAppConfig(), mapUserDoc(), MobileSessionBootstrapPayload, readCompanyName() (+8 more)
+Cohesion: 0.15
+Nodes (21): createIncomeOperationUseCase(), createOperationUseCase(), createRefundOperationUseCase(), createSaleOperationUseCase(), sellUsedPartWithFinancialOperationUseCase(), unsellMotorWithFinancialOperationUseCase(), unsellUsedPartWithFinancialOperationUseCase(), CreateFinancialOperationInput (+13 more)
 
 ### Community 185 - "should-hide-tab-bar.ts"
-Cohesion: 0.09
-Nodes (28): splitBrandingParagraphs(), DOCUMENT_SECTION_KEYS, DOCUMENT_SECTION_LABELS, DocumentSectionConfig, DocumentSectionKey, parseDocumentSectionConfig(), WARRANTY_TEMPLATE_IDS, WarrantyTemplateId (+20 more)
+Cohesion: 0.13
+Nodes (22): ExternalLink(), ExternalLinkProps, AppContextMenuProvider(), AppContextMenuProviderProps, MenuState, AppContextMenuAction, isEditableTarget(), isTextField() (+14 more)
 
 ### Community 186 - "default.json"
 Cohesion: 0.20
@@ -1420,48 +1437,48 @@ Cohesion: 0.20
 Nodes (9): description, identifier, macOS, main, siwa:allow-get-apple-id-credential, permissions, platforms, $schema (+1 more)
 
 ### Community 191 - "ScanService"
-Cohesion: 0.02
-Nodes (151): MailIcon, PrinterIcon, InviteFormNotice(), InviteFormNoticeProps, DemoModeBanner(), acTimeline, AcAccountTiles, AcAccountTilesProps (+143 more)
+Cohesion: 0.08
+Nodes (40): intakePhotoPreviewUri(), IntakePhotoThumbStatus, localIntakePhotoAsEntity(), LocalIntakePhotoInput, mergeIntakePhotos(), syncStateFromStatus(), thumbStatusFromSync(), queryDocsSignature() (+32 more)
 
 ### Community 192 - "package.json"
 Cohesion: 0.22
 Nodes (8): exports, ./config, ./messages/*, main, name, private, types, version
 
 ### Community 193 - "universal-links.ts"
-Cohesion: 0.07
-Nodes (40): BILLING_PLANS, BILLING_STATUSES, BillingPlan, BillingStatus, normalizeBillingPlan(), normalizeBillingStatus(), PRO_STATUSES, ProResolutionInput (+32 more)
+Cohesion: 0.06
+Nodes (45): BILLING_PLANS, BILLING_STATUSES, BillingPlan, BillingStatus, normalizeBillingPlan(), normalizeBillingStatus(), PRO_STATUSES, ProResolutionInput (+37 more)
 
 ### Community 194 - "recent-values-store.ts"
-Cohesion: 0.11
-Nodes (19): 10. Current project assessment, 11. Recommended redesign order, 3.2 Typography, 3.3 Spacing, 3.4 Radius, 3.5 Borders and separators, 3.6 Shadows and elevation, 3. Design tokens (+11 more)
+Cohesion: 0.12
+Nodes (12): 10. Current project assessment, 11. Recommended redesign order, 5. Information architecture principles, 6. Responsive / platform behavior, 7. Accessibility, 8. Existing → Target, 9. Implementation rules, Appendix A — Key file map (+4 more)
 
 ### Community 195 - "forensic-apple-oauth.mjs"
-Cohesion: 0.24
-Nodes (12): POST(), clearVerificationCode(), codePepper(), hashesMatch(), hashVerificationCode(), incrementVerificationAttempts(), isValidVerificationCodeFormat(), normalizeVerificationCodeInput() (+4 more)
+Cohesion: 0.14
+Nodes (26): notifyInstantCacheEnter(), resolveRouteCacheKey(), MarketingBarbaShell(), MarketingBarbaShellProps, shouldPrefetchRoute(), useBarbaNavigation(), UseBarbaNavigationOptions, DASHBOARD_ANIMATED_PREFIXES (+18 more)
 
 ### Community 196 - "send-test-verification-email.ts"
 Cohesion: 0.46
 Nodes (7): buildVerificationCodeEmailHtml(), codePepper(), escapeHtml(), generateVerificationCode(), hashVerificationCode(), initAdmin(), main()
 
 ### Community 197 - "work-orders.server.ts"
-Cohesion: 0.24
-Nodes (11): InventoryStockLevel, CreateWarehouseInput, Warehouse, dedupeWarehousesForDisplay(), pickPreferredWarehouse(), warehouseGroupKey(), isPrimaryWarehouseView(), projectInventoryItemForWarehouse() (+3 more)
+Cohesion: 0.26
+Nodes (11): detailPanel(), featureStrip(), strong(), buildInviteEmail(), formatExpiry(), formatRoleLabel(), InviteEmailParams, buildVerificationEmail() (+3 more)
 
 ### Community 198 - "feature-icon.tsx"
 Cohesion: 0.12
 Nodes (16): Architecture, Auth/authorization, Commands, Deployment ownership, Design tokens, Documents pipeline, High-risk change areas, i18n (+8 more)
 
 ### Community 199 - "pinned-filters.ts"
-Cohesion: 0.21
-Nodes (15): notifyInstantCacheEnter(), resolveRouteCacheKey(), shouldPrefetchRoute(), useBarbaNavigation(), UseBarbaNavigationOptions, buildTransitionData(), getBarba(), initBarbaRuntime() (+7 more)
+Cohesion: 0.03
+Nodes (94): usePressAnimation(), useScreenEnter(), ScanSearchIcon, HorizontalFilterBar(), HorizontalFilterBarProps, HorizontalFilterOption, TabLayout, IconButton (+86 more)
 
 ### Community 200 - "hero-motors-theater.tsx"
-Cohesion: 0.22
-Nodes (18): POST(), KNOWLEDGE_EVENT_TYPES, KnowledgeEventDraft, adminToDate(), applyOpsToPatterns(), backfillFromWorkOrders(), companyRef(), emit() (+10 more)
+Cohesion: 0.13
+Nodes (10): CameraServiceError, cannotAddInput, cannotAddOutput, noDevice, URL, AVCapturePhoto, AVCaptureResolvedPhotoSettings, Data (+2 more)
 
 ### Community 201 - "replace-token.ts"
-Cohesion: 0.05
-Nodes (71): LocationContentsResponse, CompanyNameSource, isCompanyIdDisplayValue(), readCompanyDisplayName(), normalizeCompanyId(), resolveCompanyIdsForSync(), buildLocationEntityLink(), companyAppConfigRef() (+63 more)
+Cohesion: 0.11
+Nodes (23): isMobileNavItemAllowed(), NAV_TO_TAB, AccessScopes, ASSIGNED_WORK_ORDER_ROLES, DataDomain, DOMAIN_PERMISSION, getDataScope(), resolveAccessScopes() (+15 more)
 
 ### Community 202 - "package.json"
 Cohesion: 0.29
@@ -1488,12 +1505,12 @@ Cohesion: 0.29
 Nodes (6): allowedExamples, forbiddenFiles, result, secretPatterns, trackedFiles, violations
 
 ### Community 208 - "route.ts"
-Cohesion: 0.34
-Nodes (10): ExpoGoogleSignInButton(), GoogleSignInButton(), GoogleSignInButtonProps, getGoogleOAuthEnv(), GoogleOAuthEnv, isGoogleOAuthConfigured(), canUseNativeGoogleSignIn(), configureNativeGoogleSignIn() (+2 more)
+Cohesion: 0.16
+Nodes (18): EmployeeProfileSlice, mergeProfileWithEmployee(), resolveMemberRole(), resolveMemberRoleRank(), ROLE_RANK, GET(), readBearerToken(), buildMobileSessionBootstrap() (+10 more)
 
 ### Community 209 - "advances.ts"
-Cohesion: 0.10
-Nodes (26): ACTIONS, POST(), COMPANY_DICTIONARY_CATEGORIES, CompanyDictionaryCategory, CompanyDictionaryEntry, KNOWLEDGE_FLAG_KEYS, KNOWLEDGE_PATTERN_KINDS, KNOWLEDGE_SCOPES (+18 more)
+Cohesion: 0.17
+Nodes (23): EMPTY, seedCurrency(), syncMoneyFormatStore(), useCompanyDisplayCurrency(), useUserDisplayCurrency(), companyKey(), readCachedDisplayCurrency(), writeCachedDisplayCurrency() (+15 more)
 
 ### Community 210 - "package.json"
 Cohesion: 0.33
@@ -1512,8 +1529,8 @@ Cohesion: 0.08
 Nodes (18): AnyObject, CameraService, AVCaptureVideoPreviewLayer, Bool, CGFloat, CGPoint, AVCaptureDevice, AVCapturePhotoCaptureDelegate (+10 more)
 
 ### Community 215 - "dropdown.tsx"
-Cohesion: 0.10
-Nodes (36): HomeTrendWindowInput, deserializeHomeViewModel(), FAMILY_PERMISSION, fromPersistedPeriod(), HomeBriefEnvelope, homeBriefKey(), metricFamilyOf(), permits() (+28 more)
+Cohesion: 0.11
+Nodes (26): accessErrorBody(), POST(), requestSchema, ALLOWED_PATH_PREFIXES, allowedHref, allowedRouteList(), describeRouteCatalog(), internalHref (+18 more)
 
 ### Community 216 - "metro.config.js"
 Cohesion: 0.33
@@ -1532,8 +1549,8 @@ Cohesion: 0.60
 Nodes (4): createNotification(), init(), main(), ROLE_LABELS
 
 ### Community 220 - "demo-provision.server.ts"
-Cohesion: 0.24
-Nodes (9): useIsOnline(), CommittedOnlineResult, NetInfoLike, netInfoSaysOnline(), resolveCommittedOnline(), queryClient, FirestoreNetworkHead(), networkOp (+1 more)
+Cohesion: 0.15
+Nodes (14): EngineQualityChip, EngineStatusDot, EngineStatusPill, clean(), daysOnLot(), EngineFact, engineFacts(), EngineSpecRow (+6 more)
 
 ### Community 221 - "invite-code.ts"
 Cohesion: 0.83
@@ -1549,7 +1566,7 @@ Nodes (8): CHROMIUM_TRACE_INCLUDES, CONNECT_ORIGINS, CONTENT_SECURITY_POLICY, MO
 
 ### Community 225 - "layout.tsx"
 Cohesion: 0.04
-Nodes (90): InventoryItemStatus, buildItemPayload(), omitUndefinedFields(), optionalNumberField(), optionalStringArrayField(), optionalTextField(), normalizeInventoryCode(), applyManualColumnMapping() (+82 more)
+Nodes (98): InventoryItemStatus, normalizeInventoryCode(), callableWarehouseImportAiClient, WarehouseImportAiClient, WAREHOUSE_COLUMN_MAP_SYSTEM_PROMPT, WAREHOUSE_DOMAIN, WAREHOUSE_DUPLICATE_CLUSTER_SYSTEM_PROMPT, WAREHOUSE_GRID (+90 more)
 
 ### Community 226 - "route.ts"
 Cohesion: 0.67
@@ -1560,12 +1577,12 @@ Cohesion: 0.19
 Nodes (18): asUri(), directory(), generate(), getRevision(), ImageManipulatorApi, inflight, isLocal(), listeners (+10 more)
 
 ### Community 229 - "ensureDefaultWarehouseUseCase"
-Cohesion: 0.20
-Nodes (16): isFirebaseConfigured(), getAppleWebClientIdMisconfigurationIssue(), getAppleJsDeveloperChecklist(), getAppleJsLocalDevLoginUrl(), getAppleJsLoginRedirectUri(), getAppleJsRedirectCallbackUri(), getAppleJsSetupIssue(), hostnameFromHost() (+8 more)
+Cohesion: 0.12
+Nodes (24): ScanEntityLinkKind, ParsedDocument, mapApiResolve(), resolveBarcodePayload(), PendingScanContext, disambiguateScanPayload(), pickScanCandidate(), resolveScanPayload() (+16 more)
 
 ### Community 231 - "styles.ts"
-Cohesion: 0.03
-Nodes (138): canReleaseWithChecklist(), CATEGORY_TO_ITEMS, ChecklistEngineHints, checklistHitsForCategory(), ChecklistPhotoEvidence, checklistWhisper(), CYLINDER_IDS, defFor() (+130 more)
+Cohesion: 0.21
+Nodes (12): FALLBACK, GreetingVariant, HOME_GREETING_MAX_LENGTH, HOME_GREETINGS, HomeGreeting, HomeGreetingPeriod, homeGreetingSeed(), PERIOD_BOUNDS (+4 more)
 
 ### Community 232 - "with-ios-push-entitlements.js"
 Cohesion: 0.67
@@ -1577,31 +1594,31 @@ Nodes (30): 10. FINAL PRE-FLIGHT CHECK, 1. ACTIVE BASELINE CONFIGURATION, 2. DEF
 
 ### Community 249 - "process-import-batch.server.ts"
 Cohesion: 0.13
-Nodes (24): NotificationsSettingsScreen(), PushRegistrationHead(), registerNotificationDevice(), attachForegroundListener(), ensureAndroidChannel(), ensureNotificationHandler(), ensurePushDeviceRegistered(), fetchExpoPushToken() (+16 more)
+Nodes (19): ensureDefaultWarehouseUseCase(), InventoryCategory, CreateWarehouseInput, Warehouse, categoryRepository, useEnsureDefaultWarehouse(), warehouseRepository, useWarehousesRealtime() (+11 more)
 
 ### Community 251 - "pipeline.ts"
 Cohesion: 0.29
 Nodes (6): autocore-desktop, autocore-mobile, firebase/functions, node_modules, exclude, **/*.test.ts
 
 ### Community 257 - "styles.ts"
-Cohesion: 0.10
-Nodes (28): classifyRow(), containsTotalWord(), discoverSheet(), discoverTables(), filledCells(), folded(), isRepeatedHeader(), isSectionHeading() (+20 more)
+Cohesion: 0.22
+Nodes (16): escapeHtml(), buildCta(), buildEmailLayout(), buildEmailText(), buildFooter(), buildMasthead(), buildPreheader(), buildStyles() (+8 more)
 
 ### Community 258 - "sign-in-with-apple-credential.ts"
-Cohesion: 0.12
-Nodes (16): 3.1 Color system, Background, Destructive, Disabled, Domain tones (keep), Elevated surface, Grouped surface, Informational (+8 more)
+Cohesion: 0.09
+Nodes (23): 3.1 Color system, 3.2 Typography, 3.3 Spacing, 3.4 Radius, 3.5 Borders and separators, 3.6 Shadows and elevation, 3. Design tokens, Background (+15 more)
 
 ### Community 259 - "inbox-sync.ts"
-Cohesion: 0.19
-Nodes (14): APPLE_ROOT_CA_G3_SHA256, APPLE_TEST_NOTIFICATION_SIGNED_AT, AppleJwsError, assertWithinValidity(), decodeAppleJwsUnsafe(), decodeBase64Url(), joseToDer(), JwsHeader (+6 more)
+Cohesion: 0.09
+Nodes (36): buildWorkModel(), buildWorkToday(), earningsTodayLabel(), EMPTY_WORK_COUNTS, fallback(), groupThousands(), plural(), ResolvedDetail (+28 more)
 
 ### Community 260 - "typography.ts"
-Cohesion: 0.27
-Nodes (12): useDocumentImportImageUrl(), getFirebaseApp(), getFirebaseStorage(), validateFirebaseEnv(), authHeaders(), createImportBatchClient(), fetchImportBatchDetail(), fetchImportBatches() (+4 more)
+Cohesion: 0.03
+Nodes (84): MyEarningsFreeOrders(), MyEarningsHero(), MyEarningsKpiRow(), MyEarningsKpiRowProps, MyEarningsPeriodFilter(), MyEarningsShiftCard(), MyEarningsStatusFilter(), MyEarningsStatusFilterProps (+76 more)
 
 ### Community 261 - "expo-auth-session"
-Cohesion: 0.09
-Nodes (40): AnalyzeBody, POST(), sanitizeTables(), applyMergeDecisions(), CommitPlanBody, POST(), readBearerToken(), VerifiedMigrationAccess (+32 more)
+Cohesion: 0.11
+Nodes (31): AnalyzeBody, POST(), sanitizeTables(), applyMergeDecisions(), CommitPlanBody, POST(), commitImportPlan(), CommitLedger (+23 more)
 
 ### Community 262 - "GridCellAddress"
 Cohesion: 0.38
@@ -1612,48 +1629,48 @@ Cohesion: 0.16
 Nodes (3): ScanCommitResult, ScanDebounce, ScanDebounceOptions
 
 ### Community 265 - "expo-device"
-Cohesion: 0.21
-Nodes (15): ComposerVehicleForm, useWorkOrderComposerOptions(), vehiclesInContext(), filterCatalogItems(), inventoryToChipOption(), isLaborCatalogItem(), LABOR_INVENTORY_TYPES, laborCatalogOptions() (+7 more)
+Cohesion: 0.11
+Nodes (29): EngineCatalogRow, UnitSubtitle(), EngineThumbnail, EnginesList(), headerRow(), NativeEngineRow(), NativeListHeader(), toneColor() (+21 more)
 
 ### Community 266 - "use-add-to-order-flow.ts"
-Cohesion: 0.20
-Nodes (24): xlsx, cellToString(), decodeText(), detectDelimiter(), parseDelimitedText(), parseWorkbook(), splitDelimited(), tableFromMatrix() (+16 more)
+Cohesion: 0.21
+Nodes (12): CreateEngineScreen(), pickParam(), canSaveEngineDraft(), checkEngineDraft(), emptyEngineDraft(), EngineCreateInput, EngineDraft, EngineDraftCheck (+4 more)
 
 ### Community 267 - "mobile-download-experience.tsx"
-Cohesion: 0.31
-Nodes (11): MarketingBarbaShell(), MarketingBarbaShellProps, DASHBOARD_ANIMATED_PREFIXES, isDashboardAnimatedPath(), isMarketingInternalPath(), isMarketingNavPath(), isMarketingPublicPath(), marketingSegment() (+3 more)
+Cohesion: 0.19
+Nodes (19): clampNumber(), clampWatermarkConfig(), defaultWatermarkForTheme(), DOCUMENT_WATERMARK_BLENDS, DOCUMENT_WATERMARK_POSITIONS, DOCUMENT_WATERMARK_TYPES, DocumentWatermarkBlend, DocumentWatermarkPosition (+11 more)
 
 ### Community 268 - "expo-haptics"
-Cohesion: 0.11
-Nodes (44): BrandEngineHints, canonicalizeMotorBrand(), coerceBrandEnginePair(), ENGINE_PREFIX_TO_BRAND, inferBrandFromEngineCode(), inferBrandFromSerial(), isLikelyCarBrand(), isLikelyEngineCode() (+36 more)
+Cohesion: 0.22
+Nodes (14): PerformanceTierContext, PerformanceTierContextValue, PerformanceTierProvider(), PerformanceTierProviderProps, TIER_CONFIG, collectTierSignals(), detectPerformanceTier(), refinePerformanceTier() (+6 more)
 
 ### Community 269 - "demo-session.client.ts"
-Cohesion: 0.15
-Nodes (15): isRetryableVerificationStatus(), verificationFailureForStatus(), CATALOG_NOISE, CODE_MAP, IN_FLIGHT_GHOST_CODES, isCatalogNoise(), isInFlightGhostError(), isPurchaseFailure() (+7 more)
+Cohesion: 0.12
+Nodes (25): INVENTORY_DOCUMENT_STATUSES, INVENTORY_DOCUMENT_TYPES, InventoryDocument, InventoryDocumentStatus, InventoryDocumentType, firebaseConfig, getFirebaseApp(), getFirebaseStorage() (+17 more)
 
 ### Community 270 - "deep-link-resolver.ts"
-Cohesion: 0.10
-Nodes (30): JoinPage(), WarrantyPayload, WarrantyVerifyPage(), extractArchive(), isJunkPath(), KNOWN_EXTENSIONS, flattenSources(), imageMatchKey() (+22 more)
+Cohesion: 0.13
+Nodes (15): SidebarAnimatedSection(), SidebarAnimatedSectionProps, useSectionPin(), UseSectionPinOptions, GlassSurface(), GlassSurfaceProps, MarketingBarbaLayout(), MarketingBarbaLayoutProps (+7 more)
 
 ### Community 271 - "phone-inventory-screen.tsx"
-Cohesion: 0.42
-Nodes (9): formatRelativeTime(), loadRecentScans(), mapStored(), mergeRecents(), migrateLegacyIfNeeded(), normalizeStored(), readMmkv(), rememberRecentScan() (+1 more)
+Cohesion: 0.07
+Nodes (54): toast(), ToastAction, ToastItem, ToastStore, ToastVariant, hasPendingIntakeWork(), BackgroundTask, BackgroundTaskApi (+46 more)
 
 ### Community 272 - "session-bootstrap.server.ts"
-Cohesion: 0.15
-Nodes (13): catalog, CatalogEntry, groupOrder, groupTitles, matchesFilter(), matchesQuery(), quickCategories, recentlyViewedEngines (+5 more)
+Cohesion: 0.08
+Nodes (51): POST(), checkAuth(), checkFirestore(), checkStorage(), ComponentStatus, GET(), StatusResponse, withTimeout() (+43 more)
 
 ### Community 273 - "expo-router"
-Cohesion: 0.04
-Nodes (99): AdjustAttempt, resolveAdjustIdempotencyKey(), ResolveAdjustKeyInput, resolve(), AnalyzeOptions, BusinessImportAI, sampleRowsForDiscovery(), AuditEntry (+91 more)
+Cohesion: 0.03
+Nodes (112): AnalyzeOptions, AiRowContext, NULL_BUSINESS_IMPORT_AI, sampleRowsForDiscovery(), AuditEntry, AuditStage, ImportAuditTrail, CommitPlanOptions (+104 more)
 
 ### Community 274 - "expo-sharing"
-Cohesion: 0.09
-Nodes (37): AutocompleteOverlay, AutocompleteInputProps, KeyboardFormShellProps, useAutocomplete(), UseAutocompleteArgs, UseAutocompleteReturn, getAutocompleteDataSnapshot(), BASE (+29 more)
+Cohesion: 0.14
+Nodes (27): WorkOrderMotorLine, WorkOrderPartLine, cleanField(), collapseWhitespace(), dedupeAdjacentTokens(), escapeRegExp(), extractGearboxMark(), normalizeSeparators() (+19 more)
 
 ### Community 275 - "work-today-trend.ts"
-Cohesion: 0.18
-Nodes (26): filterAutocompleteOptions(), uniqueAutocompleteOptions(), computeMatchRanges(), inferEngineFuelBadge(), readRecentValues(), mergeEngineCustomOptions(), searchAutocomplete(), searchCategories() (+18 more)
+Cohesion: 0.16
+Nodes (17): KeyboardFormShellProps, getAutocompleteDataSnapshot(), fieldKey(), readFieldValues(), rememberFieldValue(), rememberRecentValue(), storageKey(), applySuggestion() (+9 more)
 
 ### Community 276 - "use-motor-sync.ts"
 Cohesion: 0.15
@@ -1664,40 +1681,40 @@ Cohesion: 0.09
 Nodes (22): Auth vs product, Autocore Mobile Design Language v3, Buttons, Device smoke checklist (verify), Do / Don’t, Dynamic Island (iOS Live Activities), Floating dock, Home (Mission Control) (+14 more)
 
 ### Community 278 - "desktop-download-buttons.tsx"
-Cohesion: 0.04
-Nodes (107): ScanSearchIcon, ListSkeleton(), HorizontalFilterBar(), OrderPickerRow(), OrderPickerSheet, OrderPickerSheetProps, searchSpring, searchTimeline (+99 more)
+Cohesion: 0.02
+Nodes (164): AnimatedIconWrapper, createIcon(), IconProps, IconState, ActivityIcon, AlertTriangleIcon, ArrowUpIcon, ArrowUpRightIcon (+156 more)
 
 ### Community 279 - "appearance-settings-screen.tsx"
-Cohesion: 0.08
-Nodes (32): DocumentTemplatePreviewPage(), DocumentTemplatePreviewPageProps, DocumentRenderPage(), DocumentRenderPageProps, buildWarrantyVerifyUrl(), DocumentQr(), DocumentQrProps, MobileDownloadReveal() (+24 more)
+Cohesion: 0.14
+Nodes (11): DownloadMobilePagesCopy, EASE, HeroRevealProps, links, MobileDownloadExperience(), MobileDownloadReveal(), MobilePlatform, buildDocumentQrDataUri() (+3 more)
 
 ### Community 280 - "mc-animated-sparkline.tsx"
-Cohesion: 0.20
-Nodes (13): CreateEngineScreen(), pickParam(), canSaveEngineDraft(), checkEngineDraft(), draftVariantLabel(), emptyEngineDraft(), EngineCreateInput, EngineDraft (+5 more)
+Cohesion: 0.02
+Nodes (183): PRESS_FADE_IN, PRESS_FADE_OUT, ScreenEnterConfig, useFadeIn(), usePageEnter(), useScaleEnter(), useStaggerFadeIn(), ArrowLeftIcon (+175 more)
 
 ### Community 281 - "scan-disambiguate.server.ts"
-Cohesion: 0.08
-Nodes (74): planById(), purchasablePlans(), isDevModeActive(), isDevModeAvailable(), scenarioForPlan(), clearEntitlementCaches(), getLocalSubscriptions(), optimisticAppleEntitlement() (+66 more)
+Cohesion: 0.05
+Nodes (102): appleIdHoldsSubscription(), planById(), planForSku(), purchasablePlans(), skuForPlan(), isDevModeActive(), isDevModeAvailable(), scenarioForPlan() (+94 more)
 
 ### Community 282 - "styles.ts"
-Cohesion: 0.03
-Nodes (122): parseFeature(), PaywallRoute(), IconProps, ActivityIcon, AlertTriangleIcon, ArrowUpRightIcon, BarChart3Icon, BellIcon (+114 more)
+Cohesion: 0.11
+Nodes (19): NotificationCard, InAppBannerProvider(), ActivityDateGroup(), ActivityDateGroupProps, ActivityFeedFilters(), ActivityFeedFiltersProps, READ_FILTERS, ActivityNotificationRow (+11 more)
 
 ### Community 283 - "workspace-series.ts"
-Cohesion: 0.18
-Nodes (17): base(), DEFAULT_STATE, DEV_PRICES, DEV_SCENARIOS, devDisplayPrice(), devProducts(), DevScenario, DevScenarioId (+9 more)
+Cohesion: 0.15
+Nodes (18): attentionLoadAt(), buildInsight(), buildWeeklyAttentionSeries(), buildWeeklyOpenSeries(), buildWorkTodayTrend(), formatCount(), formatTrendAverage(), isIntakeAwaiting() (+10 more)
 
 ### Community 284 - "warehouse-location-repository.ts"
-Cohesion: 0.27
-Nodes (11): cycleTabOption(), DatalistInput(), DatalistInputProps, DatalistOption, findBestFlexibleMatch(), findFlexibleInlineSuggestion(), findInlineSuggestion(), getTabCycleCandidates() (+3 more)
+Cohesion: 0.25
+Nodes (8): cssVariableName(), GENERATED_HEADER, renderBlock(), renderTokensCss(), toCssVariables(), checkOnly, expected, outputPath
 
 ### Community 285 - "nav-item-availability.ts"
 Cohesion: 0.21
 Nodes (17): SaveFileFilter, decode(), desktop_info(), desktop_print_document(), desktop_print_page(), desktop_save_file(), DesktopInfo, PrintDocumentRequest (+9 more)
 
 ### Community 287 - "guarded-push.ts"
-Cohesion: 0.05
-Nodes (82): MobileApiError, markAllNotificationsRead(), markNotificationState(), updateInboxNotificationState(), buildOrderDeepLink(), AI_EVENTS, DOCUMENT_EVENTS, DocumentEventType (+74 more)
+Cohesion: 0.18
+Nodes (17): KnowledgeSuggestContext, KnowledgeSuggestion, normalizeKey(), rankSuggestions(), SCOPE_PRIORITY, buildDocPackRecommendation(), buildFbtRecommendations(), buildKitRecommendation() (+9 more)
 
 ### Community 288 - "@react-native-google-signin/google-signin"
 Cohesion: 0.29
@@ -1705,11 +1722,11 @@ Nodes (6): Jumping to a specific state, Native build required, Products without 
 
 ### Community 289 - "colors.ts"
 Cohesion: 0.02
-Nodes (140): quickCreateClientUseCase(), quickCreateVehicleUseCase(), EDITABLE_STATUSES, updateWorkOrderUseCase(), STATUS_CLASS, workOrderDocumentNumber(), WorkOrderStatusBadgeProps, KnowledgeKitBanner() (+132 more)
+Nodes (143): nextPayrollStatus(), payrollStatusLabels(), PayrollTable(), PayrollTableProps, ActivityJournalFiltersBar(), ActivityJournalRow, ActivityLogJournal(), ActivityLogJournalProps (+135 more)
 
 ### Community 290 - "react-native-nitro-modules"
-Cohesion: 0.21
-Nodes (10): createMotorRepository(), dedupeMotors(), generateWebLocalId(), mapMotor(), motorDocRef(), motorRepository, readLocalId(), readNumber() (+2 more)
+Cohesion: 0.19
+Nodes (15): AutocompleteInputProps, useAutocomplete(), UseAutocompleteArgs, UseAutocompleteReturn, BASE, getNativeInputProps(), NativeProps, resolveAutocompleteType() (+7 more)
 
 ### Community 291 - "ai-prompts.ts"
 Cohesion: 0.15
@@ -1720,8 +1737,8 @@ Cohesion: 0.29
 Nodes (6): exports, main, name, private, types, version
 
 ### Community 293 - "react-native-svg"
-Cohesion: 0.32
-Nodes (9): ClientEntity, CreateClientInput, UpdateClientInput, createClientSchema, clientRef(), ClientRepository, clientsRef(), createClientRepository() (+1 more)
+Cohesion: 0.07
+Nodes (50): CreateDonorInput, upsertInventoryItemSchema, persistDonorAdmin(), ExistingIndex, AdminPlanWritersContext, createAdminPlanWriters(), INVENTORY_RECORD_TYPE, loadMotors() (+42 more)
 
 ### Community 294 - "react-native-web"
 Cohesion: 0.18
@@ -1732,52 +1749,52 @@ Cohesion: 0.15
 Nodes (12): KPIStripItem, KPIStripItemProps, useScheme(), QueueCompactCard, QueueCompactCardProps, useScheme(), RangeSegment, RangeSegmentProps (+4 more)
 
 ### Community 296 - "tailwind-merge"
-Cohesion: 0.23
-Nodes (8): reportMetric(), WebVitalsReporter(), AppProvidersProps, QueryProvider(), QueryProviderProps, ThemeProvider(), ThemeProviderProps, ToastProvider()
+Cohesion: 0.16
+Nodes (17): useMotorSyncBridge(), UseMotorSyncBridgeParams, initialMotorSyncState, MotorSyncMeta, MotorSyncStatus, useMotorSync(), UseMotorSyncParams, InviteApiErrorPayload (+9 more)
 
 ### Community 297 - "client.ts"
 Cohesion: 0.18
 Nodes (11): 4. Component and interaction language, Buttons, Cards, Center (+) — critical product rule, Charts, Current architecture (code), Filters, Hierarchy & presentations (+3 more)
 
 ### Community 298 - "purchase-store.ts"
-Cohesion: 0.05
-Nodes (55): AIAnimatedGlyph(), AIAnimatedGlyphProps, aiHref(), AIProvider(), AssistantContextValue, AssistantStore, isAiRoute(), useAssistantOptional() (+47 more)
+Cohesion: 0.07
+Nodes (50): AIAnimatedGlyph(), AIAnimatedGlyphProps, aiHref(), AIProvider(), AssistantContextValue, AssistantStore, isAiRoute(), useAssistant() (+42 more)
 
 ### Community 299 - "@tanstack/react-query-persist-client"
 Cohesion: 0.23
 Nodes (11): ObjectsLayout(), OrdersLayout(), FinanceLayout(), RootNavigator(), RootStack, RootStatusBar(), OrderTransitionProvider(), formSheetScreenOptions() (+3 more)
 
 ### Community 300 - "getColors"
-Cohesion: 0.20
-Nodes (19): billingIntervalFromPaddlePriceId(), handleSubscription(), handleTransactionCompleted(), processPaddleEvent(), readCompanyIdFromCustomData(), SubscriptionEvent, isProPaddleStatus(), paddleEventTimestamp() (+11 more)
+Cohesion: 0.03
+Nodes (89): PasswordStrengthField(), FooterLink(), SidebarFooter(), SidebarFooterProps, statusDotClass, MotorHistoryDialog(), MotorWarrantyCard(), MotorWarrantyCardProps (+81 more)
 
 ### Community 301 - "zustand"
 Cohesion: 0.29
 Nodes (6): exports, main, name, private, types, version
 
 ### Community 305 - "nav-item-availability.ts"
-Cohesion: 0.20
-Nodes (13): ImportPhase, ImportValueSource, INVENTORY_IMPORT_STATUSES, InventoryImportRow, InventoryImportStatus, createInventoryImportRepository(), mapImportJob(), writeRowsToSubcollection() (+5 more)
+Cohesion: 0.10
+Nodes (28): classifyRow(), containsTotalWord(), discoverSheet(), discoverTables(), filledCells(), folded(), isRepeatedHeader(), isSectionHeading() (+20 more)
 
 ### Community 306 - "scan-detection-overlay.tsx"
 Cohesion: 0.11
 Nodes (18): AnyClass, CameraPreviewRepresentable, CameraPreviewUIView, Coordinator, AVCaptureVideoPreviewLayer, CGFloat, CGPoint, Void (+10 more)
 
 ### Community 307 - "mc-animated-sparkline.tsx"
-Cohesion: 0.22
-Nodes (15): getFirebaseFunctions(), CheckoutResponse, claimMarketingCheckout(), ClaimMarketingResponse, openBillingPortal(), PortalResponse, startMarketingProCheckout(), startProCheckout() (+7 more)
+Cohesion: 0.15
+Nodes (21): InventoryCollectionSync(), InventoryCollectionSyncProps, syncSpecificCategoryForCollection(), useInventoryCollectionSync(), UseInventoryCollectionSyncParams, collectionBasePath(), collectionMatchesCategory(), InventoryCollectionContext (+13 more)
 
 ### Community 309 - "demo-reset.server.ts"
-Cohesion: 0.24
-Nodes (13): canonicalizeDuration(), fromOffer(), isFreeTrial(), isIntroductory(), normalizePeriodUnit(), offerDuration(), PERIOD_UNITS, RawIntroPeriod (+5 more)
+Cohesion: 0.29
+Nodes (18): KnowledgeEvent, applyFactToPatterns(), fieldOpsFromRecord(), patternsFromDocumentPrinted(), patternsFromFieldCommitted(), patternsFromImportCorrection(), patternsFromInventorySoldTogether(), patternsFromMotorSold() (+10 more)
 
 ### Community 311 - "clsx"
 Cohesion: 0.07
 Nodes (29): Accessibility, Available Domains, Available Stacks, Common Rules for Professional UI, Example Workflow, How to Use This Skill, Icons & Visual Elements, Interaction (+21 more)
 
 ### Community 312 - "company-service.ts"
-Cohesion: 0.35
-Nodes (10): normalizeDocumentationChecklist(), normalizeEngineIntakeProgress(), createEngineIntakeRepository(), mapAssignment(), mapEvent(), mapInspection(), mapJob(), mapPhoto() (+2 more)
+Cohesion: 0.15
+Nodes (13): catalog, CatalogEntry, groupOrder, groupTitles, matchesFilter(), matchesQuery(), quickCategories, recentlyViewedEngines (+5 more)
 
 ### Community 313 - "firebase-admin"
 Cohesion: 0.06
@@ -1788,28 +1805,28 @@ Cohesion: 0.20
 Nodes (10): 1. Data layer, 2. Metric calculation, 3. Ranking, 4. Home view model, 5. Chart system, 6. UI implementation, 7. Animation, 8. Personalization (+2 more)
 
 ### Community 316 - "sync-errors.ts"
-Cohesion: 0.42
-Nodes (7): AnimatedPolyline, buildPoints(), estimatePathLength(), McAnimatedSparkline(), McAnimatedSparklineProps, buildSparklinePoints(), sanitizeChartSeries()
+Cohesion: 0.09
+Nodes (35): NotificationsSettingsScreen(), isSameStackInboxReturn(), notificationInboxHref(), NotificationInboxReturnTo, OpenInboxRouter, openNotificationInbox(), resolveInboxReturnToFromSegments(), resolveInboxReturnToFromTab() (+27 more)
 
 ### Community 317 - "feature-icon.tsx"
-Cohesion: 0.13
-Nodes (26): CATALOG_HEADERS, importDateToDate(), isUnreadableDate(), looksLikeImportDate(), ParseDateOptions, ParsedImportDate, parseImportDate(), toIso() (+18 more)
+Cohesion: 0.21
+Nodes (19): POST(), KnowledgeEventDraft, adminToDate(), applyOpsToPatterns(), backfillFromWorkOrders(), companyRef(), emit(), ensureKnowledgeHistorySeeded() (+11 more)
 
 ### Community 318 - "main"
-Cohesion: 0.13
-Nodes (19): analyzeTable(), computeStats(), dominantType(), analyze(), analyzeMessy(), HEADERS, MESSY_HEADERS, MESSY_ROWS (+11 more)
+Cohesion: 0.11
+Nodes (18): body, callout, caption1, caption2, fontWeight, footnote, greeting, headline (+10 more)
 
 ### Community 319 - "save-company-app-config.ts"
-Cohesion: 0.32
-Nodes (7): appleAuthorize, appleTokenRequests, attachPageListeners(), events, findInvalidClient(), handlerUrls, parseUrl()
+Cohesion: 0.09
+Nodes (51): ensureLocationBalancesSeeded(), relocateStockUseCase(), syncItemLocationAssignmentUseCase(), loadUrlsFromFirestore(), presenceRepository, getFirestoreDb(), createBarcodeMappingRepository(), seedFreeCompanyBilling() (+43 more)
 
 ### Community 320 - "core-chat-runtime.tsx"
 Cohesion: 0.16
 Nodes (10): BackgroundExecutionAppDelegate, BackgroundExecutionModule, IntakeBackgroundExecution, Int, String, EngineIntakeCameraModule, ExpoAppDelegateSubscriber, ExpoModulesCore (+2 more)
 
 ### Community 321 - "send-auth-email.ts"
-Cohesion: 0.14
-Nodes (23): formatExportDate(), parseExcelDateValue(), appendUniqueSheet(), brandLabel(), buildMotorExportWorkbook(), engineLabel(), engineSheetHeaders(), exportMotorsToExcelFile() (+15 more)
+Cohesion: 0.26
+Nodes (10): robots(), appHostRobotsDisallowPaths(), buildAppHostRobotsTxt(), marketingRobotsAllowPaths(), marketingRobotsDisallowPaths(), privateAppRobotsPaths(), SHARED_DISALLOW, KEYS (+2 more)
 
 ### Community 350 - "marketingCanonicalRoutes"
 Cohesion: 0.40
@@ -1820,16 +1837,16 @@ Cohesion: 0.08
 Nodes (25): AI output, Approved product decisions, Architecture, AutoCore internationalization architecture, Catalog organization, Current state, `documentLocale`, Documents (+17 more)
 
 ### Community 352 - "phone-inventory-screen.tsx"
-Cohesion: 0.13
-Nodes (19): commitStocktakeUseCase(), itemRepository, movementRepository, stockLevelRepository, stocktakeRepository, StocktakeWorkspace(), warehouseRepository, STOCKTAKE_STATUSES (+11 more)
+Cohesion: 0.19
+Nodes (14): MotorDocumentsDialog(), fetchWarrantyIdFromApi(), MotorSaleDocumentsPayload, MotorSaleDocumentsStatus, parseClientNameFromComment(), persistWarrantyId(), readCachedWarrantyId(), useMotorSaleDocuments() (+6 more)
 
 ### Community 353 - "warehouse-repository.ts"
 Cohesion: 0.10
 Nodes (19): hasVisibleLeaf(), HERE, INTAKE_WIDGET_STATES, ISLAND_ENVIRONMENTS, ISLAND_SLOTS, ISLAND_STATES, MOBILE_ROOT, PAY_WIDGET_STATES (+11 more)
 
 ### Community 354 - "setup-wizard-copy.ts"
-Cohesion: 0.19
-Nodes (19): clampNumber(), clampWatermarkConfig(), defaultWatermarkForTheme(), DOCUMENT_WATERMARK_BLENDS, DOCUMENT_WATERMARK_POSITIONS, DOCUMENT_WATERMARK_TYPES, DocumentWatermarkBlend, DocumentWatermarkPosition (+11 more)
+Cohesion: 0.08
+Nodes (30): buildHomeFacts(), countCreatedInRange(), gate(), HomeEarningsFacts, HomeEngineFacts, HomeFacts, HomeIntakeFacts, HomeOrderFacts (+22 more)
 
 ### Community 355 - "Design Audit"
 Cohesion: 0.10
@@ -1856,12 +1873,12 @@ Cohesion: 0.15
 Nodes (13): After layout edits, Data, Deep links, Design, Device QA, Floor (`AutoCoreToday`), Intake (`AutoCoreIntake`), Island (+5 more)
 
 ### Community 361 - "include"
-Cohesion: 0.39
-Nodes (7): AuthEmailApiError, PasswordResetDelivery, postAuthEmailApi(), readAuthEmailApiError(), sendPasswordResetViaApi(), sendVerificationEmailViaApi(), verifyEmailCodeViaApi()
+Cohesion: 0.06
+Nodes (56): Permission, POST(), POST(), PUT(), DELETE(), PATCH(), RouteContext, GET() (+48 more)
 
 ### Community 362 - "pointer-to-cell.ts"
-Cohesion: 0.11
-Nodes (24): CommitLoopOptions, CommitStep, runCommitToCompletion(), analyzeBusinessFile(), AnalyzeResponse, authorizedPost(), commitBusinessPlan(), CommitPlanResponse (+16 more)
+Cohesion: 0.08
+Nodes (48): validateField(), AI_MUST_NOT_GUESS, collectPendingNormalizations(), mayApplyNormalization(), NormalizationOutcome, normalizeDeterministically(), outcome(), PendingNormalization (+40 more)
 
 ### Community 364 - "Agent Skill: Principal UI/UX Architect & Motion Choreographer (Awwwards-Tier)"
 Cohesion: 0.11
@@ -1888,8 +1905,8 @@ Cohesion: 0.22
 Nodes (7): 1. Apple Developer — App Group, 2. Main App ID, 3. Widget extension App ID, 4. Refresh provisioning (CLI), Config reference, Live Activities — iOS (AutoCore Mobile), Symptom
 
 ### Community 370 - "errors.ts"
-Cohesion: 0.23
-Nodes (10): clampContextMenuPosition(), GridContextMenu(), GridContextMenuItem(), GridContextMenuItemProps, GridContextMenuProps, GridContextMenuSeparator(), AppContextMenuProvider(), AppContextMenuProviderProps (+2 more)
+Cohesion: 0.24
+Nodes (11): IntakeBayFilter, isHub(), parseIntakeBayFilter(), parseWidgetDeepLink(), queryOf(), WIDGET_URL, WidgetDeepLink, OperationsLiveActivityHost() (+3 more)
 
 ### Community 371 - "expo-clipboard"
 Cohesion: 0.14
@@ -1916,8 +1933,8 @@ Cohesion: 0.13
 Nodes (15): Adding a new notification (3 steps), API routes, Architecture, AutoCore Notification Engine, Core modules (web), Data model (Firestore), Deep links, Design decisions (+7 more)
 
 ### Community 377 - "Vercel Deployment"
-Cohesion: 0.13
-Nodes (15): Authentication redirect fails, Deployment procedure, Domains, Environment separation, Firebase Admin initialization fails, Firebase release coordination, PDF generation fails, Post-deploy smoke test (+7 more)
+Cohesion: 0.12
+Nodes (16): Authentication redirect fails, Demo (`/demo`) fails or times out, Deployment procedure, Domains, Environment separation, Firebase Admin initialization fails, Firebase release coordination, PDF generation fails (+8 more)
 
 ### Community 378 - "2. THE COMBINATORIAL VARIATION ENGINE"
 Cohesion: 0.14
@@ -1952,8 +1969,8 @@ Cohesion: 0.15
 Nodes (13): AutoCore, Core modules, Documentation, Environment groups, Firebase deployment, Local setup, Operational notes, Product surfaces (+5 more)
 
 ### Community 388 - "expo-linking"
-Cohesion: 0.32
-Nodes (10): isSameStackInboxReturn(), notificationInboxHref(), NotificationInboxReturnTo, OpenInboxRouter, openNotificationInbox(), resolveInboxReturnToFromSegments(), resolveInboxReturnToFromTab(), resolveNotificationInboxReturnHref() (+2 more)
+Cohesion: 0.17
+Nodes (18): ComposerVehicleForm, useWorkOrderComposerOptions(), vehiclesInContext(), filterCatalogItems(), inventoryToChipOption(), isLaborCatalogItem(), LABOR_INVENTORY_TYPES, laborCatalogOptions() (+10 more)
 
 ### Community 389 - "4. DESIGN ENGINEERING DIRECTIVES (Bias Correction)"
 Cohesion: 0.17
@@ -1980,8 +1997,8 @@ Cohesion: 0.17
 Nodes (12): Before an acquisition handoff, Before committing, Binary assets, Cleanup rule, Commit, Customer data, Dependency folders, Do not commit (+4 more)
 
 ### Community 395 - "tasteskill: Anti-Slop Frontend Skill"
-Cohesion: 0.13
-Nodes (15): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 1.A Dial Inference (design read → dial values) (+7 more)
+Cohesion: 0.18
+Nodes (11): 0.A Read these signals first, 0.B Output a one-line "Design Read" before generating, 0. BRIEF INFERENCE (Read the Room Before Anything Else), 0.C If the brief is ambiguous, ask one question, do not guess, 0.D Anti-Default Discipline, 13. OUT OF SCOPE, 14. FINAL PRE-FLIGHT CHECK, 2.A When to reach for a real design system (use official packages) (+3 more)
 
 ### Community 396 - "shadcn/ui"
 Cohesion: 0.18
@@ -2016,8 +2033,8 @@ Cohesion: 0.20
 Nodes (9): 1. Protocol Overview, 2. Absolute Negative Constraints (Banned Elements), 3. Typographic Architecture, 4. Color Palette (Warm Monochrome + Spot Pastels), 5. Component Specifications, 6. Iconography & Imagery Directives, 7. Subtle Motion & Micro-Animations, 8. Execution Protocol (+1 more)
 
 ### Community 404 - "tool-activity.tsx"
-Cohesion: 0.13
-Nodes (10): CameraServiceError, cannotAddInput, cannotAddOutput, noDevice, URL, AVCapturePhoto, AVCaptureResolvedPhotoSettings, Data (+2 more)
+Cohesion: 0.40
+Nodes (10): clean(), compareUnits(), engineUnitLabel(), engineUnitLocation(), EngineVariant, engineVariantKey(), engineVariantTitle(), groupEnginesByVariant() (+2 more)
 
 ### Community 405 - "Mobile Startup Benchmark"
 Cohesion: 0.20
@@ -2084,7 +2101,7 @@ Cohesion: 0.25
 Nodes (7): 1. Apple Developer — App ID capability, 2. Rebuild the iOS app, 3. Deploy web (AASA file), 4. Verify on iPhone, Android (optional), Troubleshooting, Universal Links (iOS) / App Links (Android)
 
 ### Community 421 - "AutoCore Mobile — Production UX / UI Audit"
-Cohesion: 0.10
+Cohesion: 0.12
 Nodes (17): AutoCore Mobile — Production UX / UI Audit, Closing judgment, Executive verdict, Issue index (quick reference), L1 — Dead routes and internal tools in router, L2 — README claims screens are not built, L3 — Password strength uses hardcoded gold `#d39b23`, L4 — English leftovers in UI kit (+9 more)
 
 ### Community 424 - "APPENDICES - Real Source-Backed Reference Material"
@@ -2176,8 +2193,8 @@ Cohesion: 0.29
 Nodes (7): 2.1 Context, 2.2 Summary, 2.3 Trends, 2.4 Needs attention, 2.5 Quick actions, 2.6 Recent activity, 2. Home structure
 
 ### Community 447 - "Recommended fix order (no code — sequencing only)"
-Cohesion: 0.21
-Nodes (12): FALLBACK, GreetingVariant, HOME_GREETING_MAX_LENGTH, HOME_GREETINGS, HomeGreeting, HomeGreetingPeriod, homeGreetingSeed(), PERIOD_BOUNDS (+4 more)
+Cohesion: 0.09
+Nodes (28): AccountingWorkspace, ActivityWorkspace, CachedRoutePanel(), CachedRoutePanelProps, DashboardRouteCache(), DashboardRouteCacheProps, DocumentsWorkspace, DonorsWorkspace (+20 more)
 
 ### Community 449 - "7. DIAL DEFINITIONS (Technical Reference)"
 Cohesion: 0.50
@@ -2220,24 +2237,24 @@ Cohesion: 0.22
 Nodes (8): GlassHUDOverlay, Bool, String, Void, AVFoundation, Combine, SwiftUI, UIKit
 
 ### Community 462 - "sidebar-preferences.ts"
-Cohesion: 0.52
-Nodes (5): orderShowsOilIntervalTag(), textMatches(), resolveApplicableDocumentSlugs(), resolveDocumentsForOrderCompleted(), resolveDocumentsForOrderCreated()
+Cohesion: 0.29
+Nodes (9): POST(), autoFinalizeIntakePhotoFromStorage(), INTAKE_PHOTO_EXTENSIONS, IntakePhotoStorageRef, isIntakePhotoStoragePath(), parseIntakePhotoStoragePath(), isIntakePhotoWorkerRequest(), readIntakePhotoWorkerSecret() (+1 more)
 
 ### Community 464 - "permissions.ts"
 Cohesion: 0.22
 Nodes (4): capturePath, optionsPath, root, sessionPath
 
 ### Community 465 - "intake-upload-progress.ts"
-Cohesion: 0.13
-Nodes (17): nextAttemptLabel(), VerificationMonitor(), clearVerificationsFor(), hasFailedVerification(), listeners, NO_VERIFICATIONS, PendingVerification, pendingVerificationsFor() (+9 more)
+Cohesion: 0.42
+Nodes (7): AnimatedPolyline, buildPoints(), estimatePathLength(), McAnimatedSparkline(), McAnimatedSparklineProps, buildSparklinePoints(), sanitizeChartSeries()
 
 ### Community 467 - "send-auth-email.ts"
 Cohesion: 0.33
 Nodes (6): 6.1 Normal business day, 6.2 High sales day, 6.3 Documentation / intake problem, 6.4 Low activity, 6.5 Manager vs owner vs mechanic, 6. Examples of dynamic states
 
 ### Community 468 - "mock-search-catalog.ts"
-Cohesion: 0.29
-Nodes (7): **/*.mts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, include, **/*.ts, **/*.tsx
+Cohesion: 0.28
+Nodes (5): buildSamples(), outDir, apiKey, [recipient, templateKey = "verification-code"], sample
 
 ### Community 469 - "@tanstack/react-virtual"
 Cohesion: 0.40
@@ -2248,16 +2265,20 @@ Cohesion: 0.29
 Nodes (6): exports, main, name, private, types, version
 
 ### Community 471 - "performance-tier-provider.tsx"
-Cohesion: 0.03
-Nodes (74): ActionRoute(), styles, TabLayout(), ACTION_ORDER, ActionDisc(), ActionDiscProps, ActionSheetHost(), FAB_SPRING (+66 more)
+Cohesion: 0.23
+Nodes (8): reportMetric(), WebVitalsReporter(), AppProvidersProps, QueryProvider(), QueryProviderProps, ThemeProvider(), ThemeProviderProps, ToastProvider()
 
 ### Community 473 - "open-engine-intake.ts"
-Cohesion: 0.38
-Nodes (4): ImportProgressBanner(), ImportProgressBannerProps, MotorImportProgressBanner(), WarehouseImportProgressBanner()
+Cohesion: 0.27
+Nodes (8): GET(), RouteContext, CreateWarrantyInput, EngineWarranty, WARRANTY_STATUSES, WarrantyStatus, findCompanyName(), findWarrantyByToken()
 
 ### Community 474 - "firestore-commit-port.ts"
 Cohesion: 0.29
 Nodes (3): hybridPath, openIapPath, root
+
+### Community 475 - "sold-workspace.tsx"
+Cohesion: 0.40
+Nodes (8): CompositionRouter, navigateEditOrderWithMotor(), navigateEditOrderWithPart(), navigateNewOrderWithMotor(), navigateNewOrderWithPart(), ENTITY_LABELS, openEntityLink(), ScanRouter
 
 ### Community 476 - "optimize-intake-photo.ts"
 Cohesion: 0.18
@@ -2268,8 +2289,8 @@ Cohesion: 0.15
 Nodes (13): CameraSendableBox, CameraSessionState, capturing, configuring, idle, permissionDenied, requestingPermission, running (+5 more)
 
 ### Community 478 - "@autocore/domain-search"
-Cohesion: 0.47
-Nodes (5): KnowledgePatternKind, buildExplanation(), BuildExplanationParams, pluralizeObservations(), windowSuffix()
+Cohesion: 0.44
+Nodes (8): itemMatchesPayload(), resolveBarcodeFromLocalCatalog(), toMobileScanItem(), compactBarcode(), compactCode(), extractGs1Primary(), normalizeScanPayload(), scanPayloadKey()
 
 ### Community 479 - "index.ts"
 Cohesion: 0.29
@@ -2280,24 +2301,20 @@ Cohesion: 0.40
 Nodes (5): AiSessionState, AiUserTurn, asTurn(), turnId(), useAiSessionStore
 
 ### Community 483 - "lucide-react-native"
-Cohesion: 0.04
-Nodes (80): SubscriptionRequiredScreen(), SubscriptionRequiredScreenProps, Action, CompanyProCard(), CompanyProCardProps, footerFor(), resolveAction(), paywallDuration (+72 more)
+Cohesion: 0.02
+Nodes (215): useShimmer(), parseFeature(), PaywallRoute(), immersive, PlaygroundLayout(), AutocompleteChipCopy(), AutocompleteChipProps, autocompleteChipTitle() (+207 more)
 
 ### Community 484 - "react-native-svg"
-Cohesion: 0.60
-Nodes (5): getPanelTriggers(), PanelLifecycleOptions, resumePanelAnimations(), suspendPanelAnimations(), usePanelLifecycle()
-
-### Community 485 - "cobe"
-Cohesion: 0.50
-Nodes (3): SkeletonRow, SkeletonRowProps, useScheme()
+Cohesion: 0.29
+Nodes (8): languageAlternates(), sitemap(), SITEMAP_PRIORITY, cache, contentLastModified(), gitLastModified(), SHARED_SOURCES, SOURCES
 
 ### Community 486 - "trends.ts"
-Cohesion: 0.50
-Nodes (4): dom, dom.iterable, esnext, lib
+Cohesion: 0.04
+Nodes (69): KnowledgeKitBanner(), formatConfidence(), KnowledgeSuggestionChips(), KnowledgeSuggestionChipsProps, BusyKind, DOC_TYPE_BY_SLUG, DocumentActionRow(), DocumentActionRowProps (+61 more)
 
 ### Community 487 - "@tanstack/react-query"
-Cohesion: 0.33
-Nodes (6): 13. Data states, Empty, Error, Loading, Offline, Partial data
+Cohesion: 0.11
+Nodes (29): AppLocale, getLocaleMetadata(), LOCALE_METADATA, LocaleMetadata, normalizeLocale(), resolveLocale(), TextDirection, DemoAuthPayload (+21 more)
 
 ### Community 488 - "intake-job-row.tsx"
 Cohesion: 0.24
@@ -2308,16 +2325,16 @@ Cohesion: 0.29
 Nodes (4): args, forwarded, patch, ROOT
 
 ### Community 490 - "@shopify/flash-list"
-Cohesion: 0.18
-Nodes (8): BarChart, FinInlineChartProps, FinInlineChartVariant, GaugeChart, LineChart, StepChart, FinSparkline, FinanceTrendId
+Cohesion: 0.36
+Nodes (9): clearDemoSessionMarker(), DemoResetOptions, dispatchDemoReset(), hasDemoResetDone(), hasDemoSessionMarker(), installDemoExitReset(), markDemoResetDone(), primeDemoResetToken() (+1 more)
 
 ### Community 491 - "financial-operation-repository.ts"
 Cohesion: 0.13
 Nodes (14): Compression, Continue never blocks on the network, Device acceptance tests, Engine intake photo sync, Idempotency, Known gaps, Layer boundaries, Leaving the app (+6 more)
 
 ### Community 492 - "expo-status-bar"
-Cohesion: 0.17
-Nodes (9): ClaimableBadge, ClaimableBadgeProps, useScheme(), SheetScaffold, SheetScaffoldProps, ThroughputCaption, ThroughputCaptionProps, useScheme() (+1 more)
+Cohesion: 0.15
+Nodes (10): ClaimableBadge, ClaimableBadgeProps, useScheme(), HighlightCard, HighlightCardProps, useScheme(), RecentWorkspaceChip, RecentWorkspaceChipProps (+2 more)
 
 ### Community 493 - "local-inventory-resolve.ts"
 Cohesion: 0.27
@@ -2329,15 +2346,15 @@ Nodes (9): EngineIntakeCamera(), EngineIntakeCameraCaptureEvent, EngineIntakeCam
 
 ### Community 495 - "map-to-mobile-card.ts"
 Cohesion: 0.48
-Nodes (6): getPaddleLiveCidrs(), ipv4ToNumber(), isAllowedPaddleWebhookRequest(), isIpv4InCidr(), normalizeIpv4(), PaddleIpsResponse
+Nodes (5): uploadCompanyLogo(), authorizedFetch(), updateAccountProfile(), uploadUserAvatar(), prepareLogoFile()
+
+### Community 498 - "row-media-viewer.tsx"
+Cohesion: 0.67
+Nodes (5): compactAlphanumeric(), digitsOnly(), matchesSearchQuery(), normalizeSearchQuery(), tokenMatch()
 
 ### Community 499 - "engine-facts.ts"
 Cohesion: 0.47
 Nodes (5): is_configured(), AppHandle, R, Result, setup()
-
-### Community 500 - "inventory-import.ts"
-Cohesion: 0.08
-Nodes (42): demoPassword(), ensureDemoAuthUser(), ensureDemoWorkspace(), initAdmin(), main(), POST(), DemoAuthResponse, POST() (+34 more)
 
 ### Community 501 - "streamdown"
 Cohesion: 0.40
@@ -2347,29 +2364,81 @@ Nodes (5): Commands, Remaining work before public distribution, Shipping AutoCor
 Cohesion: 0.40
 Nodes (4): main, name, types, version
 
+### Community 505 - "next"
+Cohesion: 0.47
+Nodes (5): KnowledgePatternKind, buildExplanation(), BuildExplanationParams, pluralizeObservations(), windowSuffix()
+
 ### Community 508 - "@autocore/domain-search"
-Cohesion: 0.80
-Nodes (3): isDenseInventoryChromeRoute(), isDocumentImportReviewRoute(), shouldShowDocumentImportTopBarIsland()
+Cohesion: 0.47
+Nodes (4): PreparedPhotoResponse, PreparedPhotoStep, resolvePreparedPhotoStep(), trimmed()
 
 ### Community 511 - "expo-widgets"
-Cohesion: 0.67
-Nodes (3): I18N_NAMESPACES, I18nNamespace, isI18nNamespace()
+Cohesion: 0.29
+Nodes (5): listeners, LocationOpsPending, PendingAssignAsset, PendingFillLocation, PendingRelocateItem
 
 ### Community 512 - "ai-ui-blocks.ts"
 Cohesion: 0.22
 Nodes (7): AiActionBlock, AiConfirmationBlock, AiMetricBlock, AiObjectCardBlock, AiTextBlock, AiTimelineBlock, AiUiBlock
 
-### Community 519 - "9. Quick actions"
+### Community 513 - "TeamScreen"
 Cohesion: 0.12
-Nodes (17): getLocaleMetadata(), LOCALE_METADATA, LocaleMetadata, normalizeLocale(), resolveLocale(), SUPPORTED_LOCALES, TextDirection, isMarketingLocale() (+9 more)
+Nodes (22): DocumentImportScreen(), ScanDocumentUploadResult, uploadScanDocument(), appendLocalFile(), createLocalFileFormData(), formatRelativeTime(), loadRecentScans(), mapStored() (+14 more)
+
+### Community 514 - "warehouse-search.ts"
+Cohesion: 0.62
+Nodes (5): buildLoginUrl(), isLoopingDestination(), NON_DESTINATION_PREFIXES, resolvePostLoginPath(), sanitizeReturnTo()
+
+### Community 516 - "expo-apple-authentication"
+Cohesion: 0.50
+Nodes (7): buildPalette(), emailMasthead, flattenOnHex(), mix(), parseHex(), parseRgba(), toHex()
+
+### Community 519 - "9. Quick actions"
+Cohesion: 0.67
+Nodes (5): authHeaders(), uploadGridRowPhoto(), uploadGridRowPhotos(), uploadViaApi(), uploadViaSignedUrl()
+
+### Community 520 - "mc-animated-sparkline.tsx"
+Cohesion: 0.53
+Nodes (4): AdjustAttempt, resolveAdjustIdempotencyKey(), ResolveAdjustKeyInput, resolve()
+
+### Community 521 - "react-native-gesture-handler"
+Cohesion: 0.33
+Nodes (6): 13. Data states, Empty, Error, Loading, Offline, Partial data
+
+### Community 522 - "engine-facts.ts"
+Cohesion: 0.60
+Nodes (4): formatPlatformPhone(), getPlatformContacts(), PlatformContacts, readEnv()
 
 ### Community 523 - "company-switch-overlay.tsx"
 Cohesion: 0.28
 Nodes (6): ScrollVelocityContainer(), ScrollVelocityContext, ScrollVelocityRowImpl(), ScrollVelocityRowImplProps, ScrollVelocityRowProps, wrap()
 
+### Community 524 - "react-native-screens"
+Cohesion: 0.19
+Nodes (5): metadata, metadata, metadata, metadata, privateRouteMetadata()
+
+### Community 525 - "include"
+Cohesion: 0.29
+Nodes (7): **/*.mts, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, include, **/*.ts, **/*.tsx
+
+### Community 526 - "return-to.ts"
+Cohesion: 0.70
+Nodes (3): scorePattern(), ScorePatternInput, wilsonLowerBound()
+
 ### Community 527 - "autocore-ai-button.tsx"
 Cohesion: 0.40
 Nodes (4): main, name, types, version
+
+### Community 529 - "parseMotorQualityGrade"
+Cohesion: 0.17
+Nodes (9): RoleBadge, RoleBadgeProps, useScheme(), SheetScaffold, SheetScaffoldProps, SkeletonRow, SkeletonRowProps, useScheme() (+1 more)
+
+### Community 533 - "use-panel-lifecycle.ts"
+Cohesion: 0.40
+Nodes (5): 8. Needs attention, Appearance rules on Home, Attention item model, Current → target mapping, Severity
+
+### Community 535 - "9. Quick actions"
+Cohesion: 0.80
+Nodes (3): isDenseInventoryChromeRoute(), isDocumentImportReviewRoute(), shouldShowDocumentImportTopBarIsland()
 
 ### Community 536 - "@autocore/billing"
 Cohesion: 0.18
@@ -2379,17 +2448,13 @@ Nodes (13): classify(), deep_link_to_product_url(), deep_links_cannot_smuggle_a_
 Cohesion: 0.39
 Nodes (6): hexEquals(), signStripePayload(), StripeSignatureInput, BODY, header(), verifyStripeSignature()
 
-### Community 541 - "1. THE THREE DIALS (Core Configuration)"
-Cohesion: 0.40
-Nodes (5): 8. Needs attention, Appearance rules on Home, Attention item model, Current → target mapping, Severity
-
 ### Community 546 - "nanoid"
 Cohesion: 0.12
 Nodes (15): Common pitfalls, Local testing, Prerequisites, Receive Paddle webhooks securely in Next.js, Related docs, Step 1: Create a notification destination, Step 2: Create a Paddle SDK helper, Step 3: Write the Route Handler (+7 more)
 
-### Community 548 - "scan-ai-client.server.ts"
-Cohesion: 0.08
-Nodes (46): asArray(), dispatch(), ImportAiBody, POST(), callOpenRouterJson(), callImportAi(), callWarehouseImportAi(), ImportAiRequest (+38 more)
+### Community 550 - "MemoryStorage"
+Cohesion: 0.20
+Nodes (5): MemoryStorage, seedV1(), storage, storageModule(), V1_SESSION
 
 ### Community 552 - "universal-links.ts"
 Cohesion: 0.17
@@ -2407,13 +2472,9 @@ Nodes (14): Combining with checkout, Common pitfalls, Country detection, Country
 Cohesion: 0.13
 Nodes (14): Common pitfalls, Handling scheduled changes, Initial backfill, Map app users to Paddle customers, Prerequisites, Process subscription events, Querying mirrored state, Related docs (+6 more)
 
-### Community 564 - "browse-tile.tsx"
-Cohesion: 0.50
-Nodes (3): BrowseTile, BrowseTileProps, useScheme()
-
 ### Community 565 - "WorkOsColorScheme"
-Cohesion: 0.15
-Nodes (10): HighlightCard, HighlightCardProps, useScheme(), RecentWorkspaceChip, RecentWorkspaceChipProps, useScheme(), RoleBadge, RoleBadgeProps (+2 more)
+Cohesion: 0.50
+Nodes (4): 1.A Dial Inference (design read → dial values), 1.B Use-Case Presets, 1.C How the Dials Drive Output, 1. THE THREE DIALS (Core Configuration)
 
 ### Community 567 - "Deep links — Universal Links and web fallback"
 Cohesion: 0.15
@@ -2427,6 +2488,10 @@ Nodes (11): args, discover(), files, listOnly, mobileFiles, prefixes, PRUNE, ROO
 Cohesion: 0.13
 Nodes (14): Choose your `prorationBillingMode`, Common pitfalls, Handling payment failure, How `paddle.subscriptions.update` handles items, Prerequisites, Preview before committing, Related docs, Same-billing-interval rule for items (+6 more)
 
+### Community 573 - "lib"
+Cohesion: 0.50
+Nodes (4): dom, dom.iterable, esnext, lib
+
 ### Community 576 - "tool-activity.tsx"
 Cohesion: 0.14
 Nodes (13): Common formatting traps, Common pitfalls, Display: format the raw amount yourself, How `paddle.transactions.list` works, Pagination — cursor pattern, Prerequisites, Related docs, Render the user's billing history in Next.js (+5 more)
@@ -2439,6 +2504,14 @@ Nodes (6): args, ENV_FILE, privateKeyPem, resolvedP8, ROOT, VARS
 Cohesion: 0.20
 Nodes (7): OutboxHealthChip, OutboxHealthChipProps, useScheme(), SheetHeader, SheetHeaderProps, useScheme(), WorkOsTypeRole
 
+### Community 581 - "check-seo-origins.mjs"
+Cohesion: 0.33
+Nodes (5): checkOrigin(), EXPECTED, normalizeOrigin(), problems, resolved
+
+### Community 582 - "@autocore/org"
+Cohesion: 0.50
+Nodes (3): IntakeJobTile, IntakeJobTileProps, useScheme()
+
 ### Community 583 - "zustand"
 Cohesion: 0.47
 Nodes (5): appOrigin(), documentFunctions, kickQueue(), onDocumentGenerationJobWrite, workerSecret()
@@ -2447,6 +2520,10 @@ Nodes (5): appOrigin(), documentFunctions, kickQueue(), onDocumentGenerationJobW
 Cohesion: 0.40
 Nodes (3): ENFORCED, PREVIOUSLY_OVERSOLD, SOURCE
 
+### Community 585 - "engine-intake-camera"
+Cohesion: 0.50
+Nodes (3): ThroughputCaption, ThroughputCaptionProps, useScheme()
+
 ### Community 586 - "Required environment variables"
 Cohesion: 0.20
 Nodes (10): AI, Application URLs, Billing, Documents, Email, Engine intake photos, Firebase Admin, Firebase client (+2 more)
@@ -2454,6 +2531,10 @@ Nodes (10): AI, Application URLs, Billing, Documents, Email, Engine intake photo
 ### Community 591 - "compose"
 Cohesion: 0.39
 Nodes (7): compose(), font(), main(), wrap(), FreeTypeFont, Image, ImageDraw
+
+### Community 597 - "expo-background-task"
+Cohesion: 0.50
+Nodes (3): SkeletonBlock, SkeletonBlockProps, useScheme()
 
 ### Community 599 - "active-job-hero.tsx"
 Cohesion: 0.50
@@ -2555,45 +2636,45 @@ Nodes (7): app_host(), app_origin(), app_url(), desktop_user_agent(), Result, St
 Cohesion: 0.29
 Nodes (6): LegalDocument, LegalDocumentKey, legalDocuments, LegalSection, privacyDocument, termsDocument
 
+### Community 656 - "NHTSA vPIC client"
+Cohesion: 0.33
+Nodes (5): Call examples, Methods, NHTSA vPIC client, Run live examples, Run tests
+
+### Community 676 - "use-stick-to-bottom"
+Cohesion: 0.67
+Nodes (3): I18N_NAMESPACES, I18nNamespace, isI18nNamespace()
+
 ### Community 681 - "patch-expo-file-system-upload.mjs"
 Cohesion: 0.33
 Nodes (4): after, before, root, uploadPath
 
 ### Community 682 - "ai-prompts.ts"
-Cohesion: 0.11
-Nodes (52): ColumnMapping, createAutoColumnMapping(), detectEngineField(), EngineFieldMapping, isLikelySoldSheetName(), normalizeHeader(), parseSheetBrandEngine(), buildEngineRowsFromSheet() (+44 more)
+Cohesion: 0.10
+Nodes (58): commitMotorExcelImport(), normalizeSerial(), applyMotorImportJobUseCase(), ColumnMapping, createAutoColumnMapping(), detectEngineField(), EngineFieldMapping, isLikelySoldSheetName() (+50 more)
 
-### Community 683 - "page.tsx"
-Cohesion: 0.09
-Nodes (39): isKnownPayload(), normalizePayload(), recentScans, registry, resolveScanPayload(), itemMatchesPayload(), resolveBarcodeFromLocalCatalog(), toMobileScanItem() (+31 more)
-
-### Community 689 - "intake-job-tile.tsx"
-Cohesion: 0.50
-Nodes (3): IntakeJobTile, IntakeJobTileProps, useScheme()
-
-### Community 690 - "skeleton-block.tsx"
-Cohesion: 0.50
-Nodes (3): SkeletonBlock, SkeletonBlockProps, useScheme()
+### Community 686 - "core-chat-store.ts"
+Cohesion: 0.16
+Nodes (14): attachmentId(), CoreAttachment, fromAsset(), nameFrom(), pickCamera(), pickPhotos(), roomForAttachments(), CoreChatScreen() (+6 more)
 
 ## Knowledge Gaps
-- **5142 isolated node(s):** `ENTER_FADE`, `EXIT_FADE`, `sheetIn`, `sheetOut`, `PRESS_FADE_IN` (+5137 more)
+- **5190 isolated node(s):** `ENTER_FADE`, `EXIT_FADE`, `sheetIn`, `sheetOut`, `PRESS_FADE_IN` (+5185 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **137 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **138 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `button.tsx` to `useAuth`, `financial-operation-repository.ts`, `build-render-model.ts`, `dashboard-route-cache.tsx`, `firestore-commit-port.ts`, `mobile-download-experience.tsx`, `order-detail-screen.tsx`, `9. Quick actions`, `login-screen.tsx`, `index.ts`, `company-switch-overlay.tsx`, `app-providers.tsx`, `appearance-settings-screen.tsx`, `warehouse-location-repository.ts`, `admin.ts`, `login-screen.tsx`, `setup-wizard-ui.tsx`, `colors.ts`, `performance-tier-provider.tsx`, `cross-route-transition.ts`, `column-mapper.ts`, `apple-js-sign-in.ts`, `business-migration.tsx`, `purchase-store.ts`, `business-sidebar.tsx`, `auth-provider.tsx`, `use-mission-control-data.ts`, `inventory.ts`, `getFirestoreDb`, `snapshot-builders.ts`, `document-queue.ts`, `cross-route-transition.ts`, `work-order-composer.tsx`, `index.ts`, `auth-journey-coordinator.tsx`, `download-experience.tsx`, `module-grid.tsx`, `edit-profile-screen.tsx`, `generate-pdf.ts`, `modules-page-content.tsx`, `open-engine-intake.ts`, `subscription-registry.ts`, `mobile-client.ts`, `verify-warranty.server.ts`, `normalizer.ts`, `local-inventory-resolve.ts`, `errors.ts`, `order-composition-step.tsx`, `excel-column-mapping.ts`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
-- **Why does `value()` connect `login-screen.tsx` to `styles.ts`, `index.ts`, `warehouse-excel-grid.tsx`, `useAuth`, `9. Quick actions`, `expo-device`, `pipeline.ts`, `use-add-to-order-flow.ts`, `expo-haptics`, `index.ts`, `expo-router`, `desktop-download-buttons.tsx`, `document-context.ts`, `sidebar-preferences.ts`, `scan-disambiguate.server.ts`, `auth-provider.tsx`, `specific-category-repository.ts`, `document-types.ts`, `colors.ts`, `react-native-nitro-modules`, `ScanDebounce`, `work-orders-workspace.tsx`, `cross-route-transition.ts`, `use-mission-control-data.ts`, `activity-log-journal.tsx`, `apple-js-sign-in.ts`, `column-mapper.ts`, `business-migration.tsx`, `business-sidebar.tsx`, `scan-ai-client.server.ts`, `auth-provider.tsx`, `domain-dictionary.ts`, `documents-history-panel.tsx`, `billing-gate-provider.tsx`, `analyze.ts`, `app-loading-logo.tsx`, `sync-errors.ts`, `cross-route-transition.ts`, `work-order-composer.tsx`, `build-overview.server.ts`, `ScanService`, `index.ts`, `warehouse-location-filter-bar.tsx`, `motor-import-host.tsx`, `module-grid.tsx`, `site-urls.ts`, `use-scan-experience.ts`, `subscription-registry.ts`, `domain-dictionary.ts`, `layout.tsx`, `use-app-display-currency.ts`, `input-field.tsx`, `inbox-sync.ts`, `inventory-import.ts`, `polish-document-labels.ts`, `process-import-batch.server.ts`, `order-composition-step.tsx`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
-- **Why does `useTheme()` connect `auth-provider.tsx` to `cn`, `index.ts`, `warehouse-excel-grid.tsx`, `useTheme`, `warehouse-location-repository.ts`, `login-screen.tsx`, `sidebar-preferences.ts`, `desktop-download-buttons.tsx`, `mc-animated-sparkline.tsx`, `app-tab-bar.tsx`, `styles.ts`, `specific-category-repository.ts`, `notifyFirestoreSnapshotError`, `use-mission-control-data.ts`, `@tanstack/react-query-persist-client`, `warehouse-workspace.tsx`, `documents-history-panel.tsx`, `app-loading-logo.tsx`, `ScanService`, `warehouse-location-filter-bar.tsx`, `pipeline.ts`, `intake-upload-progress.ts`, `performance-tier-provider.tsx`, `use-scan-experience.ts`, `lucide-react-native`, `@shopify/flash-list`, `search-registry.ts`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Why does `cn()` connect `button.tsx` to `index.ts`, `warehouse-location-repository.ts`, `typography.ts`, `useAuth`, `financial-operation-repository.ts`, `useSession`, `company-switch-overlay.tsx`, `deep-link-resolver.ts`, `mobile-download-experience.tsx`, `document-context.ts`, `inventory-taxonomy.ts`, `appearance-settings-screen.tsx`, `inventory-import-repository.ts`, `colors.ts`, `notifyFirestoreSnapshotError`, `work-order.ts`, `apple-js-sign-in.ts`, `purchase-store.ts`, `business-sidebar.tsx`, `getColors`, `auth-provider.tsx`, `user.ts`, `sign-in-with-apple-web.ts`, `compute-my-earnings.ts`, `getFirestoreDb`, `document-queue.ts`, `build-overview.server.ts`, `Recommended fix order (no code — sequencing only)`, `forensic-apple-oauth.mjs`, `index.ts`, `auth-journey-coordinator.tsx`, `warehouse-location-filter-bar.tsx`, `edit-profile-screen.tsx`, `site-urls.ts`, `generate-pdf.ts`, `modules-page-content.tsx`, `types.ts`, `autocomplete-provider.tsx`, `trends.ts`, `verify-warranty.server.ts`, `@tanstack/react-query`, `inbox-sync.ts`, `local-inventory-resolve.ts`, `parse-document.ts`?**
+  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+- **Why does `value()` connect `expo-router` to `index.ts`, `warehouse-excel-grid.tsx`, `expo-linking`, `button.tsx`, `expo-apple-authentication`, `build-render-model.ts`, `pipeline.ts`, `phone-inventory-screen.tsx`, `excel-export.ts`, `session-bootstrap.server.ts`, `mobile-download-experience.tsx`, `desktop-download-buttons.tsx`, `document-context.ts`, `mc-animated-sparkline.tsx`, `scan-disambiguate.server.ts`, `styles.ts`, `locales.ts`, `warehouse-location-repository.ts`, `inventory-taxonomy.ts`, `document-types.ts`, `colors.ts`, `import-batch-admin.ts`, `notifyFirestoreSnapshotError`, `work-orders-workspace.tsx`, `performance-tier-provider.tsx`, `column-mapper.ts`, `page.tsx`, `apple-js-sign-in.ts`, `react-native-svg`, `use-work-order-documents-realtime.ts`, `warehouse-workspace.tsx`, `business-sidebar.tsx`, `core-chat-store.ts`, `auth-provider.tsx`, `nav-item-availability.ts`, `billing-gate-provider.tsx`, `sign-in-with-apple-web.ts`, `app-loading-logo.tsx`, `should-hide-tab-bar.ts`, `snapshot-builders.ts`, `sync-errors.ts`, `index.ts`, `motor-import-host.tsx`, `getJson`, `intake-upload-progress.ts`, `schemas.ts`, `use-scan-experience.ts`, `subscription-registry.ts`, `domain-dictionary.ts`, `types.ts`, `layout.tsx`, `autocomplete-provider.tsx`, `@tanstack/react-query`, `trends.ts`, `input-field.tsx`, `pointer-to-cell.ts`, `order-composition-step.tsx`, `marketing-routes.ts`, `excel-column-mapping.ts`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `UserRole` connect `scan-screen.tsx` to `operational-preview.tsx`, `warehouse-excel-grid.tsx`, `button.tsx`, `inventory-taxonomy.ts`, `specific-category-repository.ts`, `inventory-import-repository.ts`, `notification-repository.server.ts`, `colors.ts`, `performance-tier-provider.tsx`, `apple-js-sign-in.ts`, `business-migration.tsx`, `use-work-order-documents-realtime.ts`, `warehouse-workspace.tsx`, `snapshot-builders.ts`, `work-order-composer.tsx`, `save-company-app-config.ts`, `build-overview.server.ts`, `replace-token.ts`, `route.ts`, `site-urls.ts`, `setup-wizard-copy.ts`, `subscription-registry.ts`, `include`, `order-composition-step.tsx`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
 - **What connects `ENTER_FADE`, `EXIT_FADE`, `sheetIn` to the rest of the system?**
-  _5142 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _5190 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.015170151701517014 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.012205387205387205 - nodes in this community are weakly interconnected._
 - **Should `utils.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.1286549707602339 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1067193675889328 - nodes in this community are weakly interconnected._
 - **Should `index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06117552978808476 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.052407614781634936 - nodes in this community are weakly interconnected._

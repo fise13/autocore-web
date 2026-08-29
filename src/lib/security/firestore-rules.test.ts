@@ -210,7 +210,6 @@ describe("firestore.rules — global invariants", () => {
     for (const header of [
       "match /donors/{donorId}",
       "match /usedParts/{partId}",
-      "match /marketplaceListings/{listingId}",
       "match /stocktakeSessions/{sessionId}",
     ]) {
       const block = normalize(matchBlock(header));

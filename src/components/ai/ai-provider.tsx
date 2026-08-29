@@ -14,6 +14,7 @@ import {
 
 import { CoreChatRuntime } from "@/components/ai/core-chat-runtime";
 import {
+  CHAT_TITLE_MAX,
   createEmptyChatSession,
   sortSessionsByUpdated,
   withUpdatedMessages,
@@ -48,6 +49,7 @@ type AssistantContextValue = {
   close: () => void;
   newChat: () => void;
   selectChat: (sessionId: string) => void;
+  renameChat: (sessionId: string, title: string) => void;
   deleteChat: (sessionId: string) => void;
   setPointer: (pointer: "enter" | "leave") => void;
   registerEntry: (element: HTMLElement | null) => void;
@@ -252,6 +254,16 @@ export function AIProvider({ children }: { children: ReactNode }) {
     [router],
   );
 
+  const renameChat = useCallback((sessionId: string, title: string) => {
+    const nextTitle = title.trim().replace(/\s+/g, " ").slice(0, CHAT_TITLE_MAX);
+    if (!nextTitle) return;
+    setSessions((current) =>
+      current.map((session) =>
+        session.id === sessionId ? { ...session, title: nextTitle, updatedAt: Date.now() } : session,
+      ),
+    );
+  }, []);
+
   const deleteChat = useCallback(
     (sessionId: string) => {
       setState("idle");
@@ -316,6 +328,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       close,
       newChat,
       selectChat,
+      renameChat,
       deleteChat,
       setPointer,
       registerEntry,
@@ -329,6 +342,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       newChat,
       open,
       registerEntry,
+      renameChat,
       returnPath,
       selectChat,
       sessions,

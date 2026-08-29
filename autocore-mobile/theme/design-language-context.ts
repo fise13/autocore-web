@@ -18,6 +18,8 @@ import {
   pageTransition,
   modalTransition,
   sheetTransition,
+  coreChatLayout,
+  coreChatStyle,
   defaultRadius,
   defaultPadding,
   defaultGap,
@@ -62,6 +64,8 @@ export type DesignLanguageContext = {
   pageTransition: typeof pageTransition;
   modalTransition: typeof modalTransition;
   sheetTransition: typeof sheetTransition;
+  coreChat: ReturnType<typeof coreChatStyle>;
+  coreChatLayout: typeof coreChatLayout;
   defaultRadius: typeof defaultRadius;
   defaultPadding: typeof defaultPadding;
   defaultGap: typeof defaultGap;
@@ -111,6 +115,8 @@ export function designLanguageFromScheme(
     pageTransition,
     modalTransition,
     sheetTransition,
+    coreChat: coreChatStyle(scheme, colors),
+    coreChatLayout,
     defaultRadius,
     defaultPadding,
     defaultGap,

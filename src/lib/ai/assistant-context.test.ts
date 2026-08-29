@@ -9,7 +9,7 @@ test("resolves the area from the route the AI was opened on", () => {
   assert.equal(resolveAssistantContext({ pathname: "/sold" }).areaId, "sales");
   assert.equal(resolveAssistantContext({ pathname: "/work-orders/abc" }).areaId, "work_orders");
   assert.equal(resolveAssistantContext({ pathname: "/accounting" }).areaId, "finance");
-  assert.equal(resolveAssistantContext({ pathname: "/engine-intake/new" }).areaId, "engine_intake");
+  assert.equal(resolveAssistantContext({ pathname: "/engine-intake/new" }).areaId, "engines");
   assert.equal(resolveAssistantContext({ pathname: "/roles" }).areaId, "team");
 });
 

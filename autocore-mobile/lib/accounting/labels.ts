@@ -106,3 +106,21 @@ export function paymentMethodOptions() {
     label: paymentMethodLabel(value),
   }));
 }
+
+/**
+ * Short labels for the segmented control, where each segment is about a third
+ * of the card. "Bank transfer" does not fit beside a glyph at that width; the
+ * long form stays for lists and receipts, which have the room.
+ */
+export const PAYMENT_METHOD_SHORT_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Cash',
+  transfer: 'Transfer',
+  mixed: 'Mixed',
+};
+
+export function paymentMethodSegments() {
+  return PAYMENT_METHODS.map((value) => ({
+    value,
+    label: PAYMENT_METHOD_SHORT_LABELS[value],
+  }));
+}

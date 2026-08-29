@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { adjustStockUseCase } from "@/application/use-cases/warehouse/adjust-stock";
@@ -24,8 +23,10 @@ import { WarehouseExcelGrid } from "@/components/warehouse/warehouse-excel-grid"
 import { WarehouseImportWizard } from "@/components/warehouse/import/warehouse-import-wizard";
 import { WarehouseImportHistoryPanel } from "@/components/warehouse/import/warehouse-import-history-panel";
 import { InventoryImportJob } from "@/domain/inventory-import";
-import { WarehouseLocationFilterBar } from "@/components/warehouse/warehouse-location-filter-bar";
-import { WarehouseLocationsDialog } from "@/components/warehouse/warehouse-locations-dialog";
+import {
+  WarehouseLocationsStrip,
+  warehouseStripActionClass,
+} from "@/components/warehouse/warehouse-locations-strip";
 import { WarehouseMovementDrawer } from "@/components/warehouse/warehouse-movement-drawer";
 import { WarehouseReceiptDialog } from "@/components/warehouse/warehouse-receipt-dialog";
 import { WarehouseSaleDialog } from "@/components/warehouse/warehouse-sale-dialog";
@@ -38,7 +39,7 @@ import { useInventoryRealtime } from "@/hooks/use-inventory-realtime";
 import { useStockLevelsRealtime } from "@/hooks/use-stock-levels-realtime";
 import { useWarehousesRealtime } from "@/hooks/use-warehouses-realtime";
 import { useLifecyclePausable } from "@/hooks/use-lifecycle-pausable";
-import { can, canManageWarehouses } from "@/lib/auth/permissions";
+import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { filterWarehouseItems } from "@/lib/warehouse/warehouse-grid-data-store";
 import {
@@ -106,7 +107,6 @@ export function WarehouseWorkspace() {
   const actorUserId = profile?.id ?? "";
   const canView = can(profile, "inventory_view");
   const canEdit = can(profile, "inventory_edit");
-  const canManage = canManageWarehouses(profile);
   const canImport = can(profile, "inventory_import");
   const canExport = can(profile, "inventory_export");
 
@@ -387,69 +387,44 @@ export function WarehouseWorkspace() {
           </button>
         </div>
       ) : null}
-      <div className="flex items-center gap-3 border-b border-sidebar-border bg-sidebar px-4 py-2 text-xs text-muted-foreground">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {activeWarehouseId ? (
-            <button
-              type="button"
-              className="shrink-0 rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
-              onClick={() => setLocationsOpen(true)}
-            >
-              {userCopy.warehouse.locations}
-            </button>
-          ) : (
-            <span className="min-w-0 truncate">
-              {userCopy.warehouse.consumables}
-              <span className="text-muted-foreground">
-                {" "}
-                · {userCopy.warehouse.selectWarehouse}
+      <WarehouseLocationsStrip
+        items={scopedWarehouseItems}
+        filter={locationFilter}
+        onChange={setLocationFilter}
+        onLocationsOpenChange={setLocationsOpen}
+        right={
+          <>
+            {dirtyCount > 0 ? (
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+                {userCopy.warehouse.dirtyCount(dirtyCount)}
               </span>
-            </span>
-          )}
-          <WarehouseLocationFilterBar
-            items={scopedWarehouseItems}
-            filter={locationFilter}
-            onChange={setLocationFilter}
-            className="min-w-0 flex-1"
-          />
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {dirtyCount > 0 ? (
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-              {userCopy.warehouse.dirtyCount(dirtyCount)}
-            </span>
-          ) : null}
-          {lastBarcodeScan ? (
-            <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
-              {lastBarcodeScan.itemName
-                ? userCopy.warehouse.scan(lastBarcodeScan.itemName)
-                : userCopy.warehouse.scan(lastBarcodeScan.barcode)}
-            </span>
-          ) : null}
-          {canEdit && !defaultWarehouse ? (
-            <button
-              type="button"
-              className="rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
-              onClick={() => {
-                void ensureDefaultWarehouseUseCase(
-                  warehouseRepository,
-                  companyId,
-                  actorUserId,
-                  categoryRepository,
-                );
-              }}
-            >
-              {userCopy.warehouse.createMainWarehouse}
-            </button>
-          ) : null}
-          <Link
-            href="/stocktake"
-            className="rounded-md border px-2 py-1 text-foreground transition-colors hover:bg-muted"
-          >
-            {userCopy.warehouse.stocktake}
-          </Link>
-        </div>
-      </div>
+            ) : null}
+            {lastBarcodeScan ? (
+              <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
+                {lastBarcodeScan.itemName
+                  ? userCopy.warehouse.scan(lastBarcodeScan.itemName)
+                  : userCopy.warehouse.scan(lastBarcodeScan.barcode)}
+              </span>
+            ) : null}
+            {canEdit && !defaultWarehouse ? (
+              <button
+                type="button"
+                className={warehouseStripActionClass}
+                onClick={() => {
+                  void ensureDefaultWarehouseUseCase(
+                    warehouseRepository,
+                    companyId,
+                    actorUserId,
+                    categoryRepository,
+                  );
+                }}
+              >
+                {userCopy.warehouse.createMainWarehouse}
+              </button>
+            ) : null}
+          </>
+        }
+      />
       {itemsQuery.isBootstrapping ? <MotorsGridSkeleton /> : null}
       <div
         className={cn(
@@ -684,17 +659,6 @@ export function WarehouseWorkspace() {
         }}
       />
 
-      {activeWarehouseId && activeWarehouse ? (
-        <WarehouseLocationsDialog
-          open={locationsOpen}
-          onOpenChange={setLocationsOpen}
-          companyId={companyId}
-          warehouseId={activeWarehouseId}
-          warehouseName={activeWarehouse.name}
-          actorUserId={actorUserId}
-          canManage={canManage}
-        />
-      ) : null}
       {activeWarehouseId ? (
         <WarehouseBulkAssignLocationDialog
           open={assignOpen}

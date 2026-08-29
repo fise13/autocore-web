@@ -78,6 +78,25 @@ export const tokens = {
     enterMs: 200,
     maxChips: 8,
   },
+  /** Ask Core compact composer + full chat chrome. */
+  coreChat: {
+    compactHeight: 62,
+    composerMinHeight: 52,
+    voiceSize: 52,
+    headerButton: 40,
+    sendSize: 32,
+    closeSize: 44,
+    drawerWidth: 300,
+    drawerPeek: 56,
+    drawerSnap: 0.28,
+    drawerVelocity: 650,
+    drawerStageRadius: 16,
+    orbSize: 20,
+    shortcutGap: 18,
+    keyboardGap: 10,
+    composerLift: 28,
+    dismissY: 72,
+  },
 } as const;
 
 /** @deprecated Prefer tokens.motion.springs */

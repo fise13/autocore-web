@@ -15,6 +15,7 @@ import { haptics, tokens } from '@/theme';
 import type { OperationAccount } from '@/types/financial-operation';
 
 import { CoAmountField } from './co-amount-field';
+import { OPERATION_ACCOUNT_GLYPHS } from './co-operation-glyphs';
 import { CoCommentField } from './co-comment-field';
 import { CoCard, CoSection } from './co-section';
 import { CoSheetHeader, type CoSubmitPhase } from './co-sheet-header';
@@ -194,6 +195,7 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
                 <CoTypeSelector
                   accessibilityLabel="From account"
                   segments={accountOptions()}
+                  icons={OPERATION_ACCOUNT_GLYPHS}
                   value={fromAccount}
                   onValueChange={(value) => setFromAccount(value as OperationAccount)}
                 />
@@ -239,14 +241,12 @@ export const AcTransferSheet = forwardRef<AcTransferSheetRef, AcTransferSheetPro
                     backgroundColor: colors.secondary,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: colors.primary,
-                    }}
-                  />
+                  {(() => {
+                    // Same glyph the From control uses, so the destination is
+                    // recognised by shape rather than re-read as a word.
+                    const ToGlyph = OPERATION_ACCOUNT_GLYPHS[toAccount];
+                    return <ToGlyph size={16} color={colors.primary} strokeWidth={2} />;
+                  })()}
                   <Text variant="body" style={{ fontWeight: '600', flex: 1 }}>
                     {toLabel}
                   </Text>

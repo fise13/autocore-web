@@ -16,8 +16,6 @@ export type UsedPart = {
   photoUrls: string[];
   applicability: string;
   status: UsedPartStatus;
-  listedOnAvito: boolean;
-  listedOnDrom: boolean;
   soldAt?: Date;
   soldAmount?: number;
   notes?: string;
@@ -39,8 +37,6 @@ export type CreateUsedPartInput = {
   photoUrls?: string[];
   applicability?: string;
   status?: UsedPartStatus;
-  listedOnAvito?: boolean;
-  listedOnDrom?: boolean;
   notes?: string;
   createdByUserId: string;
   id?: string;

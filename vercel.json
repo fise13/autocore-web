@@ -37,6 +37,9 @@
     },
     "src/app/api/assistant/**/*.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/demo/**/*.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [

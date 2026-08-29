@@ -36,6 +36,7 @@
     "generate:document-templates": "node scripts/generate-document-templates.mjs",
     "install:browser": "npx puppeteer browsers install chrome",
     "test:scan": "node --import tsx --test src/lib/mobile/scan-normalize.test.ts",
+    "nhtsa:examples": "node --import tsx src/lib/nhtsa/examples.ts",
     "e2e:smoke": "node scripts/e2e-smoke-checklist.mjs",
     "scan:export-events": "node --import tsx scripts/export-scan-events.mjs",
     "tauri:sync-url": "node scripts/sync-tauri-app-url.mjs",

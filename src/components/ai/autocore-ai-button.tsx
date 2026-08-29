@@ -1,18 +1,12 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import { Plus } from "lucide-react";
 
 import { useAssistantOptional } from "@/components/ai/ai-provider";
 import { useCoreChatOptional } from "@/components/ai/core-chat-runtime";
-import { assistantShortcutLabel } from "@/lib/ai/assistant-shortcut";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
-
-/** The shortcut label never changes at runtime — nothing to subscribe to. */
-function subscribeToNothing() {
-  return () => {};
-}
 
 type AutoCoreAIButtonProps = {
   collapsed?: boolean;
@@ -29,7 +23,6 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
   const assistant = useAssistantOptional();
   // Busy comes from the real stream now, not a timer the provider set itself.
   const chat = useCoreChatOptional();
-  const shortcut = useSyncExternalStore(subscribeToNothing, assistantShortcutLabel, () => "");
 
   const handleRef = useCallback(
     (element: HTMLButtonElement | null) => {
@@ -84,19 +77,9 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
           aria-hidden
         />
         {!collapsed ? (
-          <>
-            <span data-sidebar-hide-collapsed className="truncate text-sm font-medium leading-none">
-              {userCopy.ai.entryLabel}
-            </span>
-            {shortcut ? (
-              <span
-                aria-hidden
-                className="ml-auto shrink-0 text-[11px] font-medium leading-none tracking-tight text-background/55 tabular-nums"
-              >
-                {shortcut}
-              </span>
-            ) : null}
-          </>
+          <span data-sidebar-hide-collapsed className="truncate text-sm font-medium leading-none">
+            {userCopy.ai.entryLabel}
+          </span>
         ) : null}
       </button>
     </div>

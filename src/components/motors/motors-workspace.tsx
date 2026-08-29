@@ -27,6 +27,7 @@ import { useWorkspace } from "@/components/layout/workspace-context";
 import { buildMotorSearchSuggestions } from "@/components/layout/workspace-search-field";
 import { useMotorSyncBridge } from "@/components/motors/motor-sync-bridge";
 import { MotorsExcelGrid } from "@/components/motors/motors-excel-grid";
+import { WarehouseLocationsStrip } from "@/components/warehouse/warehouse-locations-strip";
 import { MotorsGridSkeleton } from "@/components/motors/motors-grid-skeleton";
 import { SellMotorDialog, type MotorSellPayload } from "@/components/motors/sell-motor-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -45,6 +46,11 @@ import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { can } from "@/lib/auth/permissions";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
+import {
+  ALL_LOCATION_FILTER,
+  itemMatchesLocationFilter,
+  type WarehouseLocationFilter,
+} from "@/lib/warehouse/warehouse-location-filter";
 import { type DeepAction } from "@/lib/navigation/deep-actions";
 import { cn } from "@/lib/utils";
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
@@ -102,6 +108,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   const [sellSuccess, setSellSuccess] = useState<{ serialCode: string; amount: number } | null>(null);
   const [deepActionError, setDeepActionError] = useState<string | null>(null);
   const [editorRevealed, setEditorRevealed] = useState(false);
+  const [locationFilter, setLocationFilter] = useState<WarehouseLocationFilter>(ALL_LOCATION_FILTER);
 
   const companyId = normalizeCompanyId(profile?.companyId);
   const uid = profile?.id ?? "";
@@ -127,6 +134,15 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     [pathname, searchParams],
   );
   const pinnedFilter = isPinnedFilterId(collectionContext.filter) ? collectionContext.filter : null;
+
+  useEffect(() => {
+    setLocationFilter(ALL_LOCATION_FILTER);
+  }, [
+    collectionContext.collection,
+    collectionContext.filter,
+    soldOnly,
+    workspace.selectedBrandLocalId,
+  ]);
 
   const { brands, engines, firestoreBrands, firestoreEngines } = useEffectiveCatalog(
     catalogRepository,
@@ -281,8 +297,18 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
   const rowData = useMemo(() => {
     const base = motorsQuery.data ?? [];
-    if (!pinnedFilter) return base;
-    return base.filter((motor) => motorMatchesPinnedFilter(motor, pinnedFilter));
+    const pinned = pinnedFilter
+      ? base.filter((motor) => motorMatchesPinnedFilter(motor, pinnedFilter))
+      : base;
+    if (locationFilter.kind === "all") return pinned;
+    return pinned.filter((motor) => itemMatchesLocationFilter(motor, locationFilter));
+  }, [locationFilter, motorsQuery.data, pinnedFilter]);
+
+  const locationFilterItems = useMemo(() => {
+    const base = motorsQuery.data ?? [];
+    return pinnedFilter
+      ? base.filter((motor) => motorMatchesPinnedFilter(motor, pinnedFilter))
+      : base;
   }, [motorsQuery.data, pinnedFilter]);
   const isGridReady = !motorsQuery.isBootstrapping;
   const { setCounts, setSearchSuggestions, setAllowDocumentImportIslandOnDenseChrome } = workspace;
@@ -326,8 +352,8 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
 
   useEffect(() => {
     if (!motorsSheetActive) return;
-    setCounts(motorCount, allMotorsQuery.data?.length ?? motorCount);
-  }, [allMotorsQuery.data, motorCount, motorsSheetActive, setCounts]);
+    setCounts(rowData.length, locationFilterItems.length || motorCount);
+  }, [locationFilterItems.length, motorCount, motorsSheetActive, rowData.length, setCounts]);
 
   useEffect(() => {
     if (!motorsSheetActive) return;
@@ -581,13 +607,20 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         if (panel.kind === "empty") {
           return (
             <CollectionCachePanel key={panel.key} cacheKey={panel.key} isActive={isActive}>
-              <div className="flex h-full flex-col items-center justify-center px-6">
-                <EmptyState
-                  icon={LayoutGrid}
-                  title={panel.title}
-                  description={panel.description}
-                  className="max-w-lg border-none bg-transparent"
+              <div className="flex h-full min-h-0 flex-1 flex-col">
+                <WarehouseLocationsStrip
+                  items={[]}
+                  filter={ALL_LOCATION_FILTER}
+                  onChange={() => undefined}
                 />
+                <div className="flex flex-1 items-center justify-center px-6">
+                  <EmptyState
+                    icon={LayoutGrid}
+                    title={panel.title}
+                    description={panel.description}
+                    className="max-w-lg border-none bg-transparent"
+                  />
+                </div>
               </div>
             </CollectionCachePanel>
           );
@@ -596,13 +629,20 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
         return (
           <CollectionCachePanel key={panel.key} cacheKey={panel.key} isActive={isActive}>
             {showSoldEmpty ? (
-              <div className="flex h-full flex-col items-center justify-center px-6">
-                <EmptyState
-                  icon={LayoutGrid}
-                  title={userCopy.motors.soldEmptyTitle}
-                  description={userCopy.motors.soldEmptyDescription}
-                  className="max-w-lg border-none bg-transparent"
+              <div className="flex h-full min-h-0 flex-1 flex-col">
+                <WarehouseLocationsStrip
+                  items={locationFilterItems}
+                  filter={locationFilter}
+                  onChange={setLocationFilter}
                 />
+                <div className="flex flex-1 items-center justify-center px-6">
+                  <EmptyState
+                    icon={LayoutGrid}
+                    title={userCopy.motors.soldEmptyTitle}
+                    description={userCopy.motors.soldEmptyDescription}
+                    className="max-w-lg border-none bg-transparent"
+                  />
+                </div>
               </div>
             ) : (
               <AnimatePresence mode="wait" initial={false}>
@@ -613,8 +653,13 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                    className="flex min-h-0 flex-1"
+                    className="flex min-h-0 flex-1 flex-col"
                   >
+                    <WarehouseLocationsStrip
+                      items={[]}
+                      filter={locationFilter}
+                      onChange={setLocationFilter}
+                    />
                     <MotorsImportEmptyLanding
                       canEdit={canEdit}
                       progress={motorImportProgress}
@@ -678,6 +723,11 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
                         isGridReady ? "opacity-100" : "pointer-events-none opacity-0",
                       )}
                     >
+                      <WarehouseLocationsStrip
+                        items={locationFilterItems}
+                        filter={locationFilter}
+                        onChange={setLocationFilter}
+                      />
                       <MotorsExcelGrid
                         motors={rowData}
                         catalogMotors={allMotorsQuery.data ?? []}

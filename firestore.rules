@@ -1124,13 +1124,6 @@ service cloud.firestore {
         allow delete: if canInventoryDelete(companyId);
       }
 
-      match /marketplaceListings/{listingId} {
-        allow read: if canInventoryRead(companyId);
-        allow create, update: if canInventoryWrite(companyId)
-          && request.resource.data.companyId == companyId;
-        allow delete: if canInventoryDelete(companyId);
-      }
-
       match /stocktakeSessions/{sessionId} {
         allow read: if canInventoryRead(companyId);
         allow create, update: if canInventoryWrite(companyId)

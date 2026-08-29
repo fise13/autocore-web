@@ -27,13 +27,11 @@ import { useDonorsRealtime } from "@/hooks/use-donors-realtime";
 import { useUsedPartsRealtime } from "@/hooks/use-used-parts-realtime";
 import { useAppDisplayCurrency } from "@/hooks/use-app-display-currency";
 import { createFinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
-import { createMarketplaceListingRepository } from "@/infrastructure/firestore/marketplace-listing-repository";
 import { createUsedPartRepository } from "@/infrastructure/firestore/used-part-repository";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
 const usedPartRepository = createUsedPartRepository();
-const listingRepository = createMarketplaceListingRepository();
 const financialRepository = createFinancialOperationRepository();
 
 export function UsedPartsWorkspace() {
@@ -57,8 +55,6 @@ export function UsedPartsWorkspace() {
     condition: "90",
     sellPrice: "",
     location: "",
-    listOnAvito: true,
-    listOnDrom: false,
   });
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [draftPhotoId] = useState(() => `draft-${crypto.randomUUID()}`);
@@ -73,7 +69,7 @@ export function UsedPartsWorkspace() {
     setBusy(true);
     setError(null);
     try {
-      const part = await usedPartRepository.create({
+      await usedPartRepository.create({
         companyId,
         createdByUserId: profile.id,
         donorId: donor.id,
@@ -83,11 +79,8 @@ export function UsedPartsWorkspace() {
         sellPrice: Number(form.sellPrice) || 0,
         locationCode: form.location,
         applicability: donorApplicability(donor),
-        listedOnAvito: form.listOnAvito,
-        listedOnDrom: form.listOnDrom,
         photoUrls,
       });
-      await listingRepository.syncForPart(companyId, part);
       setCreateOpen(false);
       setPhotoUrls([]);
       setForm((current) => ({ ...current, name: "", oem: "", sellPrice: "", location: "" }));
@@ -106,7 +99,6 @@ export function UsedPartsWorkspace() {
       await sellUsedPartWithFinancialOperationUseCase(
         usedPartRepository,
         financialRepository,
-        listingRepository,
         {
           companyId,
           part: sellPart,
@@ -132,7 +124,6 @@ export function UsedPartsWorkspace() {
       await unsellUsedPartWithFinancialOperationUseCase(
         usedPartRepository,
         financialRepository,
-        listingRepository,
         {
           companyId,
           part,
@@ -323,22 +314,6 @@ export function UsedPartsWorkspace() {
                 onChange={setPhotoUrls}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.listOnAvito}
-                onChange={(event) => setForm((current) => ({ ...current, listOnAvito: event.target.checked }))}
-              />
-              {copy.listOnAvito}
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.listOnDrom}
-                onChange={(event) => setForm((current) => ({ ...current, listOnDrom: event.target.checked }))}
-              />
-              {copy.listOnDrom}
-            </label>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>

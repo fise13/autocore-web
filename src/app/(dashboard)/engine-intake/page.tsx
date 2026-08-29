@@ -1,5 +1,5 @@
-import { EngineIntakeWorkspace } from "@/components/engine-intake/engine-intake-workspace";
+import { redirect } from "next/navigation";
 
 export default function EngineIntakePage() {
-  return <EngineIntakeWorkspace />;
+  redirect("/motors?collection=engines");
 }

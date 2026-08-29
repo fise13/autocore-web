@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
 import Animated, { FadeIn, FadeInLeft, FadeInRight, FadeOut, FadeOutLeft, FadeOutRight } from 'react-native-reanimated';
@@ -37,6 +37,7 @@ function isValidEmail(value: string): boolean {
 
 export function LoginScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const params = useLocalSearchParams<{ invite?: string; mode?: string }>();
   const {
     signIn,
@@ -482,6 +483,20 @@ export function LoginScreen() {
               {displayError}
             </Text>
           </Animated.View>
+        ) : null}
+
+        {__DEV__ ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open dock playground"
+            onPress={() => router.replace('/playground')}
+            hitSlop={8}
+            style={{ alignSelf: 'center', paddingVertical: 4 }}
+          >
+            <Text variant="footnote" color="muted">
+              Playground · dock & AI bubble
+            </Text>
+          </Pressable>
         ) : null}
       </AuthHeroShell>
     );

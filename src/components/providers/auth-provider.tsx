@@ -53,10 +53,7 @@ import { createCompanyViaApi } from "@/lib/auth/create-company-via-api";
 import { track } from "@/lib/analytics/events";
 import { markSyncAuthPrepared, prepareSyncAuth, resetSyncAuthCache } from "@/lib/auth/prepare-sync-auth";
 import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-checkout";
-import {
-  claimPendingBillingIntent,
-  ensureCompanyTrial,
-} from "@/lib/billing/claim-pending-billing-intent";
+import { claimPendingBillingIntent } from "@/lib/billing/claim-pending-billing-intent";
 import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { isDemoSession } from "@/lib/demo/demo-config";
 import {
@@ -759,11 +756,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         try {
           track("company_created", { surface: "onboarding" });
-          // `ensureCompanyTrial` reports whether the trial actually began, so
-          // this never claims a trial for a workspace that already had one.
-          if (await ensureCompanyTrial(companyId)) {
-            track("trial_started", { surface: "onboarding" });
-          }
           await claimPendingBillingIntent(companyId);
           await tryClaimPendingMarketingCheckout(companyId);
           try {
@@ -812,7 +804,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const auth = getFirebaseAuth();
         if (!auth.currentUser) throw new Error(mapAuthError(new Error("auth/invalid-credential")));
         await assignDefaultCompany(auth.currentUser.uid);
-        await ensureCompanyTrial(DEFAULT_COMPANY_ID);
         await claimPendingBillingIntent(DEFAULT_COMPANY_ID);
         await tryClaimPendingMarketingCheckout(DEFAULT_COMPANY_ID);
         await prepareSyncAuth(auth.currentUser.uid, { force: true });

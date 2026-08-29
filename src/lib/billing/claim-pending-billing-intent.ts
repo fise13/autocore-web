@@ -1,7 +1,4 @@
-import {
-  activateInternalProRemote,
-  startCompanyTrialRemote,
-} from "@/lib/billing/internal-billing.client";
+import { activateInternalProRemote } from "@/lib/billing/internal-billing.client";
 import {
   clearPendingBillingIntent,
   readPendingBillingIntent,
@@ -9,32 +6,23 @@ import {
 
 export type ClaimedBillingIntent = "trial" | "pro" | null;
 
+/**
+ * Consumes a leftover marketing `billing=pro` grant.
+ *
+ * `billing=trial` is not granted here — Pro trial starts only through Paddle
+ * checkout (card on file). The billing gate opens that overlay.
+ */
 export async function claimPendingBillingIntent(companyId: string): Promise<ClaimedBillingIntent> {
   const intent = readPendingBillingIntent();
   if (!intent) return null;
+  if (intent.type === "trial") return "trial";
 
   try {
-    if (intent.type === "pro") {
-      await activateInternalProRemote(companyId, intent.interval);
-      clearPendingBillingIntent();
-      return "pro";
-    }
-
-    await startCompanyTrialRemote(companyId);
+    await activateInternalProRemote(companyId, intent.interval);
     clearPendingBillingIntent();
-    return "trial";
+    return "pro";
   } catch (error) {
     console.warn("Billing intent claim skipped:", error);
     return null;
-  }
-}
-
-export async function ensureCompanyTrial(companyId: string): Promise<boolean> {
-  try {
-    const result = await startCompanyTrialRemote(companyId);
-    return result.started || result.proActive;
-  } catch (error) {
-    console.warn("Company trial start skipped:", error);
-    return false;
   }
 }

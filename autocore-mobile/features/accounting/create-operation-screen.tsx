@@ -12,7 +12,7 @@ import {
   creatableTypeOptions,
   operationCategoryLabel,
   operationDirection,
-  paymentMethodOptions,
+  paymentMethodSegments,
   resolveOperationCategoryValue,
 } from '@/lib/accounting/labels';
 import {
@@ -32,6 +32,11 @@ import { CoAmountField } from './components/co-amount-field';
 import { CoCategoryField } from './components/co-category-field';
 import { CoCommentField } from './components/co-comment-field';
 import { CoMixedSplit } from './components/co-mixed-split';
+import {
+  OPERATION_ACCOUNT_GLYPHS,
+  OPERATION_TYPE_GLYPHS,
+  PAYMENT_METHOD_GLYPHS,
+} from './components/co-operation-glyphs';
 import { CoCard, CoSection } from './components/co-section';
 import { CoSheetHeader, type CoSubmitPhase } from './components/co-sheet-header';
 import { CoToggleRow } from './components/co-toggle-row';
@@ -310,6 +315,7 @@ export function CreateOperationScreen() {
           <CoTypeSelector
             accessibilityLabel="Operation type"
             segments={creatableTypeOptions()}
+            icons={OPERATION_TYPE_GLYPHS}
             value={type}
             onValueChange={(next) => setType(next as CreatableOperationType)}
           />
@@ -339,6 +345,7 @@ export function CreateOperationScreen() {
               <CoTypeSelector
                 accessibilityLabel="Account"
                 segments={accountOptions()}
+                icons={OPERATION_ACCOUNT_GLYPHS}
                 value={account}
                 onValueChange={(next) => setAccount(next as OperationAccount)}
               />
@@ -351,7 +358,8 @@ export function CreateOperationScreen() {
             </Text>
             <CoTypeSelector
               accessibilityLabel="Payment method"
-              segments={paymentMethodOptions()}
+              segments={paymentMethodSegments()}
+              icons={PAYMENT_METHOD_GLYPHS}
               value={paymentMethod}
               onValueChange={(next) => selectPaymentMethod(next as PaymentMethod)}
             />

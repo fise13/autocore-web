@@ -35,13 +35,68 @@ function ts(date: string): Timestamp {
   return Timestamp.fromDate(new Date(date));
 }
 
-/** Seeds demo clients, vehicles, consumables and work orders after reset. Idempotent. */
+const DEMO_MOTORS = [
+  {
+    id: "demo-motor-g4kc",
+    brandName: "Hyundai",
+    engineCode: "G4KC",
+    configuration: "2.4 MPI",
+    serialCode: "G4KC-88421",
+    transmission: "AT",
+    location: "A-12",
+    notes: "184 000 km · imported",
+    quality: "A",
+  },
+  {
+    id: "demo-motor-2az",
+    brandName: "Toyota",
+    engineCode: "2AZ-FE",
+    configuration: "2.4",
+    serialCode: "2AZ-44102",
+    transmission: "AT",
+    location: "B-04",
+    notes: "162 000 km",
+    quality: "A",
+  },
+  {
+    id: "demo-motor-g4kd",
+    brandName: "Kia",
+    engineCode: "G4KD",
+    configuration: "2.0",
+    serialCode: "G4KD-22901",
+    transmission: "MT",
+    location: "A-18",
+    notes: "198 000 km",
+    quality: "B",
+  },
+  {
+    id: "demo-motor-qr25",
+    brandName: "Nissan",
+    engineCode: "QR25DE",
+    configuration: "2.5",
+    serialCode: "QR25-77410",
+    transmission: "AT",
+    location: "C-07",
+    notes: "141 000 km",
+    quality: "A",
+  },
+  {
+    id: "demo-motor-cjsa",
+    brandName: "Volkswagen",
+    engineCode: "CJSA",
+    configuration: "1.8 TSI",
+    serialCode: "CJSA-90331",
+    transmission: "DSG",
+    location: "B-11",
+    notes: "128 000 km",
+    quality: "A",
+  },
+] as const;
+
+/** Seeds demo motors, clients, vehicles, consumables and work orders. Idempotent upsert. */
 export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
   const db = getAdminFirestore();
   const companyRef = db.collection("companies").doc(DEMO_COMPANY_ID);
-
-  const existingOrders = await companyRef.collection("workOrders").limit(1).get();
-  if (!existingOrders.empty) return;
 
   const batch = db.batch();
 
@@ -385,7 +440,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
   ];
 
   for (const order of workOrders) {
-    batch.set(companyRef.collection("workOrders").doc(order.id), {
+    const payload: Record<string, unknown> = {
       companyId: DEMO_COMPANY_ID,
       number: order.number,
       status: order.status,
@@ -404,14 +459,43 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
       pricing: order.pricing,
       createdByUserId: ownerUid,
       confirmedAt: order.confirmedAt,
-      completedAt: "completedAt" in order ? order.completedAt : undefined,
-      deliveredAt: "deliveredAt" in order ? order.deliveredAt : undefined,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
-    });
+    };
+    if ("completedAt" in order) payload.completedAt = order.completedAt;
+    if ("deliveredAt" in order) payload.deliveredAt = order.deliveredAt;
+    batch.set(companyRef.collection("workOrders").doc(order.id), payload);
   }
 
   batch.set(companyRef.collection("meta").doc("workOrderCounter"), { value: 151 }, { merge: true });
+
+  for (const [index, motor] of DEMO_MOTORS.entries()) {
+    batch.set(db.collection("users").doc(ownerUid).collection("motors").doc(motor.id), {
+      companyId: DEMO_COMPANY_ID,
+      localId: index + 1,
+      engineId: index + 1,
+      serialCode: motor.serialCode,
+      configuration: motor.configuration,
+      notes: motor.notes,
+      quality: motor.quality,
+      photoUrls: [],
+      quantity: 1,
+      transmission: motor.transmission,
+      arrivalDate: ts("2026-02-01T10:00:00"),
+      soldDate: null,
+      deletedAt: null,
+      brandName: motor.brandName,
+      engineCode: motor.engineCode,
+      warehouseLocation: motor.location,
+      primaryLocationCode: motor.location,
+      status: "available",
+      reservedForWorkOrderId: null,
+      installedOnVehicleId: null,
+      donorId: null,
+      createdAt: ts("2026-02-01T10:00:00"),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
 
   await batch.commit();
 }

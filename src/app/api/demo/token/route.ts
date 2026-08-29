@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createDemoCustomToken } from "@/lib/demo/demo-provision.server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type DemoAuthResponse = { type: "customToken"; token: string };
 

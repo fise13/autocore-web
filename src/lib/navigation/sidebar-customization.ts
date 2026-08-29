@@ -1,6 +1,5 @@
 import {
   CircleDollarSign,
-  Camera,
   FileText,
   LayoutGrid,
   Package,
@@ -31,7 +30,6 @@ export type SidebarBlockId =
 export type SidebarNavItemId =
   | "home"
   | "motors"
-  | "engine_intake"
   | "sold"
   | "work_orders"
   | "accounting"
@@ -63,7 +61,6 @@ export const DEFAULT_BLOCK_ORDER: SidebarBlockId[] = [
 export const DEFAULT_NAV_ORDER: SidebarNavItemId[] = [
   "home",
   "motors",
-  "engine_intake",
   "sold",
   "work_orders",
   "my_earnings",
@@ -115,7 +112,6 @@ export const SIDEBAR_NAV_META: Record<
     const icons: Record<SidebarNavItemId, LucideIcon> = {
       home: Radar,
       motors: LayoutGrid,
-      engine_intake: Camera,
       sold: Receipt,
       work_orders: ClipboardList,
       my_earnings: Wallet,
@@ -125,7 +121,6 @@ export const SIDEBAR_NAV_META: Record<
     const hrefs: Record<SidebarNavItemId, string> = {
       home: "/home",
       motors: "/motors?collection=engines",
-      engine_intake: "/engine-intake",
       sold: "/sold",
       work_orders: "/work-orders",
       my_earnings: "/my-earnings",
@@ -138,7 +133,6 @@ export const SIDEBAR_NAV_META: Record<
   ownKeys: () => [
     "home",
     "motors",
-    "engine_intake",
     "sold",
     "work_orders",
     "my_earnings",
@@ -147,7 +141,7 @@ export const SIDEBAR_NAV_META: Record<
   ],
   getOwnPropertyDescriptor: (_t, prop) =>
     typeof prop === "string" &&
-    ["home", "motors", "engine_intake", "sold", "work_orders", "my_earnings", "accounting", "warehouse"].includes(
+    ["home", "motors", "sold", "work_orders", "my_earnings", "accounting", "warehouse"].includes(
       prop,
     )
       ? { enumerable: true, configurable: true }
@@ -171,7 +165,6 @@ export const DEFAULT_SIDEBAR_CUSTOMIZATION: SidebarCustomization = {
   navItems: {
     home: { enabled: true },
     motors: { enabled: true },
-    engine_intake: { enabled: true },
     sold: { enabled: true },
     work_orders: { enabled: true },
     my_earnings: { enabled: true },

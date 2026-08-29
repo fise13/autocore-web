@@ -291,6 +291,15 @@ Avoid deploying a web client that depends on an index or rule not yet active.
 - Inspect Chromium bundle tracing in `next.config.ts`.
 - Check Storage permissions and bucket configuration.
 
+### Demo (`/demo`) fails or times out
+
+Marketing CTAs open `https://app.myautocore.com/demo`, which POSTs `/api/demo/token`, mints a Firebase custom token for `demo@autocore.app`, and seeds company `demo-autocore`.
+
+- Confirm `FIREBASE_SERVICE_ACCOUNT_JSON` is valid production JSON. Without Admin, the route returns 503.
+- `DEMO_ACCOUNT_PASSWORD` is optional. The live path uses a custom token, not email/password.
+- The token route must not wipe Firestore on every visit. Reset runs on logout (`/api/demo/reset`) and has a 60s budget.
+- Confirm `app.myautocore.com` is a Firebase Auth authorized domain (required for `signInWithCustomToken`).
+
 ### Authentication redirect fails
 
 - Confirm the deployed host is authorized in Firebase.

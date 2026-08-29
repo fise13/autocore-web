@@ -321,6 +321,6 @@ export async function createEngineIntakeJob(
     ok: true as const,
     jobId: result.jobId,
     engineId: result.engineId,
-    href: `/engine-intake?job=${encodeURIComponent(result.jobId)}`,
+    href: `/motors?collection=engines`,
   };
 }

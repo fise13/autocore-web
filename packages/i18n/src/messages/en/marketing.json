@@ -908,7 +908,7 @@
       "ariaLabel": "Home",
       "kicker": "Salvage yards and repair shops",
       "title": "From donor car to sold part.",
-      "subtitle": "Buy the car, pull used parts, list on Avito and Drom, sell, and see payback on the donor card. Warehouse, engines, VIN, work orders, and documents — one system. No WhatsApp bookkeeping.",
+      "subtitle": "Buy the car, pull used parts, sell them, and see payback on the donor card. Warehouse, engines, VIN, work orders, and documents — one system. No WhatsApp bookkeeping.",
       "ctaPrimary": "Open the demo",
       "ctaSecondary": "See how it works",
       "ctaPricing": "See pricing",
@@ -918,7 +918,7 @@
       "proof": [
         "Donor cars",
         "Used parts",
-        "Avito · Drom",
+        "Donor payback",
         "VIN & barcode"
       ]
     },
@@ -1035,7 +1035,6 @@
         "Work orders",
         "Donors",
         "Used parts",
-        "Marketplace feeds",
         "Documents",
         "Mobile · desktop",
         "Overview"
@@ -1648,12 +1647,12 @@
     "pricing": {
       "meta": {
         "title": "Pricing",
-        "description": "Salvage yard software: $40 monthly or $400 yearly per company. Donors, used parts, Avito/Drom feeds, warehouse, and work orders. 14-day trial; payment method required."
+        "description": "Salvage yard software: $40 monthly or $400 yearly per company. Donors, used parts, warehouse, and work orders. 14-day trial; payment method required."
       },
       "hero": {
         "titleLine1": "One plan.",
         "titleLine2": "The whole yard.",
-        "lead": "Donors, used parts, Avito and Drom feeds, warehouse, work orders, and documents. $40 a month or $400 a year per company — no module upsells."
+        "lead": "Donors, used parts, warehouse, work orders, and documents. $40 a month or $400 a year per company — no module upsells."
       },
       "plan": {
         "price": "$40",
@@ -1688,7 +1687,6 @@
           "Warehouse and stocktake",
           "Donor cars and P&L",
           "Used parts catalog",
-          "Avito and Drom feeds",
           "Serialized engines",
           "Work orders",
           "Documents and PDF",
@@ -1712,7 +1710,7 @@
         },
         {
           "q": "Are there extra fees for modules?",
-          "a": "No. Donors, used parts, marketplace feeds, warehouse, work orders, and documents are all in the same plan."
+          "a": "No. Donors, used parts, warehouse, work orders, and documents are all in the same plan."
         },
         {
           "q": "Can I cancel my subscription?",

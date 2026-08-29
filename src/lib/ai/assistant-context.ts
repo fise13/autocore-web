@@ -10,7 +10,6 @@ import { userCopy } from "@/lib/user-copy";
 export type AssistantAreaId =
   | "dashboard"
   | "engines"
-  | "engine_intake"
   | "sales"
   | "work_orders"
   | "documents"
@@ -58,11 +57,10 @@ function areaDefinition(pathname: string): { areaId: AssistantAreaId; areaLabel:
   const nav = userCopy.nav.sidebarNav;
 
   if (pathname === "/" || pathname === "/home") return { areaId: "dashboard", areaLabel: nav.home };
-  if (pathname === "/motors") return { areaId: "engines", areaLabel: nav.motors };
-  if (pathname === "/sold") return { areaId: "sales", areaLabel: nav.sold };
-  if (pathname.startsWith("/engine-intake")) {
-    return { areaId: "engine_intake", areaLabel: nav.engine_intake };
+  if (pathname === "/motors" || pathname.startsWith("/engine-intake")) {
+    return { areaId: "engines", areaLabel: nav.motors };
   }
+  if (pathname === "/sold") return { areaId: "sales", areaLabel: nav.sold };
   if (pathname.startsWith("/work-orders")) {
     return { areaId: "work_orders", areaLabel: nav.work_orders };
   }
@@ -112,11 +110,6 @@ const areaSuggestions: Record<AssistantAreaId, string[]> = {
     "Which engines are available right now?",
     "Find BMW N54 engines in stock",
     "Where is engine stored?",
-  ],
-  engine_intake: [
-    "Which engines are still in intake?",
-    "Which engines are available right now?",
-    "What work orders are open?",
   ],
   sales: [
     "What is our profit over the last 30 days?",

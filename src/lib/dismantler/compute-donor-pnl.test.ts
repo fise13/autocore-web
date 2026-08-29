@@ -31,8 +31,6 @@ function part(partial: Partial<UsedPart> & Pick<UsedPart, "id" | "status" | "sel
     currency: "KZT",
     photoUrls: [],
     applicability: "Toyota Camry 2014",
-    listedOnAvito: false,
-    listedOnDrom: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdByUserId: "u1",

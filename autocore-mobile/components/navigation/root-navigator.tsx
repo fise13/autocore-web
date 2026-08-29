@@ -52,6 +52,12 @@ const RootStack = memo(function RootStack() {
         options={{ presentation: 'modal', ...modalTask, headerShown: false }}
       />
       {__DEV__ ? <Stack.Screen name="design-system" options={{ presentation: 'card' }} /> : null}
+      {__DEV__ ? (
+        <Stack.Screen
+          name="playground"
+          options={{ animation: 'fade', headerShown: false, contentStyle: { backgroundColor: '#000000' } }}
+        />
+      ) : null}
       {process.env.EXPO_PUBLIC_STORE_SHOTS === '1' ? (
         <Stack.Screen name="store-shots" options={{ animation: 'fade', headerShown: false }} />
       ) : null}

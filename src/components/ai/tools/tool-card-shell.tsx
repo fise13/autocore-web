@@ -45,7 +45,7 @@ export function ToolCardShell({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-xl border border-border bg-card",
+        "w-full overflow-hidden rounded-2xl border border-border/70 bg-card",
         "text-card-foreground shadow-none",
         className,
       )}

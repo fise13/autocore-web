@@ -4,16 +4,16 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  countUnlocatedItems,
-  type WarehouseLocationFilter,
   collectLocationFilterOptions,
+  countUnlocatedItems,
+  type LocationFilterItem,
+  type WarehouseLocationFilter,
 } from "@/lib/warehouse/warehouse-location-filter";
 import { cn } from "@/lib/utils";
-import type { InventoryItem } from "@/domain/inventory";
 import { userCopy } from "@/lib/user-copy";
 
 type WarehouseLocationFilterBarProps = {
-  items: InventoryItem[];
+  items: LocationFilterItem[];
   filter: WarehouseLocationFilter;
   onChange: (filter: WarehouseLocationFilter) => void;
   className?: string;

@@ -1,45 +1,39 @@
 "use client";
 
-import { useCallback, type FormEvent } from "react";
+import { Globe, ImageIcon, MessageSquarePlus, Pencil } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { useCallback } from "react";
 
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
-import {
-  PromptInput,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  type PromptInputMessage,
-} from "@/components/ai/prompt-input";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
-import { Suggestions } from "@/components/ai-elements/suggestion";
 import { useAssistant } from "@/components/ai/ai-provider";
-import { useCoreSuggestions } from "@/components/ai/use-core-suggestions";
-import type { CoreSuggestion } from "@/domain/ai/suggestions";
+import { CoreComposer } from "@/components/ai/core-composer";
 import { useCoreChat } from "@/components/ai/core-chat-runtime";
-import { PendingDots, ToolError } from "@/components/ai/tools/tool-activity";
+import { ThinkingOrb } from "@/components/ai/thinking-orb";
+import { ToolError } from "@/components/ai/tools/tool-activity";
 import { ToolPartRenderer } from "@/components/ai/tools/tool-part-renderer";
-import { AppLogo } from "@/components/brand/app-logo";
+import { useCoreSuggestions } from "@/components/ai/use-core-suggestions";
 import { Button } from "@/components/ui/button";
+import type { CoreSuggestion } from "@/domain/ai/suggestions";
 import type { CoreUIMessage, CoreUIPart } from "@/domain/ai/core-message";
+import { useDashboardLayout } from "@/components/layout/dashboard-layout-context";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
-/** True when the assistant already delivered text or a finished tool card this turn. */
 function assistantHasVisibleContent(message: CoreUIMessage | undefined): boolean {
   if (!message || message.role !== "assistant") return false;
   return message.parts.some((part) => {
     if (part.type === "text") return Boolean(part.text?.trim());
+    if (part.type === "reasoning") return Boolean(part.text?.trim());
     if (part.type.startsWith("tool-")) {
       return "state" in part && (part.state === "output-available" || part.state === "output-error");
     }
@@ -47,17 +41,15 @@ function assistantHasVisibleContent(message: CoreUIMessage | undefined): boolean
   });
 }
 
-/**
- * Render one streamed message part.
- *
- * Reasoning appears **only** when the model actually emitted a reasoning part —
- * there is no fabricated "Thinking…" placeholder, and no locally composed
- * narration standing in for one.
- */
+function assistantTurnStarted(message: CoreUIMessage | undefined): boolean {
+  if (!message || message.role !== "assistant") return false;
+  return message.parts.length > 0;
+}
+
 function PartView({ part, streaming }: { part: CoreUIPart; streaming: boolean }) {
   if (part.type === "text") {
     if (!part.text) return null;
-    return <MessageResponse>{part.text}</MessageResponse>;
+    return <MessageResponse className="text-[15px] leading-6">{part.text}</MessageResponse>;
   }
 
   if (part.type === "reasoning") {
@@ -78,14 +70,6 @@ function PartView({ part, streaming }: { part: CoreUIPart; streaming: boolean })
   return null;
 }
 
-/**
- * Merge consecutive reasoning parts into one block.
- *
- * A multi-step answer emits a reasoning part per step, which rendered as a
- * stack of five "Reasoned for Ns" collapsibles between the tool cards. Merging
- * adjacent runs keeps one panel per stretch of thinking, the way Claude and
- * ChatGPT present it, without hiding reasoning that happened after a tool ran.
- */
 function mergeReasoning(parts: CoreUIPart[]): CoreUIPart[] {
   const merged: CoreUIPart[] = [];
 
@@ -95,7 +79,6 @@ function mergeReasoning(parts: CoreUIPart[]): CoreUIPart[] {
       merged[merged.length - 1] = {
         ...previous,
         text: `${previous.text}\n\n${part.text}`.trim(),
-        // The run is still open while its newest part is streaming.
         state: part.state,
       };
       continue;
@@ -104,6 +87,12 @@ function mergeReasoning(parts: CoreUIPart[]): CoreUIPart[] {
   }
 
   return merged;
+}
+
+function fileParts(message: CoreUIMessage) {
+  return message.parts.filter(
+    (part): part is Extract<CoreUIPart, { type: "file" }> => part.type === "file",
+  );
 }
 
 function MessageView({
@@ -118,28 +107,51 @@ function MessageView({
       .filter((part): part is Extract<CoreUIPart, { type: "text" }> => part.type === "text")
       .map((part) => part.text)
       .join("");
-    if (!text.trim()) return null;
+    const files = fileParts(message);
+    if (!text.trim() && files.length === 0) return null;
     return (
-      <Message from="user">
-        <MessageContent>{text}</MessageContent>
+      <Message from="user" className="max-w-[min(85%,28rem)]">
+        <MessageContent
+          className={cn(
+            "items-end gap-2 text-[15px] leading-snug",
+            files.length
+              ? "group-[.is-user]:rounded-[1.25rem] group-[.is-user]:px-3 group-[.is-user]:py-2.5"
+              : "group-[.is-user]:rounded-full group-[.is-user]:px-4 group-[.is-user]:py-2",
+          )}
+        >
+          {files.length > 0 ? (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {files.map((file) =>
+                file.mediaType.startsWith("image/") ? (
+                  <img
+                    key={file.url}
+                    src={file.url}
+                    alt={file.filename ?? userCopy.ai.attachedFiles}
+                    className="size-16 rounded-xl object-cover"
+                  />
+                ) : null,
+              )}
+            </div>
+          ) : null}
+          {text.trim() && text.trim() !== userCopy.ai.attachedFiles ? text : null}
+        </MessageContent>
       </Message>
     );
   }
 
   if (message.role !== "assistant") return null;
 
-  // While a turn is submitted but nothing has arrived, show a wordless
-  // indicator rather than claiming the model is doing something specific.
   const rendered = mergeReasoning(
     message.parts.filter(
       (part) => part.type === "text" || part.type === "reasoning" || part.type.startsWith("tool-"),
     ),
   );
 
+  if (rendered.length === 0) return null;
+
   return (
     <Message from="assistant">
       <MessageContent className="w-full max-w-none items-start gap-3">
-        {rendered.length === 0 && streaming ? <PendingDots /> : null}
         {rendered.map((part, index) => (
           <PartView key={`${message.id}-${index}`} part={part} streaming={streaming} />
         ))}
@@ -148,60 +160,77 @@ function MessageView({
   );
 }
 
-/**
- * Empty-state prompt chip.
- *
- * When the server could read live data, the chip carries the figure that
- * justified it — "Parts below reorder point · 8" — so the first screen already
- * says something true about the company rather than offering generic prompts.
- */
-function SuggestionChip({
-  suggestion,
-  onSelect,
+function fallbackShortcuts() {
+  return [
+    {
+      id: "image",
+      label: userCopy.ai.shortcutImage,
+      prompt: userCopy.ai.shortcutImagePrompt,
+      Icon: ImageIcon,
+    },
+    {
+      id: "write",
+      label: userCopy.ai.shortcutWrite,
+      prompt: userCopy.ai.shortcutWritePrompt,
+      Icon: Pencil,
+    },
+    {
+      id: "search",
+      label: userCopy.ai.shortcutSearch,
+      prompt: userCopy.ai.shortcutSearchPrompt,
+      Icon: Globe,
+    },
+  ] as const;
+}
+
+function shortcutIcon(suggestion: CoreSuggestion, index: number): LucideIcon {
+  if (suggestion.tone === "attention") return Pencil;
+  return fallbackShortcuts()[index % 3]?.Icon ?? Globe;
+}
+
+function CoreChatHeader({
+  hasChats,
+  onNewChat,
 }: {
-  suggestion: CoreSuggestion;
-  onSelect: (prompt: string) => void;
+  hasChats: boolean;
+  onNewChat: () => void;
 }) {
+  const { toggleMobileSidebar } = useDashboardLayout();
+
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(suggestion.prompt)}
-      className={cn(
-        "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3",
-        "text-[13px] leading-none transition-colors",
-        suggestion.tone === "attention"
-          ? "border-warning-border bg-warning-subtle text-warning-on-subtle hover:bg-warning-subtle/70"
-          : "border-border bg-card text-foreground hover:bg-muted",
-      )}
-    >
-      <span className="truncate">{suggestion.label}</span>
-      {suggestion.hint ? (
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-1.5 py-0.5 text-[11px] leading-none tabular-nums",
-            suggestion.tone === "attention" ? "bg-warning/20" : "bg-muted text-muted-foreground",
-          )}
-        >
-          {suggestion.hint}
+    <header className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3 md:hidden">
+      <button
+        type="button"
+        aria-label={userCopy.ai.openChats}
+        onClick={toggleMobileSidebar}
+        className="relative flex size-10 items-center justify-center rounded-full bg-secondary"
+      >
+        <span className="core-menu-glyph" aria-hidden>
+          <span />
+          <span />
         </span>
-      ) : null}
-    </button>
+        {hasChats ? <span className="core-menu-notify" /> : null}
+      </button>
+      <button
+        type="button"
+        aria-label={userCopy.ai.newChat}
+        onClick={onNewChat}
+        className="flex size-10 items-center justify-center rounded-full bg-secondary"
+      >
+        <MessageSquarePlus className="size-5" />
+      </button>
+    </header>
   );
 }
 
 /**
- * Core product workspace.
- *
- * Streams token-by-token over the AI SDK; structure comes from tool calls that
- * render as real product surfaces rather than from a JSON block contract.
+ * Core product workspace — ChatGPT-class chat surface over the live assistant.
  */
 export function AIWorkspace() {
-  const { context } = useAssistant();
+  const { context, sessions, newChat } = useAssistant();
   const { messages, status, error, busy, ask, stop, regenerate, clearError } = useCoreChat();
 
   const isEmpty = messages.length === 0 && !busy;
-  // Only fetched while the empty state is on screen — the chips are the only
-  // consumer, so an active chat should not be reading Firestore.
   const { suggestions } = useCoreSuggestions(
     { pathname: context.path },
     context.suggestions,
@@ -209,68 +238,63 @@ export function AIWorkspace() {
   );
 
   const submit = useCallback(
-    (question: string) => {
-      const trimmed = question.trim();
-      if (!trimmed) return;
+    (question: string, files?: Parameters<typeof ask>[1]) => {
+      if (!question.trim() && !files?.length) return;
       clearError();
-      ask(trimmed);
+      ask(question, files);
     },
     [ask, clearError],
   );
 
-  const handlePromptSubmit = useCallback(
-    (message: PromptInputMessage, event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      submit(message.text);
-    },
-    [submit],
-  );
-
   const lastMessage = messages[messages.length - 1];
   const lastId = lastMessage?.id;
+  const showOrb = busy && !assistantTurnStarted(lastMessage);
   const errorReason = error
     ? assistantHasVisibleContent(lastMessage)
       ? userCopy.ai.errorInterrupted
       : error.message || userCopy.ai.errorGeneric
     : null;
+  const staticRows = fallbackShortcuts();
+  const liveRows = suggestions
+    .filter((suggestion) => !staticRows.some((row) => row.prompt === suggestion.prompt))
+    .slice(0, 2)
+    .map((suggestion, index) => ({
+      id: suggestion.prompt,
+      label: suggestion.hint ? `${suggestion.label} · ${suggestion.hint}` : suggestion.label,
+      prompt: suggestion.prompt,
+      Icon: shortcutIcon(suggestion, index),
+    }));
+  const shortcutRows = [...staticRows, ...liveRows];
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <CoreChatHeader
+        hasChats={sessions.some((session) => session.messages.length > 0)}
+        onNewChat={newChat}
+      />
+
       <Conversation className="min-h-0">
         <ConversationContent
           className={cn(
-            "mx-auto w-full gap-5 px-3 pb-4 sm:px-4 md:px-6",
-            "max-w-[var(--container-chat,48rem)]",
-            // Clears the shell's translucent header, which overlays the scroller.
-            "pt-[calc(var(--app-header-height,3.5rem)+1rem)]",
+            "mx-auto w-full gap-5 px-4 pb-4 md:px-6",
+            "max-w-[40rem]",
+            "pt-2 md:pt-8",
           )}
         >
           {isEmpty ? (
-            <ConversationEmptyState className="min-h-[40vh] py-8 sm:py-12">
-              <div className="flex w-full max-w-xl flex-col items-center gap-4">
-                <AppLogo size={48} className="size-12" />
-                <div className="space-y-1 text-center">
-                  <h3 className="text-lg font-semibold tracking-tight">{userCopy.ai.emptyTitle}</h3>
-                  <p className="text-balance text-sm text-muted-foreground">
-                    {userCopy.ai.emptyBody}
-                  </p>
-                </div>
-                <div className="flex w-full flex-col gap-2 pt-2">
-                  <p className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {userCopy.ai.suggestionsLabel}
-                  </p>
-                  <Suggestions className="flex-wrap justify-center gap-2 px-1">
-                    {suggestions.map((suggestion) => (
-                      <SuggestionChip
-                        key={suggestion.prompt}
-                        suggestion={suggestion}
-                        onSelect={submit}
-                      />
-                    ))}
-                  </Suggestions>
-                </div>
-              </div>
-            </ConversationEmptyState>
+            <div className="flex w-full flex-col gap-5 pt-4 md:pt-6">
+              {shortcutRows.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => submit(item.prompt)}
+                  className="flex items-center gap-3 text-left transition-opacity hover:opacity-70"
+                >
+                  <item.Icon className="size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.7} />
+                  <span className="text-[15px] leading-5 text-foreground">{item.label}</span>
+                </button>
+              ))}
+            </div>
           ) : (
             <>
               {messages.map((message) => (
@@ -280,6 +304,12 @@ export function AIWorkspace() {
                   streaming={busy && message.id === lastId}
                 />
               ))}
+
+              {showOrb ? (
+                <div className="flex justify-start py-1">
+                  <ThinkingOrb size={22} />
+                </div>
+              ) : null}
 
               {errorReason ? (
                 <div className="flex w-full flex-col items-start gap-2">
@@ -301,42 +331,10 @@ export function AIWorkspace() {
         <ConversationScrollButton />
       </Conversation>
 
-      <div
-        className={cn(
-          "shrink-0 px-3 pt-2 sm:px-4 md:px-6",
-          "pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-5",
-        )}
-      >
-        <PromptInput
-          onSubmit={handlePromptSubmit}
-          accept={undefined}
-          maxFiles={0}
-          className={cn(
-            "mx-auto min-h-12 items-center rounded-2xl border-border/70 bg-muted/45 shadow-none",
-            "max-w-[var(--container-chat,48rem)]",
-            "has-[[data-slot=input-group-control]:focus-visible]:border-ring",
-            "has-[[data-slot=input-group-control]:focus-visible]:ring-2",
-            "has-[[data-slot=input-group-control]:focus-visible]:ring-ring/40",
-          )}
-        >
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder={userCopy.ai.composerPlaceholder}
-              className="max-h-32 min-h-0 resize-none border-0 bg-transparent px-4 py-3 text-[15px] leading-5 shadow-none focus-visible:ring-0 sm:text-sm"
-            />
-          </PromptInputBody>
-          <PromptInputFooter align="inline-end" className="pr-1.5">
-            <PromptInputSubmit
-              status={status}
-              onStop={stop}
-              aria-label={busy ? userCopy.ai.stopped : userCopy.ai.send}
-              className={cn(
-                "size-9 rounded-xl bg-primary text-primary-foreground shadow-none",
-                "hover:bg-primary/90 disabled:opacity-50 sm:size-8",
-              )}
-            />
-          </PromptInputFooter>
-        </PromptInput>
+      <div className="shrink-0 px-4 pt-2 md:px-6">
+        <div className="core-composer-lift">
+          <CoreComposer status={status} busy={busy} onAsk={submit} onStop={stop} />
+        </div>
       </div>
     </div>
   );

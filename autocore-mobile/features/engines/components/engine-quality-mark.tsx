@@ -36,6 +36,7 @@ export const EngineQualityMark = memo(function EngineQualityMark({
     <Badge
       variant={qualityBadgeVariant(grade)}
       emphasis="subtle"
+      dot
       accessibilityLabel={
         accessibilityLabel ?? (grade ? `Quality ${grade}, ${word}` : 'Ungraded')
       }
@@ -43,12 +44,4 @@ export const EngineQualityMark = memo(function EngineQualityMark({
       {word}
     </Badge>
   );
-});
-
-export const EngineQualityPill = memo(function EngineQualityPill({
-  grade,
-}: {
-  grade: MotorQualityGrade | null;
-}) {
-  return <EngineQualityMark grade={grade} />;
 });

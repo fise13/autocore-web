@@ -137,6 +137,45 @@ export const sheetTransition = {
   backdropDuration: duration.fast,
 } as const;
 
+/** Ask Core — compact dock composer and the full chat route. */
+export const coreChatLayout = tokens.coreChat;
+
+export function coreChatStyle(scheme: ColorScheme, colors: SemanticColors) {
+  const dark = scheme === 'dark';
+  return {
+    screen: { backgroundColor: colors.background },
+    headerButton: { backgroundColor: colors.secondary },
+    composer: { backgroundColor: colors.secondary },
+    voice: { backgroundColor: colors.foreground },
+    voiceInk: colors.background,
+    send: { backgroundColor: colors.foreground },
+    sendInk: colors.background,
+    userBubble: { backgroundColor: colors.secondary },
+    drawer: { backgroundColor: colors.surfaceElevated },
+    drawerRow: { backgroundColor: colors.secondary },
+    drawerGlassTint: withAlpha(colors.card, dark ? 0.38 : 0.42),
+    drawerScrim: withAlpha('#000000', dark ? 0.08 : 0.06),
+    overlayScrim: withAlpha(colors.foreground, dark ? 0.38 : 0.18),
+    compactFill: withAlpha(colors.card, dark ? 0.55 : 0.78),
+    compactBorder: withAlpha(colors.foreground, dark ? 0.2 : 0.08),
+    closeFill: withAlpha(colors.card, dark ? 0.82 : 0.88),
+    notify: colors.primary,
+    ink: colors.foreground,
+    muted: colors.mutedForeground,
+    hairline: colors.border,
+    glassTint: (dark ? 'systemThinMaterialDark' : 'systemChromeMaterialLight') as
+      | 'systemThinMaterialDark'
+      | 'systemChromeMaterialLight',
+    glassIntensity: dark ? 48 : 80,
+    overlayGlassTint: (dark
+      ? 'systemUltraThinMaterialDark'
+      : 'systemUltraThinMaterialLight') as
+      | 'systemUltraThinMaterialDark'
+      | 'systemUltraThinMaterialLight',
+    overlayGlassIntensity: dark ? 28 : 36,
+  } as const;
+}
+
 /** Elevation — cards stay flat; floating/modal use shadows (DL v3). */
 export function defaultShadow(_scheme: ColorScheme) {
   return getShadows(_scheme).none;

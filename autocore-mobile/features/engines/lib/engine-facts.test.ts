@@ -52,6 +52,18 @@ describe('daysOnLot', () => {
 });
 
 describe('engineFacts', () => {
+  it('sets a shelf code in mono and a named place in prose', () => {
+    const [code] = engineFacts(motor({ primaryLocationCode: 'A-03-2' }), NOW);
+    assert.equal(code?.mono, true);
+
+    // Mono stretches the space in a phrase until it reads as a typo.
+    const [named] = engineFacts(motor({ warehouseLocation: 'Warehouse 2' }), NOW);
+    assert.equal(named?.mono, false);
+
+    const [unplaced] = engineFacts(motor(), NOW);
+    assert.equal(unplaced?.mono, false);
+  });
+
   it('always leads with location', () => {
     const facts = engineFacts(motor({ primaryLocationCode: 'A-03-2' }), NOW);
     assert.equal(facts[0]?.id, 'location');

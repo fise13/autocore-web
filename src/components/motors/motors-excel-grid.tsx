@@ -9,6 +9,7 @@ import { softDeleteMotorUseCase } from "@/application/use-cases/soft-delete-moto
 import { upsertMotorUseCase } from "@/application/use-cases/upsert-motor";
 import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-asset-location";
 import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
+import { ExcelGridHeaderCell } from "@/components/grid/excel-column-resizer";
 import { GridEditorOverlay } from "@/components/grid/grid-editor-overlay";
 import { GridFillHandle } from "@/components/grid/grid-fill-handle";
 import { GridPhotoCell, GridPhotoCellDisabledHint } from "@/components/grid/grid-photo-cell";
@@ -49,8 +50,10 @@ import {
   parseGridPhotoUrls,
   serializeGridPhotoUrls,
 } from "@/lib/grid/photo-urls";
+import { useExcelColumnResize } from "@/hooks/use-excel-column-resize";
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
+import { applyColumnWidthOverrides } from "@/lib/grid/column-resize";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
 import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
@@ -389,13 +392,17 @@ export function MotorsExcelGrid({
 
   const hideBrandColumn = Boolean(defaultBrandName?.trim());
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize();
   const layout = useMemo(
     () =>
-      buildGridLayoutMetrics(gridZoom, {
-        hiddenColumnIds: hideBrandColumn ? ["brandName"] : [],
-        containerWidth: scroll.width,
-      }),
-    [gridZoom, hideBrandColumn, scroll.width],
+      applyColumnWidthOverrides(
+        buildGridLayoutMetrics(gridZoom, {
+          hiddenColumnIds: hideBrandColumn ? ["brandName"] : [],
+          containerWidth: scroll.width,
+        }),
+        widthOverrides,
+      ),
+    [gridZoom, hideBrandColumn, scroll.width, widthOverrides],
   );
   const layoutColumns = layout.columns;
   const gridBounds = useMemo(() => motorGridColumnBounds(layoutColumns), [layoutColumns]);
@@ -1348,7 +1355,10 @@ export function MotorsExcelGrid({
         onBlur={handleBlur}
       >
         <div
-          className="absolute inset-0 overflow-auto bg-background excel-grid-scroll"
+          className={cn(
+            "absolute inset-0 overflow-auto bg-background excel-grid-scroll",
+            isResizing && "cursor-col-resize select-none",
+          )}
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
@@ -1423,26 +1433,21 @@ export function MotorsExcelGrid({
               {layout.columns.map((column, colIdx) => {
                 if (colIdx < visible.colStart || colIdx > visible.colEnd) return null;
                 return (
-                  <button
+                  <ExcelGridHeaderCell
                     key={column.id}
-                    type="button"
-                    className={cn(
-                      "absolute top-0 flex border-r px-2.5 font-semibold uppercase tracking-[0.06em] text-muted-foreground",
-                      column.align === "center" ? "items-center justify-center" : "items-center justify-start",
-                    )}
-                    style={{
-                      left: layout.xOffsets[colIdx],
-                      width: column.width,
-                      height: layout.headerHeight,
-                      fontSize: `${gridHeaderFontSizePx(gridZoom, layout.density.scale)}px`,
-                    }}
-                    onClick={() => {
+                    title={column.title}
+                    width={column.width}
+                    left={layout.xOffsets[colIdx] ?? 0}
+                    height={layout.headerHeight}
+                    fontSize={gridHeaderFontSizePx(gridZoom, layout.density.scale)}
+                    align={column.align}
+                    buttonClassName="uppercase tracking-[0.06em]"
+                    onSelectColumn={() => {
                       if (!isEditableColumn(colIdx, layoutColumns)) return;
                       setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
                     }}
-                  >
-                    {column.title}
-                  </button>
+                    onResizeMouseDown={(event) => beginColumnResize(column.id, column.width, event)}
+                  />
                 );
               })}
             </div>

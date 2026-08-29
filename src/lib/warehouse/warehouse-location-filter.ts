@@ -1,5 +1,9 @@
-import type { InventoryItem } from "@/domain/inventory";
 import { resolveItemLocationLabel } from "@/lib/warehouse/resolve-item-location-label";
+
+export type LocationFilterItem = {
+  primaryLocationCode?: string | null;
+  warehouseLocation?: string | null;
+};
 
 export type WarehouseLocationFilter =
   | { kind: "all" }
@@ -8,21 +12,28 @@ export type WarehouseLocationFilter =
 
 export const ALL_LOCATION_FILTER: WarehouseLocationFilter = { kind: "all" };
 
-export function itemMatchesLocationFilter(
-  item: Pick<InventoryItem, "primaryLocationCode" | "warehouseLocation">,
+export function labelMatchesLocationFilter(
+  label: string,
   filter: WarehouseLocationFilter,
 ): boolean {
-  const label = resolveItemLocationLabel(item);
   if (filter.kind === "all") return true;
-  if (filter.kind === "unlocated") return !label;
+  const trimmed = label.trim();
+  if (filter.kind === "unlocated") return !trimmed;
   const needle = filter.code.trim().toUpperCase();
   if (!needle) return true;
-  const hay = label.toUpperCase();
+  const hay = trimmed.toUpperCase();
   return hay === needle || hay.startsWith(`${needle}-`) || hay.startsWith(needle);
 }
 
+export function itemMatchesLocationFilter(
+  item: LocationFilterItem,
+  filter: WarehouseLocationFilter,
+): boolean {
+  return labelMatchesLocationFilter(resolveItemLocationLabel(item), filter);
+}
+
 export function collectLocationFilterOptions(
-  items: Array<Pick<InventoryItem, "primaryLocationCode" | "warehouseLocation">>,
+  items: LocationFilterItem[],
   limit = 12,
 ): { code: string; count: number }[] {
   const counts = new Map<string, number>();
@@ -37,8 +48,6 @@ export function collectLocationFilterOptions(
     .slice(0, limit);
 }
 
-export function countUnlocatedItems(
-  items: Array<Pick<InventoryItem, "primaryLocationCode" | "warehouseLocation">>,
-): number {
+export function countUnlocatedItems(items: LocationFilterItem[]): number {
   return items.reduce((sum, item) => (resolveItemLocationLabel(item) ? sum : sum + 1), 0);
 }

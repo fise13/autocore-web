@@ -26,7 +26,6 @@ export const ROUTE_CATALOG = [
   { path: "/home", purpose: "Dashboard overview" },
   { path: "/motors", purpose: "Serialized engines, transmissions and parts inventory" },
   { path: "/sold", purpose: "Sold units and sales history" },
-  { path: "/engine-intake", purpose: "Intake pipeline for newly received engines" },
   { path: "/work-orders", purpose: "Repair work orders" },
   { path: "/accounting", purpose: "Financial operations — income, expense, cash flow, profit" },
   { path: "/my-earnings", purpose: "The signed-in user's own payouts" },

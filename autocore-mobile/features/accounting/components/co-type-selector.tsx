@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LayoutChangeEvent, Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
+import type { IconProps } from '@/assets/icons';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/hooks';
 import { autocoreEase, duration, haptics, radius, spacing } from '@/theme';
@@ -16,6 +17,12 @@ type CoTypeSelectorProps<T extends string> = {
   value: T;
   onValueChange: (value: T) => void;
   accessibilityLabel?: string;
+  /**
+   * Optional glyph per value. The label still carries the meaning — the icon
+   * is there to be recognised before the word is read, so a missing entry
+   * degrades to a plain text segment rather than breaking the row.
+   */
+  icons?: Partial<Record<T, React.ComponentType<IconProps>>>;
 };
 
 const HEIGHT = 42;
@@ -31,6 +38,7 @@ export function CoTypeSelector<T extends string>({
   value,
   onValueChange,
   accessibilityLabel,
+  icons,
 }: CoTypeSelectorProps<T>) {
   const { colors, shadows } = useTheme();
   const [trackWidth, setTrackWidth] = useState(0);
@@ -91,6 +99,8 @@ export function CoTypeSelector<T extends string>({
 
       {segments.map((segment) => {
         const active = segment.value === value;
+        const Glyph: React.ComponentType<IconProps> | undefined = icons?.[segment.value];
+        const ink = active ? colors.foreground : colors.mutedForeground;
         return (
           <Pressable
             key={segment.value}
@@ -103,18 +113,28 @@ export function CoTypeSelector<T extends string>({
             }}
             style={{
               flex: 1,
+              flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
+              gap: spacing[1],
               paddingHorizontal: spacing[1],
             }}
           >
+            {Glyph ? (
+              <Glyph size={15} color={ink} strokeWidth={active ? 2.1 : 1.85} />
+            ) : null}
             <Text
               variant="body"
               numberOfLines={1}
+              // The glyph already names the choice, so the label may shrink
+              // rather than truncate when a segment runs narrow.
+              adjustsFontSizeToFit={Boolean(Glyph)}
+              minimumFontScale={0.85}
               style={{
                 fontSize: 14,
                 fontWeight: active ? '600' : '500',
-                color: active ? colors.foreground : colors.mutedForeground,
+                color: ink,
+                flexShrink: 1,
               }}
             >
               {segment.label}

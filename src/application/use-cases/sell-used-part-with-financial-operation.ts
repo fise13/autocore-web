@@ -2,7 +2,6 @@ import { createSaleOperationUseCase } from "@/application/use-cases/create-sale-
 import { PaymentMethod, OperationAccount } from "@/domain/financial-operation";
 import { isUsedPartAvailableForSale, UsedPart } from "@/domain/used-part";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
-import { MarketplaceListingRepository } from "@/infrastructure/firestore/marketplace-listing-repository";
 import { UsedPartRepository } from "@/infrastructure/firestore/used-part-repository";
 import { USED_PART_SALE_CATEGORY } from "@/lib/accounting/categories";
 
@@ -11,7 +10,6 @@ export { USED_PART_SALE_CATEGORY };
 export async function sellUsedPartWithFinancialOperationUseCase(
   partRepository: UsedPartRepository,
   financialRepository: FinancialOperationRepository,
-  listingRepository: MarketplaceListingRepository,
   params: {
     companyId: string;
     part: UsedPart;
@@ -30,13 +28,6 @@ export async function sellUsedPartWithFinancialOperationUseCase(
   await partRepository.update(params.companyId, params.part.id, {
     status: "sold",
     soldAt: new Date(),
-    soldAmount: params.amount,
-  });
-
-  await listingRepository.markSold(params.companyId, params.part.id);
-  await listingRepository.syncForPart(params.companyId, {
-    ...params.part,
-    status: "sold",
     soldAmount: params.amount,
   });
 

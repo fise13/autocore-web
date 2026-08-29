@@ -2,13 +2,11 @@ import { createRefundOperationUseCase } from "@/application/use-cases/create-ref
 import { PaymentMethod, OperationAccount } from "@/domain/financial-operation";
 import { UsedPart } from "@/domain/used-part";
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
-import { MarketplaceListingRepository } from "@/infrastructure/firestore/marketplace-listing-repository";
 import { UsedPartRepository } from "@/infrastructure/firestore/used-part-repository";
 
 export async function unsellUsedPartWithFinancialOperationUseCase(
   partRepository: UsedPartRepository,
   financialRepository: FinancialOperationRepository,
-  listingRepository: MarketplaceListingRepository,
   params: {
     companyId: string;
     part: UsedPart;
@@ -24,9 +22,6 @@ export async function unsellUsedPartWithFinancialOperationUseCase(
     soldAt: null,
     soldAmount: null,
   });
-
-  const restored = { ...params.part, status: "available" as const };
-  await listingRepository.syncForPart(params.companyId, restored);
 
   if (params.amount <= 0) return;
 

@@ -1,6 +1,5 @@
 import {
   CircleDollarSign,
-  Camera,
   Car,
   ClipboardList,
   Cog,
@@ -32,7 +31,6 @@ import {
 export type BusinessNavId =
   | "dashboard"
   | "inventory"
-  | "engine_intake"
   | "sales"
   | "work_orders"
   | "accounting"
@@ -73,7 +71,6 @@ export const INVENTORY_COLLECTION_NAV: InventoryCollectionNavItem[] = INVENTORY_
 
 export const PRIMARY_BUSINESS_NAV_IDS: BusinessNavId[] = [
   "inventory",
-  "engine_intake",
   "sales",
   "work_orders",
   "accounting",
@@ -106,15 +103,6 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
           label: inventoryCollectionLabel(item.id),
         }),
       ),
-    });
-  }
-
-  if (isNavAllowed(user, "engine_intake")) {
-    business.push({
-      id: "engine_intake",
-      label: businessNavCopy.business.engineIntake,
-      href: "/engine-intake",
-      icon: Camera,
     });
   }
 
@@ -228,8 +216,6 @@ export function isBusinessNavActive(
       return pathname === "/sold";
     case "donors":
       return pathname.startsWith("/donors") || pathname.startsWith("/used-parts");
-    case "engine_intake":
-      return pathname.startsWith("/engine-intake");
     case "work_orders":
       return pathname.startsWith("/work-orders");
     case "accounting":

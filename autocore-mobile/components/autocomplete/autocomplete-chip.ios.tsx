@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { Pressable } from 'react-native';
-import Animated, { FadeIn, FadeInRight, FadeOutRight } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInRight } from 'react-native-reanimated';
 
 import { useReducedMotion, useTheme } from '@/hooks';
 import { haptics } from '@/theme';
@@ -30,17 +30,16 @@ export const AutocompleteChip = memo(function AutocompleteChip({
   const outOfStock = chipOutOfStock(option);
   const [pressed, setPressed] = useState(false);
 
+  // Stagger only the first few — `index` runs to the suggestion cap, and a
+  // 24ms step past that delays late chips by whole seconds.
   const entering = reducedMotion
     ? FadeIn.duration(120)
     : FadeInRight.duration(tokens.autocomplete.enterMs).delay(
-        index * tokens.autocomplete.staggerMs,
+        Math.min(index, 4) * tokens.autocomplete.staggerMs,
       );
-  const exiting = reducedMotion
-    ? undefined
-    : FadeOutRight.duration(tokens.motion.duration.instant);
 
   return (
-    <Animated.View entering={entering} exiting={exiting} style={glass.shadow}>
+    <Animated.View entering={entering} style={glass.shadow}>
       <AutocompleteGlassPlate>
         <Pressable
           accessibilityRole="button"

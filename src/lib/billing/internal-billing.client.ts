@@ -27,10 +27,6 @@ async function postBilling<T>(path: string, body: Record<string, unknown>): Prom
   return payload as T;
 }
 
-export async function startCompanyTrialRemote(companyId: string): Promise<{ proActive: boolean; started: boolean }> {
-  return postBilling("/api/billing/start-trial", { companyId });
-}
-
 export async function activateInternalProRemote(
   companyId: string,
   interval: BillingInterval,

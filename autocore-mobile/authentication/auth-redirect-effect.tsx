@@ -1,9 +1,11 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { Platform } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 
 import { useAuthStore } from '@/store/auth-store';
 import { journeyPathForStep, useAuthJourneyStep } from '@/hooks/use-auth-journey-step';
 import { isProductionCompanyId } from '@/lib/company-id';
+import { isDevSandboxPath, isWebDevEntryPath } from '@/lib/navigation/dev-sandbox';
 import { resolveInitialTabHref } from '@/lib/navigation/nav-item-availability';
 import { resolveSessionCompanyId } from '@/lib/session/merge-hydration';
 import { useCompanyModuleEnabled } from '@/hooks/use-module-enabled';
@@ -22,10 +24,6 @@ import {
  * Auth-state routing without `useSegments` in the effect deps.
  * Segment-driven replace loops overflowed the native nav stack.
  */
-function isDevSandboxPath(pathname: string): boolean {
-  return pathname === '/design-system';
-}
-
 export function AuthRedirectEffect() {
   const router = useRouter();
   const pathname = usePathname();
@@ -71,11 +69,17 @@ export function AuthRedirectEffect() {
       return;
     }
 
+    if (__DEV__ && isDevSandboxPath(pathname)) {
+      return;
+    }
+
     let target: string | null = null;
 
     if (!firebaseUser) {
-      // Mock labs do not need a session; stay put instead of bouncing to login.
-      target = __DEV__ && isDevSandboxPath(pathname) ? null : '/(auth)/login';
+      target =
+        __DEV__ && Platform.OS === 'web' && isWebDevEntryPath(pathname)
+          ? '/playground'
+          : '/(auth)/login';
     } else if (journeyStep !== 'app') {
       target = journeyPathForStep(journeyStep);
     } else if (hasAccess && subscriptionLoading && !paywallBypassed) {

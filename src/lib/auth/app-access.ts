@@ -16,10 +16,10 @@ export { canAccessMyEarnings, canAccessOverview, isEmployeeOverviewUser };
 
 /** Restricted roles see only these sidebar sections (owner/manager use permissions). */
 const ROLE_NAV_ALLOWLIST: Partial<Record<UserRole, readonly SidebarNavItemId[]>> = {
-  mechanic: ["home", "engine_intake", "work_orders", "my_earnings"],
+  mechanic: ["home", "work_orders", "my_earnings"],
   diagnostician: ["home", "work_orders"],
   accountant: ["accounting"],
-  admin: ["home", "engine_intake", "work_orders", "warehouse"],
+  admin: ["home", "work_orders", "warehouse"],
 };
 
 function roleNavAllowlist(role: UserRole | undefined): readonly SidebarNavItemId[] | null {
@@ -35,8 +35,6 @@ function navPermission(navId: SidebarNavItemId): Permission | null {
     case "sold":
     case "warehouse":
       return "inventory_view";
-    case "engine_intake":
-      return "engine_intake_view";
     case "work_orders":
       return "work_orders_view";
     case "my_earnings":
@@ -100,7 +98,7 @@ export function canAccessPath(
     return isNavAllowed(user, "warehouse");
   }
   if (pathname.startsWith("/engine-intake")) {
-    return isNavAllowed(user, "engine_intake");
+    return canAccessMotorsArea(user) || can(user, "engine_intake_view");
   }
   if (pathname === "/motors" || pathname.startsWith("/specific/")) {
     return canAccessMotorsArea(user);

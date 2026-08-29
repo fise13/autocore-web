@@ -38,11 +38,6 @@ const MotorsWorkspace = lazyPanel(() =>
     default: m.MotorsWorkspace,
   })),
 );
-const EngineIntakeWorkspace = lazyPanel(() =>
-  import("@/components/engine-intake/engine-intake-workspace").then((m) => ({
-    default: m.EngineIntakeWorkspace,
-  })),
-);
 const SoldWorkspace = lazyPanel(() =>
   import("@/components/sold/sold-workspace").then((m) => ({
     default: m.SoldWorkspace,
@@ -100,7 +95,6 @@ export function resolveRouteCacheKey(pathname: string): string | null {
   if (pathname === "/work-orders" || pathname.startsWith("/work-orders/")) return "/work-orders";
   if (pathname === "/accounting") return "/accounting";
   if (pathname === "/motors") return "/motors";
-  if (pathname === "/engine-intake") return "/engine-intake";
   if (pathname === "/sold") return "/sold";
   if (pathname === "/warehouse") return "/warehouse";
   if (pathname === "/settings" || pathname.startsWith("/settings/")) return "/settings";
@@ -136,8 +130,6 @@ function renderCachedRoute(cacheKey: string): ReactNode {
       );
     case "/motors":
       return <MotorsWorkspace />;
-    case "/engine-intake":
-      return <EngineIntakeWorkspace />;
     case "/sold":
       return <SoldWorkspace />;
     case "/warehouse":

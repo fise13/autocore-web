@@ -13,7 +13,6 @@ import {
 export const BUSINESS_NAV_TO_SIDEBAR_ID: Record<BusinessNavId, SidebarNavItemId> = {
   dashboard: "home",
   inventory: "motors",
-  engine_intake: "engine_intake",
   sales: "sold",
   work_orders: "work_orders",
   accounting: "accounting",

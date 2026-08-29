@@ -42,8 +42,6 @@ describe("computeDismantlerAttention", () => {
       photoUrls: [],
       applicability: "",
       status: "available",
-      listedOnAvito: false,
-      listedOnDrom: false,
       createdAt: new Date("2026-06-01"),
       updatedAt: new Date("2026-06-01"),
       createdByUserId: "u1",
