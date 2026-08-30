@@ -3275,6 +3275,57 @@ export const userCopyRu = {
     bannerHint: "изменения не сохраняются после выхода",
     exit: "Выйти из демо",
     exiting: "Сброс и выход…",
+    opening: "Открываем демо AutoCore…",
+    unavailableTitle: "Демо временно недоступно",
+    unavailableBody: (email: string, detail: string) =>
+      `Не удалось открыть демо-аккаунт ${email}.${detail} Попробуйте войти вручную или напишите в поддержку.`,
+    signIn: "Войти в аккаунт",
+    backHome: "На главную",
+    companyName: "Демо — AutoCore Разборка",
+    ownerName: "Демо AutoCore",
+    warehouseName: "Основной склад",
+    clients: {
+      alexey: "Алексей Ким",
+      marat: "Марат Садыков",
+      oleg: "Олег Воронов",
+    },
+    items: {
+      oilFilter: "Масляный фильтр",
+      oil: "Масло 5W-30, 4 л",
+      coolant: "Антифриз G12, 1 л",
+      brakePads: "Колодки передние",
+    },
+    motorNotes: {
+      g4kc: "184 000 км · импорт",
+      twoAz: "162 000 км",
+      g4kd: "198 000 км",
+      qr25: "141 000 км",
+      cjsa: "128 000 км",
+    },
+    workOrders: {
+      completed: {
+        number: "НЗ-2026-0142",
+        comment: "Замена двигателя G4KC, диагностика после установки",
+        labor: {
+          l1: "Снятие и установка двигателя",
+          l2: "Диагностика и первый запуск",
+        },
+      },
+      inProgress: {
+        number: "НЗ-2026-0148",
+        comment: "ТО: масло, фильтры, диагностика подвески",
+        labor: {
+          l1: "Замена масла и фильтров",
+        },
+      },
+      waitingParts: {
+        number: "НЗ-2026-0151",
+        comment: "Замена передних колодок",
+        labor: {
+          l1: "Замена передних колодок",
+        },
+      },
+    },
   },
 
   account: {

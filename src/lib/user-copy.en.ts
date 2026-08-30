@@ -3266,6 +3266,57 @@ export const userCopyEn = {
     bannerHint: "changes are not saved after you exit",
     exit: "Exit demo",
     exiting: "Resetting and exiting…",
+    opening: "Opening AutoCore demo…",
+    unavailableTitle: "Demo is temporarily unavailable",
+    unavailableBody: (email: string, detail: string) =>
+      `Could not open the demo account ${email}.${detail} Try signing in manually or contact support.`,
+    signIn: "Sign in",
+    backHome: "Back to home",
+    companyName: "Demo — AutoCore Dismantling",
+    ownerName: "Demo AutoCore",
+    warehouseName: "Main warehouse",
+    clients: {
+      alexey: "Alexey Kim",
+      marat: "Marat Sadykov",
+      oleg: "Oleg Voronov",
+    },
+    items: {
+      oilFilter: "Oil filter",
+      oil: "5W-30 oil, 4 L",
+      coolant: "G12 coolant, 1 L",
+      brakePads: "Front brake pads",
+    },
+    motorNotes: {
+      g4kc: "184,000 km · imported",
+      twoAz: "162,000 km",
+      g4kd: "198,000 km",
+      qr25: "141,000 km",
+      cjsa: "128,000 km",
+    },
+    workOrders: {
+      completed: {
+        number: "WO-2026-0142",
+        comment: "G4KC engine replacement, post-install diagnostics",
+        labor: {
+          l1: "Engine removal and installation",
+          l2: "Diagnostics and first start",
+        },
+      },
+      inProgress: {
+        number: "WO-2026-0148",
+        comment: "Service: oil, filters, suspension diagnostics",
+        labor: {
+          l1: "Oil and filter change",
+        },
+      },
+      waitingParts: {
+        number: "WO-2026-0151",
+        comment: "Front brake pad replacement",
+        labor: {
+          l1: "Front brake pad replacement",
+        },
+      },
+    },
   },
 
   account: {
