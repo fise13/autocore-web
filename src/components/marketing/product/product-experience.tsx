@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { HeroMotorsTheater } from "@/components/marketing/experience/surfaces/hero-motors-theater";
 import { ProductAppSurface } from "@/components/marketing/experience/surfaces/product-app-surface";
+import { ScaledDesktopStage } from "@/components/marketing/experience/ui/scaled-desktop-stage";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import { useProductContent } from "@/components/marketing/product/content/use-product-content";
 import { ProductModulesNav } from "@/components/marketing/product/product-modules-nav";
@@ -12,7 +13,6 @@ import { ProductWalkSection } from "@/components/marketing/product/product-walk-
 import { ProductAiImportSurface } from "@/components/marketing/product/surfaces/product-ai-import-surface";
 import { ProductDocumentPreview } from "@/components/marketing/product/surfaces/product-document-preview";
 import { ProductFinanceSurface } from "@/components/marketing/product/surfaces/product-finance-surface";
-import { ProductMobilePhone } from "@/components/marketing/product/surfaces/product-mobile-phone";
 import { ProductSaleDemo } from "@/components/marketing/product/surfaces/product-sale-demo";
 import { ProductWorkOrderPanel } from "@/components/marketing/product/surfaces/product-work-order-panel";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,9 @@ export function ProductExperience() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.05, delay: 0.32, ease: EASE }}
         >
-          <ProductAppSurface compact className="product-walk-app-surface" />
+          <ScaledDesktopStage>
+            <ProductAppSurface compact className="product-walk-app-surface" />
+          </ScaledDesktopStage>
         </motion.div>
       </section>
 
@@ -88,11 +90,13 @@ export function ProductExperience() {
               <div className="product-engine-prompt" aria-hidden>
                 <span>{engine.searchPrompt}</span>
               </div>
-              <HeroMotorsTheater
-                className="product-walk-theater"
-                initialQuery=""
-                dense
-              />
+              <ScaledDesktopStage>
+                <HeroMotorsTheater
+                  className="product-walk-theater"
+                  initialQuery=""
+                  dense
+                />
+              </ScaledDesktopStage>
             </div>
           </ProductWalkSection>
 
@@ -134,16 +138,6 @@ export function ProductExperience() {
             surfaceClassName="product-walk-surface-tall"
           >
             <ProductFinanceSurface />
-          </ProductWalkSection>
-
-          <ProductWalkSection
-            id={sections.mobile.id}
-            title={sections.mobile.title}
-            line={sections.mobile.line}
-            question={sections.mobile.question}
-            surfaceClassName="product-walk-surface-phone"
-          >
-            <ProductMobilePhone />
           </ProductWalkSection>
 
           <ProductWalkSection

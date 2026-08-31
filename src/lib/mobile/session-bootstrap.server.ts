@@ -6,6 +6,7 @@ import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import type { UserCompanyMembership } from "@/infrastructure/firestore/user-company-membership-service";
 import { mergeProfileWithEmployee } from "@/lib/auth/resolve-effective-profile";
 import { isUnassignedCompanyId, normalizeCompanyId } from "@/lib/company-id";
+import { localizeDemoCompanyName, localizeDemoOwnerName } from "@/lib/demo/demo-localize";
 
 type UserDocShape = {
   email?: string | null;
@@ -27,7 +28,7 @@ function mapUserDoc(uid: string, data: UserDocShape | undefined): UserEntity {
   return {
     id: uid,
     email: data?.email ?? "",
-    displayName,
+    displayName: localizeDemoOwnerName(displayName),
     phone: data?.phone ?? null,
     photoURL: data?.photoURL ?? null,
     role: data?.role ?? "employee",
@@ -70,7 +71,10 @@ async function readUserMemberships(uid: string): Promise<UserCompanyMembership[]
       return {
         companyId,
         role: data.role ?? "employee",
-        name: typeof data.name === "string" && data.name.trim() ? data.name.trim() : companyId,
+        name: localizeDemoCompanyName(
+          companyId,
+          typeof data.name === "string" && data.name.trim() ? data.name.trim() : companyId,
+        ),
       };
     });
 
@@ -78,7 +82,7 @@ async function readUserMemberships(uid: string): Promise<UserCompanyMembership[]
   const owned = ownedSnap.docs.map((entry) => ({
     companyId: normalizeCompanyId(entry.id),
     role: "owner" as const,
-    name: String(entry.data()?.name ?? entry.id),
+    name: localizeDemoCompanyName(normalizeCompanyId(entry.id), String(entry.data()?.name ?? entry.id)),
   }));
 
   let employees: UserCompanyMembership[] = [];
@@ -91,7 +95,7 @@ async function readUserMemberships(uid: string): Promise<UserCompanyMembership[]
         return {
           companyId,
           role: (entry.data()?.role as UserRole) ?? "employee",
-          name: companyId,
+          name: localizeDemoCompanyName(companyId, companyId),
         };
       })
       .filter((entry) => entry.companyId);

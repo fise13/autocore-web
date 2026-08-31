@@ -23,6 +23,7 @@ import {
 import { upsertMotorSchema } from "@/domain/schemas";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
+import { localizeDemoMotorNotes } from "@/lib/demo/demo-localize";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
@@ -96,7 +97,7 @@ function mapMotor(docId: string, data: Record<string, unknown>): MotorEntity | n
     engineId: readNumber(data.engineId) || undefined,
     serialCode,
     configuration: String(data.configuration ?? ""),
-    notes: String(data.notes ?? ""),
+    notes: localizeDemoMotorNotes(docId, String(data.notes ?? "")),
     quality: typeof data.quality === "string" ? data.quality : "",
     photoUrls: Array.isArray(data.photoUrls)
       ? data.photoUrls.map(String).filter(Boolean)

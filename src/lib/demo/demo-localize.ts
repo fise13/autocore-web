@@ -56,21 +56,27 @@ export function localizeDemoMotorNotes(motorDocId: string, fallback: string): st
   return fallback;
 }
 
-export function localizeDemoWorkOrderFields(input: {
+type DemoLaborLine = { id: string; title: string; assigneeDisplayNames?: string[] };
+type DemoPartLine = { itemId?: string; name: string };
+
+export function localizeDemoWorkOrderFields<
+  TLabor extends DemoLaborLine,
+  TPart extends DemoPartLine,
+>(input: {
   id: string;
   companyId: string;
   number: string;
   clientId: string;
   clientName?: string;
   comment?: string;
-  laborLines: Array<{ id: string; title: string }>;
-  partLines: Array<{ itemId?: string; name: string }>;
+  laborLines: TLabor[];
+  partLines: TPart[];
 }): {
   number: string;
   clientName?: string;
   comment?: string;
-  laborLines: Array<{ id: string; title: string }>;
-  partLines: Array<{ itemId?: string; name: string }>;
+  laborLines: TLabor[];
+  partLines: TPart[];
 } {
   if (input.companyId !== DEMO_COMPANY_ID) return input;
 
@@ -94,10 +100,37 @@ export function localizeDemoWorkOrderFields(input: {
     laborLines: input.laborLines.map((line) => ({
       ...line,
       title: laborTitles[line.id as keyof typeof laborTitles] ?? line.title,
+      assigneeDisplayNames: line.assigneeDisplayNames?.map(
+        (name) => localizeDemoOwnerName(name) ?? name,
+      ),
     })),
     partLines: input.partLines.map((line) => ({
       ...line,
       name: line.itemId ? localizeDemoItemName(line.itemId, line.name) : line.name,
     })),
+  };
+}
+
+export function localizeDemoWorkOrder<
+  T extends {
+    id: string;
+    companyId: string;
+    number: string;
+    clientId: string;
+    clientName?: string;
+    comment?: string;
+    laborLines: DemoLaborLine[];
+    partLines: DemoPartLine[];
+  },
+>(order: T): T {
+  if (order.companyId !== DEMO_COMPANY_ID) return order;
+  const fields = localizeDemoWorkOrderFields(order);
+  return {
+    ...order,
+    number: fields.number,
+    clientName: fields.clientName,
+    comment: fields.comment,
+    laborLines: fields.laborLines,
+    partLines: fields.partLines,
   };
 }

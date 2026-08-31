@@ -78,7 +78,7 @@ export async function dispatchDemoReset(options?: DemoResetOptions): Promise<boo
 
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? "Не удалось сбросить демо-данные");
+        throw new Error(body?.error ?? "Could not reset demo data");
       }
 
       markDemoResetDone();

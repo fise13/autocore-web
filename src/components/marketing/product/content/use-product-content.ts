@@ -28,7 +28,7 @@ export function useProductContent() {
     toc: {
       title: t("toc.title"),
       ariaLabel: t("toc.ariaLabel"),
-      items: t.raw("toc.items") as TocItem[],
+      items: (t.raw("toc.items") as TocItem[]).filter((item) => item.id !== "mobile"),
     },
     sections: {
       "engine-search": {

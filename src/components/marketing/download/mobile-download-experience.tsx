@@ -73,7 +73,7 @@ function MobileDownloadReveal({
   const tQr = useTranslations("marketing.pages.downloadMobile");
   const platformCopy = copy.platforms.find((item) => item.id === platform)!;
   const installUrl = platform === "ios" ? links.ios : links.android;
-  const hasUrl = installUrl.length > 0;
+  const hasUrl = installUrl.length > 0 && installUrl !== "#";
   const [qrDataUri, setQrDataUri] = useState<string | null>(null);
 
   useEffect(() => {

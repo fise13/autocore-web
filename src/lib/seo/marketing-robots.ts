@@ -31,7 +31,6 @@ export function marketingRobotsAllowPaths(): string[] {
     "/security",
     "/contact",
     "/download",
-    "/download/mobile",
     "/legal/",
   ];
 }
@@ -81,7 +80,7 @@ export function privateAppRobotsPaths(): string[] {
  * `/public`, so it answers on both hosts — it is `noindex` in the file itself
  * and disallowed here so neither copy is crawled.
  */
-const SHARED_DISALLOW = ["/marketing/", "/business.html"];
+const SHARED_DISALLOW = ["/marketing/", "/business.html", "/download/mobile"];
 
 /** Marketing-host disallows. */
 export function marketingRobotsDisallowPaths(): string[] {

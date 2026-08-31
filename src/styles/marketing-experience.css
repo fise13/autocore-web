@@ -454,9 +454,14 @@
 }
 
 @media (max-width: 900px) {
+  /*
+    A full-viewport hero on a phone pushed the CTAs below the fold and left the
+    product preview as a clipped sliver. Height follows content here.
+  */
   .exp-hero-linear {
-    min-height: calc(100dvh - 3.75rem);
-    padding-top: 4rem;
+    min-height: auto;
+    padding-top: 2.5rem;
+    padding-bottom: clamp(2.5rem, 8vw, 4rem);
   }
 
   .exp-hero-linear-shell {
@@ -471,10 +476,12 @@
   .exp-hero-linear-title {
     max-width: 16ch;
     font-size: clamp(2.15rem, 8.5vw, 2.7rem);
+    text-wrap: balance;
   }
 
   .exp-hero-linear-sub {
     font-size: 0.9375rem;
+    text-wrap: pretty;
   }
 
   .exp-hero-linear-actions {
@@ -485,12 +492,17 @@
   .exp-hero-linear-cta-secondary {
     width: auto;
     flex: 1 1 auto;
+    height: 2.75rem;
+    min-width: 0;
   }
 
   .exp-hero-linear-stage {
+    flex: 0 0 auto;
     margin-top: clamp(1.75rem, 4.5vh, 2.5rem);
     padding-inline: 0;
-    mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+    /* The preview is short here — a hard fade would eat most of it. */
+    mask-image: linear-gradient(to bottom, #000 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 92%, transparent 100%);
   }
 
   .exp-hero-linear-stage-inner {
@@ -1387,6 +1399,33 @@
   grid-column: span 3;
 }
 
+/*
+  Safety net for an Overview rendered outside `ScaledDesktopStage`: four stat
+  cards in a 390px row leave ~90px each, which shreds the labels. Inside a
+  scaled stage the four-column rule further down wins on specificity.
+*/
+@media (max-width: 640px) {
+  .exp-outcome-mc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .exp-outcome-mc-span-2,
+  .exp-outcome-mc-span-3 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 420px) {
+  .exp-outcome-mc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exp-outcome-mc-span-2,
+  .exp-outcome-mc-span-3 {
+    grid-column: span 1;
+  }
+}
+
 .exp-outcome-mc-list {
   margin: 0;
   padding: 0;
@@ -1530,6 +1569,78 @@
   font-size: 0.625rem;
   font-family: inherit;
   opacity: 0.7;
+}
+
+/*
+  Scale-to-fit stage (`ScaledDesktopStage`). The chrome inside is laid out at a
+  desktop width and transformed down, so the viewport-width media queries that
+  collapse the app shell must stand down — otherwise a phone gets a sidebar-less
+  single column rendered at 1080px and then shrunk.
+*/
+.exp-scaled-stage {
+  width: 100%;
+}
+
+.exp-scaled-stage[data-scaled="true"] {
+  overflow: hidden;
+}
+
+.exp-scaled-stage-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-product-app {
+  grid-template-columns: 14rem minmax(0, 1fr);
+  /* Fixed height: `vh` inside a scaled stage measures the phone, not the frame. */
+  min-height: 34rem;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-product-app.is-compact {
+  grid-template-columns: 13rem minmax(0, 1fr);
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-product-app-sidebar {
+  display: flex;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-product-app-topbar-search {
+  max-width: 22rem;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-outcome-mc-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel-header,
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel-row {
+  grid-template-columns:
+    2.4rem
+    6.5rem
+    6rem
+    4.25rem
+    4.75rem
+    7.5rem
+    4.5rem
+    6.75rem
+    minmax(10rem, 1fr);
+  min-width: 56rem;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel-td,
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel-th {
+  min-height: 2.25rem;
+  padding-inline: 0.6rem;
+  font-size: 0.8125rem;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel-body {
+  max-height: none;
+}
+
+.exp-scaled-stage[data-scaled="true"] .exp-hero-excel {
+  border-radius: 0.75rem 0.75rem 0 0;
 }
 
 .exp-product-app-topbar-meta {
@@ -2068,14 +2179,15 @@
     font-size: clamp(1.75rem, 7vw, 2.25rem);
   }
 
+  /* The grid arrives pre-scaled here, so it no longer needs a tall stage. */
   .exp-sale-stage {
     margin-top: 1.75rem;
-    min-height: 18rem;
+    min-height: 0;
   }
 
   .exp-sale-stage.has-fade {
-    mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+    mask-image: none;
+    -webkit-mask-image: none;
   }
 
   .exp-product-app {
@@ -2200,12 +2312,33 @@
   );
 }
 
+/*
+  One number for the header, reused by the mobile sheet and every sticky
+  sub-nav. Previously the bar was 4rem / 4.25rem while the sheet assumed
+  4.3rem, so panels sat a few pixels off at every breakpoint.
+*/
+.site-theme {
+  --exp-header-height: calc(4rem + env(safe-area-inset-top, 0px));
+}
+
 .exp-site-header {
+  padding-top: env(safe-area-inset-top, 0px);
   background: color-mix(in srgb, var(--background) 92%, transparent);
 }
 
 html:not([data-perf-tier="low"]) .exp-site-header {
   backdrop-filter: blur(12px);
+}
+
+/*
+  The scroll lock pins `body`, which would drag a sticky header out of view
+  along with the page. While the sheet is open the header owns the viewport.
+*/
+.exp-site-header[data-menu-open="true"] {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  background: var(--background);
 }
 
 .exp-site-header-bar--scrolled {
@@ -2225,37 +2358,48 @@ html:not([data-perf-tier="low"]) .exp-site-header {
   border-color: color-mix(in srgb, var(--border) 88%, transparent);
 }
 
+/*
+  Stops at the header so it never dims the close button, and sits above the
+  floating AI orb (z-index 70) so nothing pokes through the open sheet.
+*/
 .exp-site-mobile-backdrop {
+  position: fixed;
+  inset: var(--exp-header-height, 4rem) 0 0;
+  z-index: 75;
+  padding: 0;
+  border: 0;
+  touch-action: none;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--background) 48%, transparent), rgba(0, 0, 0, 0.6));
 }
 
+/* Full-height sheet from under the header, not a floating dropdown card. */
 .exp-site-mobile-nav {
   position: fixed;
   inset-inline: 0;
-  top: 4.3rem;
-  z-index: 45;
-  padding-inline: 0.875rem;
+  top: var(--exp-header-height, 4rem);
+  bottom: 0;
+  z-index: 76;
+  display: flex;
+  flex-direction: column;
 }
 
 .exp-site-mobile-nav-inner {
-  width: min(100%, 34rem);
-  margin-inline: auto;
-  border-radius: 1.25rem;
-  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--background) 94%, transparent);
-  box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.28),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
-  overflow: hidden;
-}
-
-html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
-  backdrop-filter: blur(20px);
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: var(--background);
 }
 
 .exp-site-mobile-nav-section {
-  padding: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.1rem 1.15rem 1.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .exp-site-mobile-nav-section + .exp-site-mobile-nav-section {
@@ -2295,8 +2439,10 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
 }
 
 .exp-site-mobile-nav-link {
-  padding: 0.9rem 0.95rem;
-  font-size: 1rem;
+  min-height: 3rem;
+  justify-content: center;
+  padding: 0.85rem 0.95rem;
+  font-size: 1.0625rem;
   font-weight: 500;
   color: var(--foreground);
 }
@@ -2322,10 +2468,12 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
 }
 
 .exp-site-mobile-cta-row {
+  flex: 0 0 auto;
   display: flex;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 1rem 1.15rem calc(1rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: var(--background);
 }
 
 .exp-site-footer {
@@ -2492,6 +2640,18 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   .exp-cta-secondary {
     width: min(100%, 14rem);
   }
+
+  /* Two 10.5rem buttons cannot share a 390px row without shrinking the label. */
+  .exp-hero-linear-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .exp-hero-linear-cta-primary,
+  .exp-hero-linear-cta-secondary {
+    width: 100%;
+    flex: 0 0 auto;
+  }
 }
 
 .exp-cta-backdrop {
@@ -2543,10 +2703,6 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   html:not([data-perf-tier="low"]) .exp-site-header {
     backdrop-filter: none;
   }
-
-  html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
-    backdrop-filter: none;
-  }
 }
 
 @media (max-width: 767px) {
@@ -2559,7 +2715,6 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   }
 
   .exp-site-header-bar {
-    height: 4.25rem;
     padding-inline: 0.875rem;
   }
 
@@ -3426,6 +3581,8 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   align-items: center;
   text-align: center;
   width: 100%;
+  /* `width: 100%` dropped the section gutter, so headings ran off both edges. */
+  padding-inline: 1rem;
 }
 
 .download-hero-title {
@@ -3454,6 +3611,31 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   font-weight: 400;
   line-height: 1.65;
   color: var(--muted-foreground);
+}
+
+/*
+  Placed after the base rules on purpose. The same overrides exist in the 767px
+  block further up the file, where they lose to these later definitions — which
+  is why a phone still got a 100dvh hero holding two lines of text.
+*/
+@media (max-width: 767px) {
+  .download-panel,
+  .contact-panel {
+    min-height: auto;
+    padding-block: clamp(3rem, 12vw, 4.5rem);
+  }
+
+  .download-panel-hero,
+  .contact-panel-hero {
+    min-height: auto;
+    padding-top: 3rem;
+    padding-bottom: clamp(3rem, 12vw, 4.5rem);
+  }
+
+  .contact-panel-methods,
+  .contact-panel-close {
+    min-height: auto;
+  }
 }
 
 .download-platforms-inner {
@@ -3862,6 +4044,44 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
 
   .keynote-scene-beam {
     inset: 10% 8% 18% 4%;
+  }
+}
+
+@media (max-width: 720px) {
+  .keynote-scene,
+  .keynote-scene-composition {
+    min-height: 0;
+  }
+
+  .keynote-scene-composition {
+    padding: clamp(1.25rem, 5vw, 2rem);
+  }
+
+  /*
+    Overlapping a 9.75rem phone on an already-shrunken lid left two unreadable
+    devices. Below tablet they stack at their own scale instead.
+  */
+  .keynote-scene-desk {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+    transform: none;
+  }
+
+  .keynote-scene-desk-shadow {
+    display: none;
+  }
+
+  .keynote-scene-phone {
+    position: static;
+    width: min(62%, 13rem);
+    transform: none;
+  }
+
+  .keynote-scene-beam {
+    display: none;
   }
 }
 
@@ -4699,7 +4919,7 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
 }
 
 .download-travels-title {
-  max-width: 18ch;
+  max-width: min(18ch, 100%);
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 600;
   letter-spacing: -0.035em;
@@ -6099,7 +6319,7 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
 
 .product-modules-nav {
   position: sticky;
-  top: 3.75rem;
+  top: var(--exp-header-height, 4rem);
   z-index: 30;
   border-block: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   background: color-mix(in srgb, var(--background) 88%, transparent);
@@ -6443,6 +6663,14 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   padding-block: clamp(2rem, 5vh, 3.5rem) var(--product-gap);
 }
 
+/*
+  Grid items default to `min-width: auto`, so one wide demo inside a section
+  stretched the `1fr` column to 612px on a 390px phone.
+*/
+.product-walk-layout > * {
+  min-width: 0;
+}
+
 @media (min-width: 1080px) {
   .product-walk-layout {
     grid-template-columns: 13.5rem minmax(0, 1fr);
@@ -6560,7 +6788,7 @@ html:not([data-perf-tier="low"]) .exp-site-mobile-nav-inner {
   .product-walk-aside {
     display: block;
     position: sticky;
-    top: 3.75rem;
+    top: var(--exp-header-height, 4rem);
     z-index: 30;
     margin: 0 -1rem 1.5rem;
     padding: 0.65rem 1rem;

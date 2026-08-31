@@ -43,7 +43,9 @@ function languageAlternates(key: MarketingPathKey) {
 export default function sitemap(): MetadataRoute.Sitemap {
   const marketingUrl = getMarketingUrl().replace(/\/$/, "");
   const ogImage = `${marketingUrl}/opengraph-image`;
-  const keys = Object.keys(marketingCleanPaths) as MarketingPathKey[];
+  const keys = (Object.keys(marketingCleanPaths) as MarketingPathKey[]).filter(
+    (key) => key !== "downloadMobile",
+  );
 
   return keys.flatMap((key) => {
     const priority = SITEMAP_PRIORITY[key];

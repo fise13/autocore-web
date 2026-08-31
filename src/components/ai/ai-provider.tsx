@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { CoreAskOrb } from "@/components/ai/core-ask-orb";
 import { CoreChatRuntime } from "@/components/ai/core-chat-runtime";
 import {
   CHAT_TITLE_MAX,
@@ -47,6 +48,10 @@ type AssistantContextValue = {
   returnPath: string;
   open: () => void;
   close: () => void;
+  /** Compact liquid-glass Ask Core — the dock “+” bubble on web. */
+  isCompactOpen: boolean;
+  openCompact: () => void;
+  closeCompact: () => void;
   newChat: () => void;
   selectChat: (sessionId: string) => void;
   renameChat: (sessionId: string, title: string) => void;
@@ -97,6 +102,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   /** Last non-AI route — AI answers against this workspace context. */
   const [returnPath, setReturnPath] = useState("/");
   const [returnSearch, setReturnSearch] = useState("");
+  const [compactOpen, setCompactOpen] = useState(false);
 
   const sessionsRef = useRef<AssistantChatSession[]>([]);
   const activeSessionIdRef = useRef<string | null>(null);
@@ -226,14 +232,28 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback(() => {
     if (isAiRoute(pathname)) return;
+    setCompactOpen(false);
     setState("active");
     router.push(aiHref(activeSessionIdRef.current));
   }, [pathname, router]);
 
   const close = useCallback(() => {
+    setCompactOpen(false);
     setState("idle");
     router.push(`${returnPath}${returnSearch}` || "/");
   }, [returnPath, returnSearch, router]);
+
+  const openCompact = useCallback(() => {
+    if (isAiRoute(pathname)) {
+      router.push(aiHref(activeSessionIdRef.current));
+      return;
+    }
+    setCompactOpen(true);
+  }, [pathname, router]);
+
+  const closeCompact = useCallback(() => {
+    setCompactOpen(false);
+  }, []);
 
   const newChat = useCallback(() => {
     setState("idle");
@@ -295,6 +315,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && compactOpen) {
+        event.preventDefault();
+        closeCompact();
+        return;
+      }
       if (event.key === "Escape" && isOpen) {
         event.preventDefault();
         close();
@@ -303,16 +328,18 @@ export function AIProvider({ children }: { children: ReactNode }) {
       if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return;
       if (event.key.toLowerCase() !== "j") return;
       event.preventDefault();
-      if (isOpen) close();
-      else open();
+      if (compactOpen) closeCompact();
+      else if (isOpen) close();
+      else openCompact();
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close, isOpen, open]);
+  }, [close, closeCompact, compactOpen, isOpen, openCompact]);
 
   useEffect(() => {
     if (!isOpen) return;
+    setCompactOpen(false);
     setState((current) => (current === "active" ? "idle" : current));
   }, [isOpen]);
 
@@ -326,6 +353,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
       returnPath,
       open,
       close,
+      isCompactOpen: compactOpen,
+      openCompact,
+      closeCompact,
       newChat,
       selectChat,
       renameChat,
@@ -336,11 +366,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
     [
       activeSessionId,
       close,
+      closeCompact,
+      compactOpen,
       context,
       deleteChat,
       isOpen,
       newChat,
       open,
+      openCompact,
       registerEntry,
       renameChat,
       returnPath,
@@ -362,6 +395,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         onMessagesChange={handleMessagesChange}
       >
         {children}
+        <CoreAskOrb />
       </CoreChatRuntime>
     </AssistantStore.Provider>
   );

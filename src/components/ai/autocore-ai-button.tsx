@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 
 import { useAssistantOptional } from "@/components/ai/ai-provider";
 import { useCoreChatOptional } from "@/components/ai/core-chat-runtime";
+import { Badge } from "@/components/ui/badge";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -14,14 +15,11 @@ type AutoCoreAIButtonProps = {
 };
 
 /**
- * Global Core entry in the sidebar.
- *
- * Minimal Efferd-style CTA (“New Conversation”): solid inverted pill, leading
- * plus, short label. Opens the Core product route (`/ai`).
+ * Dock “+” on web — liquid-glass Ask Core.
+ * Opens the compact orb; send expands into `/ai`.
  */
 export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIButtonProps) {
   const assistant = useAssistantOptional();
-  // Busy comes from the real stream now, not a timer the provider set itself.
   const chat = useCoreChatOptional();
 
   const handleRef = useCallback(
@@ -33,10 +31,11 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
 
   if (!assistant) return null;
 
-  const { state, isOpen, open, close, setPointer } = assistant;
+  const { state, isOpen, isCompactOpen, openCompact, closeCompact, close, setPointer } = assistant;
   const busy = chat?.busy ?? false;
-  /** The glyph reads `data-state`; a live stream outranks pointer affordance. */
-  const glyphState = busy ? "thinking" : isOpen ? "active" : state;
+  const expanded = isCompactOpen || isOpen;
+  const glyphState = busy ? "thinking" : expanded ? "active" : state;
+  const entryAria = `${userCopy.ai.entryLabel}, ${userCopy.ai.entryBeta}`;
 
   return (
     <div
@@ -52,34 +51,48 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
         data-ai-entry
         data-state={glyphState}
         aria-current={isOpen ? "page" : undefined}
-        aria-label={userCopy.ai.entryLabel}
-        title={collapsed ? userCopy.ai.entryLabel : undefined}
+        aria-expanded={isCompactOpen}
+        aria-label={expanded ? userCopy.ai.close : entryAria}
+        title={collapsed ? entryAria : undefined}
         onPointerEnter={() => setPointer("enter")}
         onPointerLeave={() => setPointer("leave")}
         onFocus={() => setPointer("enter")}
         onBlur={() => setPointer("leave")}
-        onClick={() => (isOpen ? close() : open())}
+        onClick={() => {
+          if (isOpen) close();
+          else if (isCompactOpen) closeCompact();
+          else openCompact();
+        }}
         className={cn(
-          "ai-entry-button group relative flex w-full items-center justify-center overflow-hidden",
-          "rounded-lg bg-foreground text-background",
-          "transition-[transform,opacity,background-color] duration-150 ease-out",
-          "hover:bg-foreground/90",
+          "ai-entry-button core-liquid-glass group relative flex w-full items-center justify-center",
+          "text-foreground",
+          "transition-[transform,opacity] duration-150 ease-out",
+          "hover:opacity-90",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60",
           "active:scale-[0.98]",
-          isOpen && "ring-2 ring-foreground/25 ring-offset-2 ring-offset-sidebar",
-          busy && "opacity-90",
-          collapsed ? "size-9 p-0" : "h-9 gap-2 px-3",
+          collapsed ? "size-9 rounded-full p-0" : "h-10 gap-2 rounded-full px-3",
         )}
       >
         <Plus
           data-icon="inline-start"
-          className={cn("shrink-0", collapsed ? "size-4" : "size-4")}
+          className={cn(
+            "shrink-0 size-4 transition-transform duration-200 ease-out",
+            expanded && "rotate-45",
+          )}
           aria-hidden
         />
         {!collapsed ? (
-          <span data-sidebar-hide-collapsed className="truncate text-sm font-medium leading-none">
-            {userCopy.ai.entryLabel}
-          </span>
+          <>
+            <span data-sidebar-hide-collapsed className="truncate text-sm font-medium leading-none">
+              {userCopy.ai.entryLabel}
+            </span>
+            <Badge
+              variant="outline"
+              className="h-4 shrink-0 border-sidebar-border/80 px-1.5 text-[10px] font-medium leading-none text-muted-foreground"
+            >
+              {userCopy.ai.entryBeta}
+            </Badge>
+          </>
         ) : null}
       </button>
     </div>

@@ -203,7 +203,7 @@ function CoreChatHeader({
         type="button"
         aria-label={userCopy.ai.openChats}
         onClick={toggleMobileSidebar}
-        className="relative flex size-10 items-center justify-center rounded-full bg-secondary"
+        className="core-liquid-glass-btn relative flex size-10 items-center justify-center rounded-full"
       >
         <span className="core-menu-glyph" aria-hidden>
           <span />
@@ -215,7 +215,7 @@ function CoreChatHeader({
         type="button"
         aria-label={userCopy.ai.newChat}
         onClick={onNewChat}
-        className="flex size-10 items-center justify-center rounded-full bg-secondary"
+        className="core-liquid-glass-btn flex size-10 items-center justify-center rounded-full"
       >
         <MessageSquarePlus className="size-5" />
       </button>

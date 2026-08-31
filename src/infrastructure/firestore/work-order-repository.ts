@@ -27,12 +27,13 @@ import { runSideEffect } from "@/lib/side-effects/run-side-effect";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
 import { stripUndefinedDeep } from "@/lib/firestore/strip-undefined";
+import { localizeDemoWorkOrder } from "@/lib/demo/demo-localize";
 
 const COLLECTION = "workOrders";
 
 function mapWorkOrder(id: string, data: Record<string, unknown>): WorkOrder {
   const createdAt = toDateFromFirestore(data.createdAt) ?? new Date();
-  return {
+  return localizeDemoWorkOrder({
     id,
     companyId: String(data.companyId ?? ""),
     number: String(data.number ?? id),
@@ -63,7 +64,7 @@ function mapWorkOrder(id: string, data: Record<string, unknown>): WorkOrder {
     completedAt: toDateFromFirestore(data.completedAt) ?? undefined,
     deliveredAt: toDateFromFirestore(data.deliveredAt) ?? undefined,
     cancelledAt: toDateFromFirestore(data.cancelledAt) ?? undefined,
-  };
+  });
 }
 
 function workOrdersRef(companyId: string) {

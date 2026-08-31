@@ -17,6 +17,7 @@ import { assertAssignableEmployeeRole } from "@/lib/auth/company-owner";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { createActivityLogRepository } from "@/infrastructure/firestore/activity-log-repository";
+import { localizeDemoOwnerName } from "@/lib/demo/demo-localize";
 
 function mapEmployee(companyId: string, id: string, data: Record<string, unknown>): CompanyEmployee {
   const photoURL =
@@ -26,7 +27,7 @@ function mapEmployee(companyId: string, id: string, data: Record<string, unknown
     uid: String(data.uid ?? id),
     companyId: String(data.companyId ?? companyId),
     email: String(data.email ?? ""),
-    fullName: String(data.fullName ?? ""),
+    fullName: localizeDemoOwnerName(String(data.fullName ?? "")) ?? "",
     photoURL,
     role: String(data.role ?? "employee") as UserRole,
     permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : [],

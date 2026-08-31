@@ -8,6 +8,7 @@ import {
   coerceAppLocale,
   PREFERRED_LOCALE_STORAGE_KEY,
   readStoredPreferredLocale,
+  resolveAccountLocale,
 } from "@/lib/locale/preferred-locale";
 import { setActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
@@ -36,22 +37,19 @@ export function AppLoadingScreen({
   message,
   locale: localeProp,
 }: AppLoadingScreenProps) {
-  const [bootLocale, setBootLocale] = useState<AppLocale | null>(localeProp ?? null);
+  const [bootLocale, setBootLocale] = useState<AppLocale | null>(() =>
+    resolveAccountLocale({ queryLocale: localeProp, storedLocale: localeProp }),
+  );
 
   useLayoutEffect(() => {
-    if (localeProp) {
-      setActiveUserCopyLocale(localeProp);
-      setBootLocale(localeProp);
-      return;
-    }
-    const resolved =
-      readStoredPreferredLocale() ??
-      readCookieLocale() ??
-      coerceAppLocale(
-        typeof window !== "undefined"
+    const resolved = resolveAccountLocale({
+      queryLocale:
+        localeProp ??
+        (typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("lang")
-          : null,
-      );
+          : null),
+      storedLocale: localeProp ?? readStoredPreferredLocale() ?? readCookieLocale(),
+    });
     setActiveUserCopyLocale(resolved);
     setBootLocale(resolved);
   }, [localeProp]);

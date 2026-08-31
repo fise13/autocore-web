@@ -46,11 +46,10 @@ export default function RootLayout({
         <AppProviders>{children}</AppProviders>
         <Analytics />
         {/*
-          Renders nothing unless a measurement id is configured, so local and
-          preview builds never write into the production property. Which id is
-          used depends on the host — see `lib/analytics/ga-config.ts` for why a
-          single stream across both domains is the shape that lets Google Ads
-          attribute a signup to the ad that paid for it.
+          Production hosts load the Google tag (G-QEVTMP0BYB) for Ads conversion
+          import. Local and preview builds stay silent unless an env id is set,
+          so they never write into the property the ads account is judged on.
+          See `lib/analytics/ga-config.ts`.
         */}
         <GoogleAnalyticsTag />
         <CookieConsentBanner />

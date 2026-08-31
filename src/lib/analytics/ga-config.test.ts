@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { pickMeasurementId } from "./ga-config";
+import {
+  PRODUCTION_GA_MEASUREMENT_ID,
+  allowsProductionGoogleTag,
+  pickMeasurementId,
+  resolveMeasurementIdFrom,
+} from "./ga-config";
 
 const MARKETING = "myautocore.com";
 const APP = "app.myautocore.com";
@@ -47,5 +52,43 @@ describe("GA measurement id resolution", () => {
     // just because no other branch matched.
     assert.equal(pickMeasurementId("localhost", TWO_STREAMS), "G-MARKETING1");
     assert.equal(pickMeasurementId("127.0.0.1", TWO_STREAMS), "G-MARKETING1");
+  });
+});
+
+describe("production Google tag fallback", () => {
+  const empty = { default: "", app: "" };
+
+  it("loads the production tag on both live hosts when env is unset", () => {
+    assert.equal(
+      resolveMeasurementIdFrom(MARKETING, empty, PRODUCTION_GA_MEASUREMENT_ID),
+      PRODUCTION_GA_MEASUREMENT_ID,
+    );
+    assert.equal(
+      resolveMeasurementIdFrom(APP, empty, PRODUCTION_GA_MEASUREMENT_ID),
+      PRODUCTION_GA_MEASUREMENT_ID,
+    );
+  });
+
+  it("does not send the production tag from localhost", () => {
+    assert.equal(allowsProductionGoogleTag("localhost"), false);
+    assert.equal(
+      resolveMeasurementIdFrom("localhost", empty, PRODUCTION_GA_MEASUREMENT_ID),
+      "",
+    );
+  });
+
+  it("does not send the production tag from a Vercel preview", () => {
+    assert.equal(allowsProductionGoogleTag("autocore-web.vercel.app"), false);
+    assert.equal(
+      resolveMeasurementIdFrom("autocore-web.vercel.app", empty, PRODUCTION_GA_MEASUREMENT_ID),
+      "",
+    );
+  });
+
+  it("honours an explicit env id on localhost", () => {
+    assert.equal(
+      resolveMeasurementIdFrom("localhost", { default: "G-EXPLICIT1", app: "" }, PRODUCTION_GA_MEASUREMENT_ID),
+      "G-EXPLICIT1",
+    );
   });
 });

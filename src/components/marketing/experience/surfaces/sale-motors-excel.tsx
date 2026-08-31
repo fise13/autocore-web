@@ -155,8 +155,9 @@ export function SaleMotorsExcel({
     if (!node) return;
 
     const update = () => {
-      const next = Math.max(640, Math.floor(node.clientWidth));
-      setViewportWidth((current) => (current === next ? current : next));
+      const measured = Math.floor(node.clientWidth);
+      if (measured <= 0) return;
+      setViewportWidth((current) => (current === measured ? current : measured));
     };
 
     update();

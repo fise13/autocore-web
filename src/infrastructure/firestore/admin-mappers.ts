@@ -8,6 +8,13 @@ import { MOTOR_STATUSES, type MotorEntity } from "@/domain/motor";
 import { VehicleEntity } from "@/domain/vehicle";
 import { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
 import { Permission, UserEntity, UserRole } from "@/domain/user";
+import {
+  localizeDemoClientName,
+  localizeDemoCompanyName,
+  localizeDemoMotorNotes,
+  localizeDemoOwnerName,
+  localizeDemoWorkOrder,
+} from "@/lib/demo/demo-localize";
 
 function isFiniteDate(value: Date): boolean {
   return Number.isFinite(value.getTime());
@@ -33,7 +40,7 @@ export function adminToDate(value: unknown): Date | undefined {
 
 export function mapAdminWorkOrder(id: string, data: Record<string, unknown>): WorkOrder {
   const createdAt = adminToDate(data.createdAt) ?? new Date();
-  return {
+  return localizeDemoWorkOrder({
     id,
     companyId: String(data.companyId ?? ""),
     number: String(data.number ?? id),
@@ -64,14 +71,14 @@ export function mapAdminWorkOrder(id: string, data: Record<string, unknown>): Wo
     completedAt: adminToDate(data.completedAt) ?? undefined,
     deliveredAt: adminToDate(data.deliveredAt) ?? undefined,
     cancelledAt: adminToDate(data.cancelledAt) ?? undefined,
-  };
+  });
 }
 
 export function mapAdminClient(id: string, data: Record<string, unknown>): ClientEntity {
   return {
     id,
     companyId: String(data.companyId ?? ""),
-    fullName: String(data.fullName ?? ""),
+    fullName: localizeDemoClientName(id, String(data.fullName ?? "")),
     phone: String(data.phone ?? ""),
     email: typeof data.email === "string" ? data.email : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
@@ -104,7 +111,7 @@ export function mapAdminCompany(id: string, data: Record<string, unknown>): Comp
   const branding = companyBrandingFromRecord(data);
   return {
     id,
-    name: String(data.name ?? ""),
+    name: localizeDemoCompanyName(id, String(data.name ?? "")),
     ownerId: String(data.ownerId ?? ""),
     legalName: typeof data.legalName === "string" ? data.legalName : undefined,
     address: typeof data.address === "string" ? data.address : undefined,
@@ -131,7 +138,7 @@ export function mapAdminEmployee(id: string, companyId: string, data: Record<str
     uid: String(data.uid ?? id),
     companyId: String(data.companyId ?? companyId),
     email: String(data.email ?? ""),
-    fullName: String(data.fullName ?? ""),
+    fullName: localizeDemoOwnerName(String(data.fullName ?? "")) ?? "",
     role: String(data.role ?? "employee") as UserRole,
     permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : [],
     invitedBy: typeof data.invitedBy === "string" ? data.invitedBy : "",
@@ -146,7 +153,15 @@ export function mapAdminUser(id: string, data: Record<string, unknown>): UserEnt
   return {
     id,
     email: String(data.email ?? ""),
-    displayName: typeof data.fullName === "string" ? data.fullName : typeof data.displayName === "string" ? data.displayName : null,
+    displayName: localizeDemoOwnerName(
+      typeof data.fullName === "string"
+        ? data.fullName
+        : typeof data.displayName === "string"
+          ? data.displayName
+          : typeof data.name === "string"
+            ? data.name
+            : null,
+    ),
     role: String(data.role ?? "employee") as UserRole,
     companyId: typeof data.companyId === "string" ? data.companyId : null,
     permissions: Array.isArray(data.permissions) ? (data.permissions as Permission[]) : undefined,
@@ -170,7 +185,7 @@ export function mapAdminMotor(docId: string, data: Record<string, unknown>): Mot
     engineId: data.engineId == null ? undefined : Number(data.engineId),
     serialCode,
     configuration: String(data.configuration ?? ""),
-    notes: String(data.notes ?? ""),
+    notes: localizeDemoMotorNotes(docId, String(data.notes ?? "")),
     quantity: Number(data.quantity ?? 1),
     transmission: String(data.transmission ?? ""),
     arrivalDate: adminToDate(data.arrivalDate) ?? null,

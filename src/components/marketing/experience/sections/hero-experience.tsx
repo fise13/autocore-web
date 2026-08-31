@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { ProductAppSurface } from "@/components/marketing/experience/surfaces/product-app-surface";
+import { ScaledDesktopStage } from "@/components/marketing/experience/ui/scaled-desktop-stage";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
@@ -128,7 +129,9 @@ export function HeroExperience() {
           transition={{ duration: 1.2, delay: 0.62, ease: EASE }}
         >
           <div className="exp-hero-linear-stage-inner">
-            <ProductAppSurface compact />
+            <ScaledDesktopStage>
+              <ProductAppSurface compact />
+            </ScaledDesktopStage>
           </div>
         </motion.div>
       </div>

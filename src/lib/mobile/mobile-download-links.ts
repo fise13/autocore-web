@@ -11,10 +11,10 @@ export type MobileDownloadLinks = {
   android: string;
 };
 
-/** Public store / install links for mobile apps. Configure when URLs are ready. */
+/** Public store / install links. Empty env falls back to `#` until mobile is public. */
 export function getMobileDownloadLinks(): MobileDownloadLinks {
   return {
-    ios: readEnv("NEXT_PUBLIC_MOBILE_DOWNLOAD_IOS", "MOBILE_DOWNLOAD_IOS") ?? "",
-    android: readEnv("NEXT_PUBLIC_MOBILE_DOWNLOAD_ANDROID", "MOBILE_DOWNLOAD_ANDROID") ?? "",
+    ios: readEnv("NEXT_PUBLIC_MOBILE_DOWNLOAD_IOS", "MOBILE_DOWNLOAD_IOS") ?? "#",
+    android: readEnv("NEXT_PUBLIC_MOBILE_DOWNLOAD_ANDROID", "MOBILE_DOWNLOAD_ANDROID") ?? "#",
   };
 }

@@ -3769,7 +3769,7 @@ export const userCopyEn = {
     openSection: "Open section",
     title: "Help",
     description:
-      "Practical answers on warehouse, work orders, finances, documents, and the mobile app.",
+      "Practical answers on warehouse, work orders, finances, and documents.",
     articlesCount: (count: number) => `${count} articles`,
     sectionsCount: (count: number) => `${count} sections`,
     sectionsAria: "Help sections",
@@ -3855,6 +3855,7 @@ export const userCopyEn = {
     entryLabel: "Ask Core",
     entryHint: "Stock, orders, sales, finance",
     entryBadge: "Core",
+    entryBeta: "Beta",
     workspaceTitle: "Core",
     productTagline: "Answers as surfaces you can act on",
     backToApp: "Back to AutoCore",

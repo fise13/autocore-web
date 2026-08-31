@@ -342,14 +342,73 @@
   line-height: 1;
 }
 
+.core-liquid-glass {
+  background: var(--glass);
+  border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.55);
+  backdrop-filter: blur(28px) saturate(1.55);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
+    0 10px 28px color-mix(in oklab, black 14%, transparent);
+}
+
+.core-liquid-glass-btn {
+  background: var(--glass);
+  border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.45);
+  backdrop-filter: blur(18px) saturate(1.45);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 38%, transparent);
+}
+
 .core-composer-pill {
   min-height: 3.25rem;
   border-radius: 9999px;
-  background: var(--secondary);
 }
 
 .core-composer-pill:focus-within {
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+
+.core-ask-orb {
+  width: min(40rem, calc(100vw - 2rem));
+  min-height: 3.5rem;
+  border-radius: 9999px;
+}
+
+.core-ask-orb-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.core-ask-orb-scrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--foreground) 18%, transparent);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  backdrop-filter: blur(6px) saturate(1.2);
+}
+
+.core-ask-orb-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(1.75rem, calc(env(safe-area-inset-bottom) + 1rem));
+  display: flex;
+  justify-content: center;
+  padding-inline: 1rem;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .core-liquid-glass,
+  .core-liquid-glass-btn,
+  .core-ask-orb-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--secondary);
+  }
 }
 
 .core-composer-lift {

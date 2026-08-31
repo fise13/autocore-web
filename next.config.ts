@@ -132,6 +132,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/download/mobile",
+        destination: "/download",
+        permanent: false,
+      },
+      {
         source: "/:path*",
         has: [{ type: "host", value: "www.myautocore.com" }],
         destination: "https://myautocore.com/:path*",

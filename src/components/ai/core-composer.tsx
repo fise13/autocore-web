@@ -179,7 +179,7 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
       />
 
       {attachOpen ? (
-        <div className="mb-2 overflow-hidden rounded-2xl bg-secondary">
+        <div className="core-liquid-glass mb-2 overflow-hidden rounded-2xl">
           <button
             type="button"
             onClick={() => photosRef.current?.click()}
@@ -224,12 +224,12 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
         </div>
       ) : null}
 
-      <div className="core-composer-pill flex items-end pl-1.5 pr-1.5">
+      <div className="core-liquid-glass core-composer-pill flex items-end pl-1.5 pr-1.5">
         <button
           type="button"
           aria-label={attachOpen ? userCopy.ai.close : userCopy.ai.addFiles}
           onClick={() => setAttachOpen((open) => !open)}
-          className="mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-opacity hover:opacity-70"
+          className="core-liquid-glass-btn mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-opacity hover:opacity-70"
         >
           {attachOpen ? <X className="size-5" /> : <Plus className="size-5" strokeWidth={1.8} />}
         </button>
@@ -267,7 +267,7 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
             aria-pressed={listening}
             onClick={toggleVoice}
             className={cn(
-              "mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full",
+              "core-liquid-glass-btn mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full",
               listening ? "text-ai" : "text-foreground",
             )}
           >

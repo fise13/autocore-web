@@ -326,13 +326,13 @@
       "onHand": "On hand",
       "reserves": "Reserves",
       "today": "Today",
-      "newFromPhone": "New item from phone",
+      "newFromPhone": "New item",
       "engineShelf": "G4KC · 2.4L · shelf A-12",
       "reserveCreated": "Reserve created",
       "reserveMeta": "WO-0142 · Workshop",
       "positionInStock": "Item in stock",
       "warehouseLiveSync": "Warehouse · live sync",
-      "newReserveIphone": "New reserve from iPhone"
+      "newReserveIphone": "New reserve"
     },
     "overview": {
       "revenue": "Revenue",
@@ -351,7 +351,7 @@
       "scanningVin": "Scanning VIN",
       "scanningCode": "Scanning code…",
       "vinRecognized": "VIN recognized",
-      "savedOnPhone": "Saved on phone",
+      "savedOnPhone": "Saved",
       "saved": "Saved",
       "reservedForWo": "Reserved for WO-0142",
       "vinScanned": "VIN scanned",
@@ -996,7 +996,7 @@
       ],
       "devices": {
         "title": "The warehouse clerk scans. The office already sees it.",
-        "subtitle": "Phone on the floor. Computer in the office. The same G4KC."
+        "subtitle": "On the floor. Computer in the office. The same G4KC."
       }
     },
     "goLive": {
@@ -1036,7 +1036,7 @@
         "Donors",
         "Used parts",
         "Documents",
-        "Mobile · desktop",
+        "Web · desktop",
         "Overview"
       ],
       "risk": "14 days free · payment method required · no extra fees for modules",
@@ -1099,7 +1099,7 @@
         },
         {
           "q": "Do I need a developer to set it up?",
-          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app, Windows, and iPhone with the same interface."
+          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app for Windows and Mac with the same interface."
         },
         {
           "q": "What happens after 14 days? Are there extra fees for modules?",
@@ -1168,11 +1168,11 @@
         },
         {
           "id": "vin",
-          "title": "Scan on the phone",
+          "title": "Scan at intake",
           "steps": [
             {
               "label": "VIN scanned",
-              "detail": "Warehouse clerk · phone"
+              "detail": "Warehouse clerk · floor"
             },
             {
               "label": "Engine identified",
@@ -1206,7 +1206,7 @@
             },
             {
               "label": "Available everywhere",
-              "detail": "Office · shop floor · phone"
+              "detail": "Office · shop floor"
             }
           ]
         }
@@ -1231,8 +1231,8 @@
       ]
     },
     "platform": {
-      "title": "Desktop and phone",
-      "description": "The warehouse clerk scans on their phone, the mechanic sees the reservation on their computer."
+      "title": "Web and desktop",
+      "description": "The warehouse clerk records stock, the mechanic sees the reservation on their computer."
     },
     "productChrome": {
       "ariaProduct": "AutoCore product workspace",
@@ -1347,10 +1347,6 @@
           "label": "Finance"
         },
         {
-          "id": "mobile",
-          "label": "Mobile"
-        },
-        {
           "id": "ai",
           "label": "AI"
         }
@@ -1395,7 +1391,7 @@
       "mobile": {
         "title": "Mobile",
         "question": "What can I do out of the office?",
-        "line": "On the phone: warehouse, VIN scanning, and reservations — interactive, right inside the simulator."
+        "line": "Warehouse, VIN scanning, and reservations — the same data as on the desktop."
       },
       "ai": {
         "title": "AI import",
@@ -1431,7 +1427,7 @@
         },
         {
           "title": "Realtime",
-          "body": "An edit on iPhone in the shop is visible in the office and to the owner a second later."
+          "body": "An edit in the shop is visible in the office and to the owner a second later."
         },
         {
           "title": "Documents",
@@ -1480,7 +1476,7 @@
           {
             "title": "Repair shops and installation bays",
             "pain": "The mechanic wrote off a part, and the accountant finds out that evening.",
-            "promise": "The work order hits both stock and the ledger. The mechanic works from a phone."
+            "promise": "The work order hits both stock and the ledger."
           },
           {
             "title": "Owners and directors",
@@ -1495,8 +1491,8 @@
         ]
       },
       "platforms": {
-        "title": "Web, desktop, and iPhone",
-        "description": "One interface and one data model, across every device.",
+        "title": "Web and desktop",
+        "description": "One interface and one data model, in the browser and on the desktop.",
         "items": [
           {
             "name": "Web",
@@ -1505,10 +1501,6 @@
           {
             "name": "Desktop",
             "detail": "A keyboard-shortcut-first app for warehouse work, with realtime sync."
-          },
-          {
-            "name": "iPhone",
-            "detail": "Scanning, stock, work orders, and approvals right from the shop floor."
           }
         ]
       }
@@ -1690,7 +1682,7 @@
           "Serialized engines",
           "Work orders",
           "Documents and PDF",
-          "Mobile, desktop, cloud"
+          "Web, desktop, cloud"
         ]
       },
       "philosophy": {
@@ -1924,12 +1916,12 @@
     "download": {
       "meta": {
         "title": "Download",
-        "description": "Download warehouse inventory software for Windows, web, and phone. One account — barcode, stock, and work orders synced in real time."
+        "description": "Download warehouse inventory software for Windows and web. One account — barcode, stock, and work orders synced in real time."
       },
       "hero": {
         "titleLine1": "Warehouse inventory software.",
-        "titleLine2": "On every device.",
-        "description": "Desktop, phone, and browser. One account for parts inventory, barcode scanning, and work orders."
+        "titleLine2": "On web and desktop.",
+        "description": "Desktop and browser. One account for parts inventory, barcode scanning, and work orders."
       },
       "platforms": [
         {
@@ -1942,7 +1934,7 @@
         {
           "id": "mac",
           "title": "Desktop",
-          "description": "A desktop app. The same interface as the browser and phone.",
+          "description": "A desktop app. The same interface as the browser.",
           "action": "Download the desktop app",
           "kind": "mac"
         },
@@ -1952,21 +1944,14 @@
           "description": "The full product in your browser. No install, same account.",
           "action": "Open in browser",
           "kind": "web"
-        },
-        {
-          "id": "mobile",
-          "title": "Mobile",
-          "description": "Scanning, intake, and work orders from your phone. Data syncs across every device instantly.",
-          "action": "Choose a platform",
-          "kind": "mobile"
         }
       ],
       "platformPickerTitle": "Choose a platform",
       "faqTitle": "Frequently asked questions",
-      "hint": "One account on every device",
+      "hint": "One account on web and desktop",
       "ecosystem": {
         "title": "One ecosystem",
-        "description": "A change on your phone shows up instantly on your computer. The cloud keeps one source of truth for the whole team."
+        "description": "A change in the browser shows up instantly on the desktop app. The cloud keeps one source of truth for the whole team."
       },
       "travels": {
         "title": "Everything travels with you",
@@ -1993,10 +1978,6 @@
           {
             "platform": "Web",
             "detail": "A current version of Chrome, Safari, Firefox, or Edge"
-          },
-          {
-            "platform": "Mobile",
-            "detail": "iOS 15+ or Android 10+ in the browser"
           }
         ]
       },
@@ -2015,7 +1996,7 @@
         },
         {
           "q": "How do I sign in after installing?",
-          "a": "Use the same email or Apple ID you use in the web version. One account across every device."
+          "a": "Use the same email or Apple ID you use in the web version. One account for web and desktop."
         }
       ],
       "closing": {
@@ -2026,24 +2007,24 @@
     "downloadMobile": {
       "backLabel": "All platforms",
       "changeSelection": "Change platform",
-      "platformPickerTitle": "Choose mobile platform",
-      "qrAlt": "QR code to install the mobile app",
+      "platformPickerTitle": "Choose a platform",
+      "qrAlt": "QR code to open AutoCore",
       "hero": {
-        "title": "Mobile inventory for salvage yards",
-        "description": "Choose iOS or Android. Scan VIN or barcode on the floor — stock and work orders sync with desktop inventory software."
+        "title": "Download AutoCore",
+        "description": "Windows, Mac, or the browser. Stock and work orders stay in one account."
       },
       "platforms": [
         {
           "id": "ios",
-          "title": "iOS",
-          "description": "iPhone and iPad. The same warehouse and work orders as on desktop.",
-          "action": "Download for iPhone"
+          "title": "Web",
+          "description": "The full product in the browser. Same account as desktop.",
+          "action": "Open in browser"
         },
         {
           "id": "android",
-          "title": "Android",
-          "description": "Android phones and tablets. Syncs with the cloud in real time.",
-          "action": "Download for Android"
+          "title": "Desktop",
+          "description": "A native app for Windows and Mac. Same warehouse and work orders as on the web.",
+          "action": "Download desktop"
         }
       ],
       "reveal": {
@@ -2071,7 +2052,7 @@
         },
         {
           "q": "Do I need a developer to set it up?",
-          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app, Windows, and iPhone with the same interface."
+          "a": "No. Open app.myautocore.com in a browser, sign up, invite your team. There's also a desktop app for Windows and Mac with the same interface."
         },
         {
           "q": "How is security handled?",
@@ -2119,7 +2100,7 @@
           "paragraphs": [
             "Victor Mishkin, trading as AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan, is the seller and controller for personal data collected through the AutoCore product and website.",
             "This policy describes how personal and operational data is processed in AutoCore, a cloud application for auto dismantlers and repair shops.",
-            "By using the AutoCore web app, desktop client, or mobile app, you confirm that you have reviewed this policy. Company admins are responsible for the accuracy of data for the employees they invite into their organization."
+            "By using the AutoCore web app or desktop client, you confirm that you have reviewed this policy. Company admins are responsible for the accuracy of data for the employees they invite into their organization."
           ]
         },
         {
@@ -2156,7 +2137,7 @@
           ],
           "bullets": [
             "Sign-up, authentication, and managing employee access",
-            "Syncing data across web, desktop, and mobile",
+            "Syncing data across web and desktop",
             "Generating documents, reports, and notifications",
             "Processing payments and managing subscriptions",
             "Technical support and security incident investigation"
@@ -2290,7 +2271,7 @@
           "paragraphs": [
             "These terms are between you and Victor Mishkin, trading as AutoCore, Tbilisskaya 13, Almaty 050000, Kazakhstan (\"AutoCore\", \"we\", or \"us\").",
             "AutoCore provides software as a service (SaaS) for managing a warehouse, work orders, documents, accounting, and a team.",
-            "These terms govern the use of the AutoCore web app, desktop clients, and mobile apps. By creating an account or continuing to use the service, you accept these terms."
+            "These terms govern the use of the AutoCore web app and desktop clients. By creating an account or continuing to use the service, you accept these terms."
           ]
         },
         {
@@ -2477,10 +2458,10 @@
         "barcode inventory software download"
       ],
       "downloadMobile": [
-        "auto parts inventory app",
-        "salvage yard mobile inventory",
-        "VIN barcode scanner inventory app",
-        "warehouse inventory software phone"
+        "download auto parts inventory software",
+        "salvage yard software Windows",
+        "warehouse inventory software desktop",
+        "barcode inventory software download"
       ],
       "privacy": [
         "auto parts inventory software privacy",
@@ -2512,7 +2493,7 @@
       },
       "product": {
         "title": "Automotive Parts Inventory Management Software | AutoCore",
-        "description": "See how automotive parts inventory management works in AutoCore: warehouse stock, used parts sales, work orders, documents, and live desktop-to-phone sync.",
+        "description": "See how automotive parts inventory management works in AutoCore: warehouse stock, used parts sales, work orders, documents, and live web-to-desktop sync.",
         "ogTitle": "How AutoCore inventory management works for auto recyclers"
       },
       "modules": {
@@ -2536,9 +2517,9 @@
         "ogTitle": "Download AutoCore — warehouse inventory on Windows & web"
       },
       "downloadMobile": {
-        "title": "Mobile Inventory App for Salvage Yards | iPhone & Android",
-        "description": "AutoCore mobile inventory app for the shop floor: VIN and barcode scan, warehouse stock, work orders, and used parts — the same account as on desktop.",
-        "ogTitle": "AutoCore mobile — VIN, barcode & warehouse inventory"
+        "title": "Download AutoCore Inventory Software | Web & Desktop",
+        "description": "Download AutoCore inventory software for Windows, or open the web app. Warehouse stock, barcode scanning, and work orders — one account.",
+        "ogTitle": "Download AutoCore — warehouse inventory on Windows & web"
       },
       "privacy": {
         "title": "Privacy Policy | AutoCore Inventory Software",
@@ -2569,7 +2550,7 @@
       "security": "Security",
       "contact": "Contact",
       "download": "Download",
-      "downloadMobile": "Mobile App",
+      "downloadMobile": "Download",
       "privacy": "Privacy",
       "refund": "Refunds",
       "terms": "Terms of Use"

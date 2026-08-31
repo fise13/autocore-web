@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Keyboard,
@@ -7,8 +7,6 @@ import {
   TextInput,
   useWindowDimensions,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
@@ -26,7 +24,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArrowUpIcon, SparklesIcon } from '@/assets/icons';
-import { GlassSheen } from '@/components/navigation/glass-sheen';
+import { LiquidGlassSurface } from '@/components/navigation/liquid-glass-surface';
 import { useDesignLanguage, useReducedMotion, useTheme } from '@/hooks';
 import {
   DOCK_BOTTOM_GAP,
@@ -42,46 +40,6 @@ const HIDE_SETTLE_MS = 320;
 const SHEET_SPRING = tokens.motion.springs.sheet;
 const OPEN_EASE = Easing.bezier(0.22, 1, 0.36, 1);
 
-function FrostedCard({
-  radius,
-  children,
-  style,
-}: {
-  radius: number;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const { isDark } = useTheme();
-  const { coreChat } = useDesignLanguage();
-
-  return (
-    <View
-      style={[
-        {
-          borderRadius: radius,
-          overflow: 'hidden',
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: coreChat.compactBorder,
-        },
-        style,
-      ]}
-    >
-      <BlurView
-        pointerEvents="none"
-        intensity={coreChat.glassIntensity}
-        tint={coreChat.glassTint}
-        style={StyleSheet.absoluteFill}
-      />
-      <View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: coreChat.compactFill }]}
-      />
-      <GlassSheen isDark={isDark} radius={radius} />
-      {children}
-    </View>
-  );
-}
-
 type Props = {
   open: boolean;
   flushBottom?: boolean;
@@ -90,8 +48,8 @@ type Props = {
 
 export function PlaygroundAiBubble({ open, flushBottom = false, onClose }: Props) {
   const router = useRouter();
-  const { shadows } = useTheme();
-  const { colors, coreChat, coreChatLayout } = useDesignLanguage();
+  const { isDark, shadows } = useTheme();
+  const { coreChat, coreChatLayout } = useDesignLanguage();
   const reducedMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -216,10 +174,8 @@ export function PlaygroundAiBubble({ open, flushBottom = false, onClose }: Props
   }));
 
   const sheetStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.2, 1], [0, 1, 1]),
     transform: [
       { translateY: dragY.value + interpolate(progress.value, [0, 1], [28, 0]) },
-      { scale: interpolate(progress.value, [0, 1], [0.94, 1]) },
     ],
   }));
 
@@ -259,56 +215,62 @@ export function PlaygroundAiBubble({ open, flushBottom = false, onClose }: Props
           style={[styles.cluster, { width: cardWidth }, sheetStyle]}
         >
           <GestureDetector gesture={pan}>
-            <View
-              style={[
-                styles.cardShell,
-                {
-                  width: cardWidth,
-                  height: coreChatLayout.compactHeight,
-                  borderRadius: tokens.radius.dock,
-                },
-                shadows.elevated,
-              ]}
-            >
-              <FrostedCard radius={tokens.radius.dock} style={styles.cardFill}>
-                <View style={[styles.composer, coreChat.composer]}>
-                  <SparklesIcon size={16} color={coreChat.muted} />
-                  <TextInput
-                    ref={inputRef}
-                    value={draft}
-                    onChangeText={setDraft}
-                    placeholder="Ask Core anything…"
-                    placeholderTextColor={coreChat.muted}
-                    autoFocus={false}
-                    autoCorrect
-                    autoCapitalize="sentences"
-                    blurOnSubmit={false}
-                    enablesReturnKeyAutomatically
-                    returnKeyType="send"
-                    editable={open}
-                    onSubmitEditing={submit}
-                    style={[styles.input, { color: coreChat.ink }]}
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Send"
-                    disabled={!draft.trim()}
-                    onPress={submit}
-                    style={[
-                      styles.send,
-                      {
-                        width: coreChatLayout.sendSize,
-                        height: coreChatLayout.sendSize,
-                        borderRadius: coreChatLayout.sendSize / 2,
-                        backgroundColor: colors.primary,
-                        opacity: draft.trim() ? 1 : tokens.opacity.disabled,
-                      },
-                    ]}
-                  >
-                    <ArrowUpIcon size={16} color={colors.primaryForeground} strokeWidth={2.4} />
-                  </Pressable>
-                </View>
-              </FrostedCard>
+            <View style={{ width: cardWidth }}>
+              <LiquidGlassSurface
+                radius={coreChatLayout.compactHeight / 2}
+                isInteractive
+                colorScheme={isDark ? 'dark' : 'light'}
+                containerStyle={[
+                  shadows.elevated,
+                  {
+                    width: cardWidth,
+                    height: coreChatLayout.compactHeight,
+                  },
+                ]}
+                style={[
+                  styles.composer,
+                  {
+                    width: cardWidth,
+                    height: coreChatLayout.compactHeight,
+                  },
+                ]}
+              >
+                <SparklesIcon size={16} color={coreChat.muted} />
+                <TextInput
+                  ref={inputRef}
+                  value={draft}
+                  onChangeText={setDraft}
+                  placeholder="Ask Core anything…"
+                  placeholderTextColor={coreChat.muted}
+                  autoFocus={false}
+                  autoCorrect
+                  autoCapitalize="sentences"
+                  blurOnSubmit={false}
+                  enablesReturnKeyAutomatically
+                  returnKeyType="send"
+                  editable={open}
+                  onSubmitEditing={submit}
+                  style={[styles.input, { color: coreChat.ink }]}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Send"
+                  disabled={!draft.trim()}
+                  onPress={submit}
+                  style={[
+                    styles.send,
+                    coreChat.send,
+                    {
+                      width: coreChatLayout.sendSize,
+                      height: coreChatLayout.sendSize,
+                      borderRadius: coreChatLayout.sendSize / 2,
+                      opacity: draft.trim() ? 1 : tokens.opacity.disabled,
+                    },
+                  ]}
+                >
+                  <ArrowUpIcon size={16} color={coreChat.sendInk} strokeWidth={2.4} />
+                </Pressable>
+              </LiquidGlassSurface>
             </View>
           </GestureDetector>
         </Animated.View>
@@ -341,24 +303,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     transformOrigin: 'bottom',
   },
-  cardShell: {
-    overflow: 'hidden',
-  },
-  cardFill: {
-    flex: 1,
-    width: '100%',
-  },
   composer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 8,
-    marginVertical: 8,
-    paddingLeft: 12,
-    paddingRight: 5,
-    paddingVertical: 5,
-    borderRadius: tokens.radius.full,
+    paddingLeft: 16,
+    paddingRight: 6,
   },
   input: {
     flex: 1,

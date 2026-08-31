@@ -12,7 +12,7 @@ import { getAppOrigin } from "@/lib/app-url";
 import { tryReadPaddleClientEnv } from "@/lib/paddle/read-client-env";
 import { isPaddleCheckoutConfigured } from "@/lib/paddle/config";
 import { paddlePriceIdForInterval, type PaddleBillingInterval } from "@/lib/paddle/prices";
-import { track } from "@/lib/analytics/events";
+import { purchaseParamsFromCheckout, track } from "@/lib/analytics/events";
 
 const PRO_CHECKOUT_SESSION_KEY = "autocore-pro-checkout-pending";
 
@@ -65,19 +65,14 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
       eventCallback: (event) => {
         if (event.name === "checkout.completed") {
           // Paddle's own completion event, not our optimism — this cannot fire
-          // for an abandoned or failed checkout. `interval` comes from the ref
-          // set when the sheet was opened; no amount or customer data is sent.
-          track("purchase", {
-            ...(checkoutIntervalRef.current ? { interval: checkoutIntervalRef.current } : {}),
-          });
-          const transactionId =
-            typeof event.data === "object" &&
-            event.data &&
-            "transaction_id" in event.data &&
-            typeof event.data.transaction_id === "string"
-              ? event.data.transaction_id.trim()
-              : undefined;
-          onCompletedRef.current?.({ transactionId: transactionId || undefined });
+          // for an abandoned or failed checkout. Value and transaction id are
+          // for Google Ads conversion import; no customer identity is sent.
+          const purchase = purchaseParamsFromCheckout(
+            event.data,
+            checkoutIntervalRef.current,
+          );
+          track("purchase", purchase);
+          onCompletedRef.current?.({ transactionId: purchase.transaction_id });
           onCompletedRef.current = null;
           onErrorRef.current = null;
           return;

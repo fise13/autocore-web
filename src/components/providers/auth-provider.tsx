@@ -56,6 +56,7 @@ import { tryClaimPendingMarketingCheckout } from "@/lib/billing/claim-marketing-
 import { claimPendingBillingIntent } from "@/lib/billing/claim-pending-billing-intent";
 import { DEFAULT_COMPANY_ID } from "@/lib/company-id";
 import { isDemoSession } from "@/lib/demo/demo-config";
+import { localizeDemoOwnerName } from "@/lib/demo/demo-localize";
 import {
   clearDemoSessionMarker,
   dispatchDemoReset,
@@ -161,7 +162,7 @@ function mapUserDoc(uid: string, user: User, userDoc: UserDoc | null): UserEntit
   return {
     id: uid,
     email: userDoc?.email ?? user.email ?? "",
-    displayName: userDoc?.name ?? user.displayName,
+    displayName: localizeDemoOwnerName(userDoc?.name ?? user.displayName),
     phone: typeof userDoc?.phone === "string" ? userDoc.phone.trim() || null : null,
     photoURL: docPhotoURL || authPhotoURL || null,
     role: userDoc?.role ?? defaultRole,

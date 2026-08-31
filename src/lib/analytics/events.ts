@@ -49,11 +49,52 @@ export type AnalyticsParams = {
   /** Purchase value, for `purchase` only. */
   value?: number;
   currency?: string;
+  /** Paddle transaction id — opaque, used by Google Ads to dedupe conversions. */
+  transaction_id?: string;
 };
 
 type GtagWindow = Window & {
   gtag?: (command: "event", eventName: string, params?: Record<string, unknown>) => void;
 };
+
+function readTrimmed(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function readTotal(record: Record<string, unknown>): number | undefined {
+  const totals = record.totals;
+  if (!totals || typeof totals !== "object") return undefined;
+  const raw = (totals as { total?: unknown }).total;
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseFloat(raw) : Number.NaN;
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Map a Paddle `checkout.completed` payload onto the GA4 `purchase` params.
+ *
+ * Reads only money and an opaque transaction id. Customer email and company
+ * identifiers stay out — those would be personal data in Google's hands.
+ */
+export function purchaseParamsFromCheckout(data: unknown, interval: string | null): AnalyticsParams {
+  const params: AnalyticsParams = {};
+  if (interval) params.interval = interval;
+  if (!data || typeof data !== "object") return params;
+
+  const record = data as Record<string, unknown>;
+  const transactionId = readTrimmed(record, "transaction_id") ?? readTrimmed(record, "transactionId");
+  if (transactionId) params.transaction_id = transactionId;
+
+  const currency = readTrimmed(record, "currency_code") ?? readTrimmed(record, "currencyCode");
+  if (currency) params.currency = currency;
+
+  const value = readTotal(record);
+  if (value !== undefined) params.value = value;
+
+  return params;
+}
 
 /**
  * Record a funnel event.

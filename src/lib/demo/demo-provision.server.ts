@@ -7,8 +7,12 @@ import { defaultCompanyAppConfig } from "@/domain/company-config";
 import { DEMO_ACCOUNT_EMAIL, DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
 import { seedDemoWorkspaceData } from "@/lib/demo/demo-seed.server";
 import { getAdminAuth, getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { userCopyEn } from "@/lib/user-copy.en";
 
 export { DEMO_COMPANY_ID };
+
+const DEMO_OWNER_NAME = userCopyEn.demo.ownerName;
+const DEMO_COMPANY_NAME = userCopyEn.demo.companyName;
 
 function isUserNotFound(error: unknown): boolean {
   return (
@@ -30,6 +34,9 @@ export async function ensureDemoAuthUser(): Promise<{ uid: string }> {
 
   try {
     const user = await auth.getUserByEmail(DEMO_ACCOUNT_EMAIL);
+    if (user.displayName !== DEMO_OWNER_NAME) {
+      await auth.updateUser(user.uid, { displayName: DEMO_OWNER_NAME });
+    }
     return { uid: user.uid };
   } catch (error) {
     if (!isUserNotFound(error)) throw error;
@@ -38,7 +45,7 @@ export async function ensureDemoAuthUser(): Promise<{ uid: string }> {
   const created = await auth.createUser({
     email: DEMO_ACCOUNT_EMAIL,
     password: demoPassword(),
-    displayName: "Демо AutoCore",
+    displayName: DEMO_OWNER_NAME,
     emailVerified: true,
   });
 
@@ -50,18 +57,14 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
   const companyRef = db.collection("companies").doc(DEMO_COMPANY_ID);
   const companySnap = await companyRef.get();
 
-  if (!companySnap.exists) {
-    await companyRef.set({
-      name: "Демо — AutoCore Разборка",
+  await companyRef.set(
+    {
+      name: DEMO_COMPANY_NAME,
       ownerId: uid,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-  } else {
-    const ownerId = String(companySnap.data()?.ownerId ?? "").trim();
-    if (ownerId !== uid) {
-      await companyRef.set({ ownerId: uid }, { merge: true });
-    }
-  }
+      ...(companySnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    },
+    { merge: true },
+  );
 
   const ownerPermissions = ROLE_PERMISSIONS.owner;
   const trialEnd = new Date();
@@ -89,7 +92,7 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
         uid,
         companyId: DEMO_COMPANY_ID,
         email: DEMO_ACCOUNT_EMAIL,
-        fullName: "Демо AutoCore",
+        fullName: DEMO_OWNER_NAME,
         role: "owner",
         permissions: ownerPermissions,
         invitedBy: uid,
@@ -101,13 +104,14 @@ export async function ensureDemoWorkspace(uid: string): Promise<void> {
     ),
     db.collection("users").doc(uid).set(
       {
-        name: "Демо AutoCore",
+        name: DEMO_OWNER_NAME,
         email: DEMO_ACCOUNT_EMAIL,
         role: "owner",
         companyId: DEMO_COMPANY_ID,
         permissions: ownerPermissions,
         isActive: true,
         onboardingCompleted: true,
+        preferredLocale: "en",
         createdAt: FieldValue.serverTimestamp(),
       },
       { merge: true },

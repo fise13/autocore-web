@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
+import { userCopy } from "@/lib/user-copy";
 
 export default function JoinPage() {
   const router = useRouter();
@@ -22,5 +23,5 @@ export default function JoinPage() {
     router.replace("/login");
   }, [router, searchParams]);
 
-  return <AppLoadingScreen message="Переход к приглашению…" />;
+  return <AppLoadingScreen message={userCopy.company.joiningTeam} />;
 }

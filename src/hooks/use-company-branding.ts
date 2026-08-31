@@ -9,6 +9,7 @@ import { DocumentHeaderVisibility } from "@/domain/document-header-config";
 import { DocumentWatermarkConfig } from "@/domain/document-watermark-config";
 import { parseCompanyDocumentConfig } from "@/domain/document-config";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { localizeDemoCompanyName } from "@/lib/demo/demo-localize";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 
 export type CompanyBrandingProfile = Pick<
@@ -83,7 +84,7 @@ export function useCompanyBranding(companyId: string | null | undefined) {
               ? data.logoDataUrl
               : undefined;
         setProfile({
-          name: String(data.name ?? ""),
+          name: localizeDemoCompanyName(normalizedCompanyId, String(data.name ?? "")),
           shortName: branding.shortName,
           legalName: typeof data.legalName === "string" ? data.legalName : undefined,
           address: typeof data.address === "string" ? data.address : undefined,

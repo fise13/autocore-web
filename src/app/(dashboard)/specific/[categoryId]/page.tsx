@@ -8,6 +8,7 @@ import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 import { scopedCategoryDocumentId } from "@/lib/specific/specific-sync-ids";
 import { useAuth } from "@/components/providers/auth-provider";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { userCopy } from "@/lib/user-copy";
 
 export default function SpecificCategoryRedirectPage() {
   const params = useParams<{ categoryId: string }>();
@@ -30,5 +31,5 @@ export default function SpecificCategoryRedirectPage() {
     router.replace("/motors");
   }, [companyId, params.categoryId, router, workspace]);
 
-  return <AppLoadingScreen message="Загрузка…" />;
+  return <AppLoadingScreen message={userCopy.layout.loading} />;
 }

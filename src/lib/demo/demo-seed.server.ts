@@ -4,6 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { DEMO_COMPANY_ID } from "@/lib/demo/demo-config";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
+import { userCopyEn } from "@/lib/user-copy.en";
 
 const DEMO_WAREHOUSE_ID = "demo-warehouse-main";
 const DEMO_CLIENT_IDS = {
@@ -31,6 +32,8 @@ const DEMO_WORK_ORDER_IDS = {
   waitingParts: "demo-wo-0151",
 } as const;
 
+const copy = userCopyEn.demo;
+
 function ts(date: string): Timestamp {
   return Timestamp.fromDate(new Date(date));
 }
@@ -44,7 +47,7 @@ const DEMO_MOTORS = [
     serialCode: "G4KC-88421",
     transmission: "AT",
     location: "A-12",
-    notes: "184 000 km · imported",
+    notes: copy.motorNotes.g4kc,
     quality: "A",
   },
   {
@@ -55,7 +58,7 @@ const DEMO_MOTORS = [
     serialCode: "2AZ-44102",
     transmission: "AT",
     location: "B-04",
-    notes: "162 000 km",
+    notes: copy.motorNotes.twoAz,
     quality: "A",
   },
   {
@@ -66,7 +69,7 @@ const DEMO_MOTORS = [
     serialCode: "G4KD-22901",
     transmission: "MT",
     location: "A-18",
-    notes: "198 000 km",
+    notes: copy.motorNotes.g4kd,
     quality: "B",
   },
   {
@@ -77,7 +80,7 @@ const DEMO_MOTORS = [
     serialCode: "QR25-77410",
     transmission: "AT",
     location: "C-07",
-    notes: "141 000 km",
+    notes: copy.motorNotes.qr25,
     quality: "A",
   },
   {
@@ -88,7 +91,7 @@ const DEMO_MOTORS = [
     serialCode: "CJSA-90331",
     transmission: "DSG",
     location: "B-11",
-    notes: "128 000 km",
+    notes: copy.motorNotes.cjsa,
     quality: "A",
   },
 ] as const;
@@ -102,7 +105,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
 
   batch.set(db.collection("warehouses").doc(DEMO_WAREHOUSE_ID), {
     companyId: DEMO_COMPANY_ID,
-    name: "Main warehouse",
+    name: copy.warehouseName,
     code: "MAIN",
     isDefault: true,
     isActive: true,
@@ -115,7 +118,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     {
       id: DEMO_ITEM_IDS.oilFilter,
       sku: "FLT-OIL-001",
-      name: "Масляный фильтр",
+      name: copy.items.oilFilter,
       brandName: "Mann",
       purchasePrice: 2800,
       sellPrice: 4200,
@@ -125,7 +128,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     {
       id: DEMO_ITEM_IDS.oil,
       sku: "OIL-5W30-4L",
-      name: "Масло 5W-30, 4 л",
+      name: copy.items.oil,
       brandName: "Castrol",
       purchasePrice: 6200,
       sellPrice: 9800,
@@ -135,7 +138,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     {
       id: DEMO_ITEM_IDS.coolant,
       sku: "CLT-RED-1L",
-      name: "Антифриз G12, 1 л",
+      name: copy.items.coolant,
       brandName: "Febi",
       purchasePrice: 1100,
       sellPrice: 1900,
@@ -145,7 +148,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     {
       id: DEMO_ITEM_IDS.brakePads,
       sku: "BRK-FR-SET",
-      name: "Колодки передние",
+      name: copy.items.brakePads,
       brandName: "Akebono",
       purchasePrice: 14500,
       sellPrice: 22000,
@@ -203,17 +206,17 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
   const clients = [
     {
       id: DEMO_CLIENT_IDS.alexey,
-      fullName: "Алексей Ким",
+      fullName: copy.clients.alexey,
       phone: "+7 701 234 56 78",
     },
     {
       id: DEMO_CLIENT_IDS.marat,
-      fullName: "Марат Садыков",
+      fullName: copy.clients.marat,
       phone: "+7 707 555 12 34",
     },
     {
       id: DEMO_CLIENT_IDS.oleg,
-      fullName: "Олег Воронов",
+      fullName: copy.clients.oleg,
       phone: "+7 747 111 88 99",
     },
   ];
@@ -278,21 +281,21 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
   const workOrders = [
     {
       id: DEMO_WORK_ORDER_IDS.completed,
-      number: "НЗ-2026-0142",
+      number: copy.workOrders.completed.number,
       status: "delivered",
       clientId: DEMO_CLIENT_IDS.alexey,
-      clientName: "Алексей Ким",
+      clientName: copy.clients.alexey,
       clientPhone: "+7 701 234 56 78",
       vehicleId: DEMO_VEHICLE_IDS.sonata,
       vehicleLabel: "Hyundai Sonata NF",
       vin: "KMHEF41BP8A123456",
       licensePlate: "A 123 BCD",
       mileage: 184200,
-      comment: "Замена двигателя G4KC, диагностика после установки",
+      comment: copy.workOrders.completed.comment,
       laborLines: [
         {
           id: "l1",
-          title: "Снятие и установка двигателя",
+          title: copy.workOrders.completed.labor.l1,
           hours: 8,
           unitPrice: 12000,
           assigneeIds: [ownerUid],
@@ -300,7 +303,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
         },
         {
           id: "l2",
-          title: "Диагностика и первый запуск",
+          title: copy.workOrders.completed.labor.l2,
           hours: 2,
           unitPrice: 8000,
           assigneeIds: [ownerUid],
@@ -313,7 +316,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
           itemId: DEMO_ITEM_IDS.oilFilter,
           source: "warehouse",
           sku: "FLT-OIL-001",
-          name: "Масляный фильтр",
+          name: copy.items.oilFilter,
           quantity: 1,
           unitPrice: 4200,
           unitCost: 2800,
@@ -323,7 +326,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
           itemId: DEMO_ITEM_IDS.oil,
           source: "warehouse",
           sku: "OIL-5W30-4L",
-          name: "Масло 5W-30, 4 л",
+          name: copy.items.oil,
           quantity: 1,
           unitPrice: 9800,
           unitCost: 6200,
@@ -345,21 +348,21 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     },
     {
       id: DEMO_WORK_ORDER_IDS.inProgress,
-      number: "НЗ-2026-0148",
+      number: copy.workOrders.inProgress.number,
       status: "in_progress",
       clientId: DEMO_CLIENT_IDS.marat,
-      clientName: "Марат Садыков",
+      clientName: copy.clients.marat,
       clientPhone: "+7 707 555 12 34",
       vehicleId: DEMO_VEHICLE_IDS.camry,
       vehicleLabel: "Toyota Camry",
       vin: "JTDBF32K504123789",
       licensePlate: "B 456 EFG",
       mileage: 156800,
-      comment: "ТО: масло, фильтры, диагностика подвески",
+      comment: copy.workOrders.inProgress.comment,
       laborLines: [
         {
           id: "l1",
-          title: "Замена масла и фильтров",
+          title: copy.workOrders.inProgress.labor.l1,
           hours: 1.5,
           unitPrice: 9000,
           assigneeIds: [ownerUid],
@@ -372,7 +375,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
           itemId: DEMO_ITEM_IDS.oil,
           source: "warehouse",
           sku: "OIL-5W30-4L",
-          name: "Масло 5W-30, 4 л",
+          name: copy.items.oil,
           quantity: 1,
           unitPrice: 9800,
           unitCost: 6200,
@@ -392,21 +395,21 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
     },
     {
       id: DEMO_WORK_ORDER_IDS.waitingParts,
-      number: "НЗ-2026-0151",
+      number: copy.workOrders.waitingParts.number,
       status: "waiting_parts",
       clientId: DEMO_CLIENT_IDS.oleg,
-      clientName: "Олег Воронов",
+      clientName: copy.clients.oleg,
       clientPhone: "+7 747 111 88 99",
       vehicleId: DEMO_VEHICLE_IDS.optima,
       vehicleLabel: "Kia Optima",
       vin: "KNAGM4A75D5123456",
       licensePlate: "C 789 HIJ",
       mileage: 201400,
-      comment: "Замена передних колодок",
+      comment: copy.workOrders.waitingParts.comment,
       laborLines: [
         {
           id: "l1",
-          title: "Замена передних колодок",
+          title: copy.workOrders.waitingParts.labor.l1,
           hours: 1,
           unitPrice: 7500,
           assigneeIds: [ownerUid],
@@ -419,7 +422,7 @@ export async function seedDemoWorkspaceData(ownerUid: string): Promise<void> {
           itemId: DEMO_ITEM_IDS.brakePads,
           source: "warehouse",
           sku: "BRK-FR-SET",
-          name: "Колодки передние",
+          name: copy.items.brakePads,
           quantity: 1,
           unitPrice: 22000,
           unitCost: 14500,

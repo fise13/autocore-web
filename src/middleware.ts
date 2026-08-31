@@ -112,6 +112,10 @@ function handleMarketingRoutes(
   const localizedRedirect = redirectLocalizedToClean(request, pathname);
   if (localizedRedirect) return localizedRedirect;
 
+  if (pathname === "/download/mobile") {
+    return NextResponse.redirect(new URL("/download" + request.nextUrl.search, request.url));
+  }
+
   // Clean public path (/, /product, /pricing, …) → serve directly, no redirect.
   if (pathname === "/" || KNOWN_CLEAN.has(pathname) || pathname.startsWith("/legal/")) {
     const rewritten = rewriteCleanMarketing(request, pathname);

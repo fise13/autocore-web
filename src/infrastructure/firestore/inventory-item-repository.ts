@@ -29,6 +29,7 @@ import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
+import { localizeDemoItemName } from "@/lib/demo/demo-localize";
 import {
   buildInventorySearchTokens,
   normalizeBarcode,
@@ -51,7 +52,7 @@ function mapItem(id: string, data: Record<string, unknown>): InventoryItem {
     localId: data.localId == null ? undefined : Number(data.localId),
     type: (data.type as InventoryItem["type"]) ?? "generic",
     sku: String(data.sku ?? ""),
-    name: String(data.name ?? ""),
+    name: localizeDemoItemName(id, String(data.name ?? "")),
     description: typeof data.description === "string" ? data.description : undefined,
     barcodes: Array.isArray(data.barcodes) ? data.barcodes.map(String) : [],
     brandId: typeof data.brandId === "string" ? data.brandId : undefined,

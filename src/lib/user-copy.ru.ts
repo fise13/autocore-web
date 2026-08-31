@@ -3779,7 +3779,7 @@ export const userCopyRu = {
     openSection: "Открыть раздел",
     title: "Справка",
     description:
-      "Практические ответы по складу, нарядам, финансам, документам и мобильному приложению.",
+      "Практические ответы по складу, нарядам, финансам и документам.",
     articlesCount: (count: number) => `${count} статей`,
     sectionsCount: (count: number) => `${count} разделов`,
     sectionsAria: "Разделы справки",
@@ -3865,6 +3865,7 @@ export const userCopyRu = {
     entryLabel: "Спросить Core",
     entryHint: "Склад, наряды, продажи, финансы",
     entryBadge: "Core",
+    entryBeta: "Beta",
     workspaceTitle: "Core",
     productTagline: "Ответы готовыми поверхностями, а не текстом",
     backToApp: "Назад в AutoCore",

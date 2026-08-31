@@ -19,6 +19,7 @@ import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
+import { localizeDemoWarehouseName } from "@/lib/demo/demo-localize";
 
 const COLLECTION = "warehouses";
 
@@ -27,7 +28,7 @@ function mapWarehouse(id: string, data: Record<string, unknown>): Warehouse {
     id,
     companyId: String(data.companyId ?? ""),
     localId: data.localId == null ? undefined : Number(data.localId),
-    name: String(data.name ?? ""),
+    name: localizeDemoWarehouseName(id, String(data.name ?? "")),
     code: typeof data.code === "string" ? data.code : undefined,
     isDefault: Boolean(data.isDefault),
     address: typeof data.address === "string" ? data.address : undefined,

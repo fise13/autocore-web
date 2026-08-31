@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast-provider";
-import { Link } from "@/i18n/navigation";
 import { getDesktopDownloadLinks } from "@/lib/desktop/desktop-downloads";
 import { appLoginUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
@@ -163,7 +162,9 @@ function DownloadPlatformGrid({ platforms }: { platforms: DownloadPagesCopy["pla
 
   return (
     <ul className="download-platform-grid">
-      {platforms.map((platform, index) => {
+      {platforms
+        .filter((platform) => platform.kind !== "mobile")
+        .map((platform, index) => {
         const kind = platform.kind as PlatformKind;
         const isDesktop = kind === "mac" || kind === "windows";
         const isMobile = kind === "mobile";
@@ -180,9 +181,9 @@ function DownloadPlatformGrid({ platforms }: { platforms: DownloadPagesCopy["pla
                   <PlatformCardContent platform={platform} kind={kind} />
                 </button>
               ) : isMobile ? (
-                <Link href="/download/mobile" className="download-platform-card">
+                <a href="#" className="download-platform-card">
                   <PlatformCardContent platform={platform} kind="mobile" />
-                </Link>
+                </a>
               ) : (
                 <a href={webUrl} className="download-platform-card">
                   <PlatformCardContent platform={platform} kind="web" />
@@ -307,7 +308,9 @@ export function DownloadExperience() {
           </ScrollReveal>
 
           <dl className="download-requirements-list">
-            {copy.requirements.items.map((item, index) => (
+            {copy.requirements.items
+              .filter((item) => item.platform.toLowerCase() !== "mobile")
+              .map((item, index) => (
               <ScrollReveal key={item.platform} delay={0.06 + index * 0.05} margin="-40px">
                 <div className="download-requirements-row">
                   <dt>{item.platform}</dt>

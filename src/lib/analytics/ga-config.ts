@@ -20,18 +20,29 @@ import { getHostKind } from "@/lib/site-urls";
  *
  * The second shape is supported because reporting per surface is a legitimate
  * thing to want. It is just the wrong default when the goal is Google Ads.
+ *
+ * Production hosts load `PRODUCTION_GA_MEASUREMENT_ID` even when the env var is
+ * unset, so a Google Ads conversion tag cannot silently go missing after a
+ * deploy. Localhost and Vercel previews stay silent unless an id is set
+ * explicitly — those sessions must not land in the property the ads account
+ * is judged on.
  */
 
-/** Default id — used for every host unless a more specific one is configured. */
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
+/**
+ * Google tag for the live property (Google Ads conversion import).
+ * Public by design: it appears in page source on every measured page.
+ */
+export const PRODUCTION_GA_MEASUREMENT_ID = "G-QEVTMP0BYB";
+
+/** Env override. Empty means "use the production tag on live hosts only". */
+const CONFIGURED_GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
 /** Optional separate stream for `app.myautocore.com`. */
 export const GA_MEASUREMENT_ID_APP =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID_APP?.trim() ?? "";
 
-export function isAnalyticsEnabled(): boolean {
-  return GA_MEASUREMENT_ID.length > 0 || GA_MEASUREMENT_ID_APP.length > 0;
-}
+/** Effective default id: env override, otherwise the production Google tag. */
+export const GA_MEASUREMENT_ID = CONFIGURED_GA_MEASUREMENT_ID || PRODUCTION_GA_MEASUREMENT_ID;
 
 export type MeasurementIds = {
   /** Applies to every host unless a more specific id matches. */
@@ -56,6 +67,35 @@ export function pickMeasurementId(hostname: string, ids: MeasurementIds): string
 }
 
 /**
+ * Live product hosts may use the baked-in production tag. Localhost and
+ * `*.vercel.app` previews may not — those would otherwise write development
+ * traffic into the same property Google Ads reads conversions from.
+ */
+export function allowsProductionGoogleTag(hostname: string): boolean {
+  if (getHostKind(hostname) === "local") return false;
+  const normalized = hostname.toLowerCase().split(":")[0] ?? "";
+  if (normalized === "vercel.app" || normalized.endsWith(".vercel.app")) return false;
+  return true;
+}
+
+/**
+ * Resolve a measurement id from explicit configuration plus the production
+ * fallback, without reading `process.env`. Same reason as `pickMeasurementId`.
+ */
+export function resolveMeasurementIdFrom(
+  hostname: string,
+  ids: MeasurementIds,
+  productionFallback: string,
+): string {
+  const configured = pickMeasurementId(hostname, ids);
+  if (configured) return configured;
+  if (productionFallback && allowsProductionGoogleTag(hostname)) {
+    return productionFallback;
+  }
+  return "";
+}
+
+/**
  * Which measurement id this hostname should report to.
  *
  * Resolved from the hostname on the client rather than from request headers on
@@ -64,8 +104,20 @@ export function pickMeasurementId(hostname: string, ids: MeasurementIds): string
  * position.
  */
 export function resolveMeasurementId(hostname: string): string {
-  return pickMeasurementId(hostname, {
-    default: GA_MEASUREMENT_ID,
-    app: GA_MEASUREMENT_ID_APP,
-  });
+  return resolveMeasurementIdFrom(
+    hostname,
+    { default: CONFIGURED_GA_MEASUREMENT_ID, app: GA_MEASUREMENT_ID_APP },
+    PRODUCTION_GA_MEASUREMENT_ID,
+  );
+}
+
+export function isAnalyticsEnabled(): boolean {
+  if (typeof window !== "undefined") {
+    return resolveMeasurementId(window.location.hostname).length > 0;
+  }
+  return (
+    CONFIGURED_GA_MEASUREMENT_ID.length > 0 ||
+    GA_MEASUREMENT_ID_APP.length > 0 ||
+    PRODUCTION_GA_MEASUREMENT_ID.length > 0
+  );
 }

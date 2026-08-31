@@ -14,11 +14,11 @@ import { getFirebaseAuth, isFirebaseConfigured } from "@/infrastructure/firebase
 import { prepareSyncAuth } from "@/lib/auth/prepare-sync-auth";
 import { clearDemoSessionMarker, markDemoSessionActive } from "@/lib/demo/demo-session.client";
 import {
-  coerceAppLocale,
+  resolveAccountLocale,
   storePreferredLocale,
 } from "@/lib/locale/preferred-locale";
 import { appLoginUrl, marketingHomeUrl } from "@/lib/site-urls";
-import { userCopy } from "@/lib/user-copy";
+import { setActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
 type DemoAuthPayload = { type: "customToken"; token: string };
 
@@ -31,7 +31,9 @@ export default function DemoPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const lang = new URLSearchParams(window.location.search).get("lang");
-    if (lang) storePreferredLocale(coerceAppLocale(lang));
+    const locale = resolveAccountLocale({ queryLocale: lang });
+    setActiveUserCopyLocale(locale);
+    storePreferredLocale(locale);
   }, []);
 
   useEffect(() => {
@@ -77,9 +79,7 @@ export default function DemoPage() {
         router.replace("/home");
       } catch (cause) {
         const detail = cause instanceof Error && cause.message !== "Demo unavailable" ? ` ${cause.message}` : "";
-        setError(
-          `Не удалось открыть демо-аккаунт ${DEMO_ACCOUNT_EMAIL}.${detail} Попробуйте войти вручную или напишите в поддержку.`,
-        );
+        setError(userCopy.demo.unavailableBody(DEMO_ACCOUNT_EMAIL, detail));
       }
     })();
   }, [firebaseUser, isFirebaseReady, isLoading, refreshProfile, router, started]);
@@ -99,13 +99,13 @@ export default function DemoPage() {
         data-login-screen
       >
         <div className="max-w-md space-y-3">
-          <h1 className="text-xl font-semibold">Демо временно недоступно</h1>
+          <h1 className="text-xl font-semibold">{userCopy.demo.unavailableTitle}</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">{error}</p>
         </div>
         <div className="flex flex-wrap justify-center gap-3">
-          <Button render={<Link href={appLoginUrl()} />}>Войти в аккаунт</Button>
+          <Button render={<Link href={appLoginUrl()} />}>{userCopy.demo.signIn}</Button>
           <Button variant="outline" render={<Link href={marketingHomeUrl()} />}>
-            На главную
+            {userCopy.demo.backHome}
           </Button>
         </div>
       </div>
@@ -114,7 +114,7 @@ export default function DemoPage() {
 
   return (
     <div data-login-screen>
-      <AppLoadingScreen message="Открываем демо AutoCore…" />
+      <AppLoadingScreen locale="en" message={userCopy.demo.opening} />
       <span className="sr-only">{userCopy.auth.completing}</span>
     </div>
   );

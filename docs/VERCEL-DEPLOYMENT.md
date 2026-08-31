@@ -154,6 +154,8 @@ NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
 NEXT_PUBLIC_STRIPE_PRICE_FREE
 ```
 
+Google Ads conversion tracking for Pro checkout uses GA4 measurement id `G-QEVTMP0BYB` on production hosts. Override with `NEXT_PUBLIC_GA_MEASUREMENT_ID` if the stream changes. Mark `purchase` as a key event in GA4 and import it into Google Ads.
+
 Stripe secret keys belong in Firebase Functions configuration, not public Next.js variables.
 
 Apple in-app purchases — **required for the iOS app to record a subscription at all**:

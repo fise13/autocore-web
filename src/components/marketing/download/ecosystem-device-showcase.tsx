@@ -4,10 +4,7 @@ import { useRef } from "react";
 import { useInView, useReducedMotion } from "motion/react";
 
 import { KeynoteDesktopUi } from "@/components/marketing/download/ecosystem/keynote-desktop-ui";
-import { KeynotePhoneUi } from "@/components/marketing/download/ecosystem/keynote-phone-ui";
-import { KeynoteSyncBeam } from "@/components/marketing/download/ecosystem/keynote-sync-beam";
 import { useEcosystemKeynoteTimeline } from "@/components/marketing/download/ecosystem/use-ecosystem-keynote-timeline";
-import { IPhone16ProFrame } from "@/components/marketing/experience/devices/iphone-16-pro-frame";
 import { MacBookProFrame } from "@/components/marketing/experience/devices/macbook-pro-frame";
 import { useMouseDepth } from "@/components/marketing/experience/motion/use-mouse-depth";
 import { cn } from "@/lib/utils";
@@ -28,8 +25,6 @@ export function EcosystemDeviceShowcase({ className }: EcosystemDeviceShowcasePr
 
   const snapshot = useEcosystemKeynoteTimeline({ enabled: inView, reduced: !!reduced });
 
-  const beamActive = snapshot.pulseProgress > 0 && snapshot.phoneStatus === "sending";
-
   return (
     <div ref={rootRef} className={cn("keynote-scene", className)}>
       <div className="keynote-scene-vignette" aria-hidden />
@@ -43,18 +38,6 @@ export function EcosystemDeviceShowcase({ className }: EcosystemDeviceShowcasePr
               <KeynoteDesktopUi snapshot={snapshot} />
             </MacBookProFrame>
           </div>
-
-          <div className="keynote-scene-phone">
-            <IPhone16ProFrame className="keynote-iphone">
-              <KeynotePhoneUi snapshot={snapshot} />
-            </IPhone16ProFrame>
-          </div>
-
-          <KeynoteSyncBeam
-            progress={snapshot.pulseProgress}
-            active={beamActive}
-            className="keynote-scene-beam"
-          />
         </div>
       </div>
     </div>

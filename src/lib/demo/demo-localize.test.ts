@@ -8,6 +8,7 @@ import {
   localizeDemoCompanyName,
   localizeDemoItemName,
   localizeDemoOwnerName,
+  localizeDemoWorkOrder,
   localizeDemoWorkOrderFields,
 } from "./demo-localize";
 import { setActiveUserCopyLocale } from "@/lib/user-copy";
@@ -49,5 +50,31 @@ describe("demo-localize", () => {
     assert.equal(localized.comment, "G4KC engine replacement, post-install diagnostics");
     assert.equal(localized.laborLines[0]?.title, "Engine removal and installation");
     assert.equal(localized.partLines[0]?.name, "Oil filter");
+  });
+
+  it("localizes the waiting-parts work order shown in the product demo", () => {
+    setActiveUserCopyLocale("en");
+    const localized = localizeDemoWorkOrder({
+      id: DEMO_WORK_ORDER_IDS.waitingParts,
+      companyId: DEMO_COMPANY_ID,
+      number: "НЗ-2026-0151",
+      clientId: DEMO_CLIENT_IDS.oleg,
+      clientName: "Олег Воронов",
+      comment: "Замена передних колодок",
+      laborLines: [
+        {
+          id: "l1",
+          title: "Замена передних колодок",
+          assigneeDisplayNames: ["Демо AutoCore"],
+        },
+      ],
+      partLines: [{ itemId: DEMO_ITEM_IDS.brakePads, name: "Колодки передние" }],
+    });
+    assert.equal(localized.number, "WO-2026-0151");
+    assert.equal(localized.clientName, "Oleg Voronov");
+    assert.equal(localized.comment, "Front brake pad replacement");
+    assert.equal(localized.laborLines[0]?.title, "Front brake pad replacement");
+    assert.equal(localized.laborLines[0]?.assigneeDisplayNames?.[0], "Demo AutoCore");
+    assert.equal(localized.partLines[0]?.name, "Front brake pads");
   });
 });

@@ -56,7 +56,7 @@ async function ensureDemoAuthUser() {
   const created = await auth.createUser({
     email: DEMO_ACCOUNT_EMAIL,
     password: demoPassword(),
-    displayName: "Демо AutoCore",
+    displayName: "Demo AutoCore",
     emailVerified: true,
   });
   return created.uid;
@@ -67,13 +67,14 @@ async function ensureDemoWorkspace(uid: string) {
   const companyRef = db.collection("companies").doc(DEMO_COMPANY_ID);
   const companySnap = await companyRef.get();
 
-  if (!companySnap.exists) {
-    await companyRef.set({
-      name: "Демо — AutoCore Разборка",
+  await companyRef.set(
+    {
+      name: "Demo — AutoCore Dismantling",
       ownerId: uid,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-  }
+      ...(companySnap.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+    },
+    { merge: true },
+  );
 
   for (const role of Object.keys(ROLE_PERMISSIONS) as UserRole[]) {
     await companyRef
@@ -96,7 +97,7 @@ async function ensureDemoWorkspace(uid: string) {
       uid,
       companyId: DEMO_COMPANY_ID,
       email: DEMO_ACCOUNT_EMAIL,
-      fullName: "Демо AutoCore",
+      fullName: "Demo AutoCore",
       role: "owner",
       permissions: [],
       invitedBy: uid,
@@ -109,7 +110,7 @@ async function ensureDemoWorkspace(uid: string) {
 
   await db.collection("users").doc(uid).set(
     {
-      name: "Демо AutoCore",
+      name: "Demo AutoCore",
       email: DEMO_ACCOUNT_EMAIL,
       role: "owner",
       companyId: DEMO_COMPANY_ID,

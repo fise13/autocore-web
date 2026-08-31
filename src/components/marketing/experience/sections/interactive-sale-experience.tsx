@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { useLandingContent } from "@/components/marketing/experience/content/use-landing-content";
 import { SaleMotorsExcel } from "@/components/marketing/experience/surfaces/sale-motors-excel";
+import { ScaledDesktopStage } from "@/components/marketing/experience/ui/scaled-desktop-stage";
 import {
   DocumentScaledPreviewFrame,
   useDocumentPreviewScale,
@@ -144,12 +145,14 @@ export function InteractiveSaleExperience() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.35, ease: EASE }}
               >
-                <SaleMotorsExcel
-                  selectedId={selectedMotor.id}
-                  sellLabel={copy.sell}
-                  onSelect={selectMotor}
-                  onSell={openSell}
-                />
+                <ScaledDesktopStage>
+                  <SaleMotorsExcel
+                    selectedId={selectedMotor.id}
+                    sellLabel={copy.sell}
+                    onSelect={selectMotor}
+                    onSell={openSell}
+                  />
+                </ScaledDesktopStage>
               </motion.div>
             ) : null}
 

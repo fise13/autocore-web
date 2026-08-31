@@ -14,6 +14,7 @@ import { useLandingDemoSnapshot } from "@/components/marketing/modals/use-landin
 import { useMarketingDocumentContext } from "@/components/marketing/modals/use-marketing-document-context";
 import { useProductContent } from "@/components/marketing/product/content/use-product-content";
 import { SaleMotorsExcel } from "@/components/marketing/experience/surfaces/sale-motors-excel";
+import { ScaledDesktopStage } from "@/components/marketing/experience/ui/scaled-desktop-stage";
 import { SellMotorDialog, type MotorSellPayload } from "@/components/motors/sell-motor-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,13 +117,15 @@ export function ProductSaleDemo() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: EASE }}
           >
-            <SaleMotorsExcel
-              selectedId={selectedMotor.id}
-              sellLabel={copy.sellLabel}
-              onSelect={setSelectedMotor}
-              onSell={openSell}
-              compact
-            />
+            <ScaledDesktopStage>
+              <SaleMotorsExcel
+                selectedId={selectedMotor.id}
+                sellLabel={copy.sellLabel}
+                onSelect={setSelectedMotor}
+                onSell={openSell}
+                compact
+              />
+            </ScaledDesktopStage>
           </motion.div>
         ) : null}
 

@@ -17,6 +17,7 @@ import {
 import { UserRole } from "@/domain/user";
 import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
+import { localizeDemoCompanyName } from "@/lib/demo/demo-localize";
 
 export type UserCompanyMembership = {
   companyId: string;
@@ -29,7 +30,7 @@ function readMembershipName(
   companyId: string,
 ): string {
   const stored = typeof data.name === "string" ? data.name.trim() : "";
-  return stored || companyId;
+  return localizeDemoCompanyName(companyId, stored || companyId);
 }
 
 function rolePriority(role: UserRole): number {
@@ -73,16 +74,16 @@ function mergeCompanyMemberships(entries: UserCompanyMembership[]): UserCompanyM
 }
 
 async function resolveCompanyName(companyId: string, storedName?: string): Promise<string> {
-  if (storedName?.trim()) return storedName.trim();
+  if (storedName?.trim()) return localizeDemoCompanyName(companyId, storedName.trim());
   try {
     const companySnap = await getDoc(doc(getFirestoreDb(), "companies", companyId));
     if (companySnap.exists()) {
-      return String(companySnap.data()?.name ?? companyId);
+      return localizeDemoCompanyName(companyId, String(companySnap.data()?.name ?? companyId));
     }
   } catch {
     // Fall back to id when company doc is not readable yet.
   }
-  return companyId;
+  return localizeDemoCompanyName(companyId, companyId);
 }
 
 export async function recordUserCompanyMembership(
@@ -145,7 +146,10 @@ async function loadOwnedCompanyMemberships(userId: string): Promise<UserCompanyM
   return owned.docs.map((companyDoc) => ({
     companyId: normalizeCompanyId(companyDoc.id),
     role: "owner" as const,
-    name: String(companyDoc.data()?.name ?? companyDoc.id),
+    name: localizeDemoCompanyName(
+      normalizeCompanyId(companyDoc.id),
+      String(companyDoc.data()?.name ?? companyDoc.id),
+    ),
   }));
 }
 
@@ -280,7 +284,10 @@ export function subscribeUserCompanyMemberships(
       ownedMemberships = snapshot.docs.map((companyDoc) => ({
         companyId: normalizeCompanyId(companyDoc.id),
         role: "owner" as const,
-        name: String(companyDoc.data()?.name ?? companyDoc.id),
+        name: localizeDemoCompanyName(
+      normalizeCompanyId(companyDoc.id),
+      String(companyDoc.data()?.name ?? companyDoc.id),
+    ),
       }));
       publish();
     },

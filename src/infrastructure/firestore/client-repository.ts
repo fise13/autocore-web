@@ -17,6 +17,7 @@ import { getFirestoreDb } from "@/infrastructure/firebase/client";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { toDateFromFirestore } from "@/lib/firestore-timestamp";
 import { notifyFirestoreSnapshotError } from "@/lib/firestore/snapshot-errors";
+import { localizeDemoClientName } from "@/lib/demo/demo-localize";
 
 const COLLECTION = "clients";
 
@@ -32,7 +33,7 @@ function mapClient(id: string, data: Record<string, unknown>): ClientEntity {
   return {
     id,
     companyId: String(data.companyId ?? ""),
-    fullName: String(data.fullName ?? ""),
+    fullName: localizeDemoClientName(id, String(data.fullName ?? "")),
     phone: String(data.phone ?? ""),
     email: typeof data.email === "string" ? data.email : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,

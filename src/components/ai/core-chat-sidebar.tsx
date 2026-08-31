@@ -75,7 +75,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
             type="button"
             aria-label={userCopy.ai.goHomeAria}
             onClick={leaveCore}
-            className="flex size-10 items-center justify-center rounded-full bg-sidebar-accent"
+            className="core-liquid-glass-btn flex size-10 items-center justify-center rounded-full"
           >
             <Settings2 className="size-4" />
           </button>
@@ -88,7 +88,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
     <div className="flex h-full min-h-0 flex-col bg-sidebar px-3 py-3 text-sidebar-foreground">
       <div className="flex min-h-11 items-center justify-between gap-2 px-1">
         {searching ? (
-          <div className="flex h-10 flex-1 items-center gap-2 rounded-full bg-sidebar-accent px-3">
+          <div className="core-liquid-glass flex h-10 flex-1 items-center gap-2 rounded-full px-3">
             <Search className="size-4 text-muted-foreground" />
             <input
               autoFocus
@@ -116,7 +116,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
               type="button"
               aria-label={userCopy.ai.searchChats}
               onClick={() => setSearching(true)}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sidebar-accent"
+              className="core-liquid-glass-btn flex size-10 shrink-0 items-center justify-center rounded-full"
             >
               <Search className="size-[18px]" />
             </button>
@@ -242,7 +242,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
           type="button"
           aria-label={userCopy.ai.goHomeAria}
           onClick={leaveCore}
-          className="flex size-[3.25rem] shrink-0 items-center justify-center rounded-full bg-sidebar-accent"
+          className="core-liquid-glass-btn flex size-[3.25rem] shrink-0 items-center justify-center rounded-full"
         >
           <Settings2 className="size-5" />
         </button>
