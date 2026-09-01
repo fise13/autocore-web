@@ -906,21 +906,11 @@
   "landing": {
     "hero": {
       "ariaLabel": "Home",
-      "kicker": "Salvage yards and repair shops",
-      "title": "From donor car to sold part.",
-      "subtitle": "Buy the car, pull used parts, sell them, and see payback on the donor card. Warehouse, engines, VIN, work orders, and documents — one system. No WhatsApp bookkeeping.",
+      "kicker": "Software for salvage yards & repair shops",
+      "title": "Turn every donor car into a profitable inventory.",
+      "subtitle": "Track donor cars, parts, engines, VINs, work orders, and sales in one system. Know what you have, what sold, and when each donor pays for itself.",
       "ctaPrimary": "Open the demo",
-      "ctaSecondary": "See how it works",
-      "ctaPricing": "See pricing",
-      "priceTeaser": "$40 / company · 14-day trial",
-      "trust": "Live demo company · real workflows",
-      "visualCaption": "Demo company · engines · G4KC",
-      "proof": [
-        "Donor cars",
-        "Used parts",
-        "Donor payback",
-        "VIN & barcode"
-      ]
+      "ctaSecondary": "Try Trial"
     },
     "chaos": {
       "eyebrow": "A typical day",
@@ -1030,6 +1020,9 @@
       "intervalAria": "Billing interval",
       "note": "per company",
       "yearlySave": "2 months free",
+      "planName": "AutoCore",
+      "billedMonthly": "Billed monthly",
+      "billedYearly": "Billed yearly",
       "included": [
         "Warehouse",
         "Work orders",
@@ -1655,7 +1648,10 @@
         "yearlyLabel": "Yearly",
         "intervalAria": "Billing interval",
         "note": "per company",
-        "yearlySave": "2 months free"
+        "yearlySave": "2 months free",
+        "name": "AutoCore",
+        "billedMonthly": "Billed monthly",
+        "billedYearly": "Billed yearly"
       },
       "cta": {
         "primary": "Open the demo",

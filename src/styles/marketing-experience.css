@@ -49,7 +49,7 @@
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
-  width: min(100%, 40rem);
+  width: min(100%, 48rem);
   margin-inline: 0;
   text-align: left;
   padding-bottom: 0;
@@ -76,11 +76,12 @@
 
 .exp-hero-linear-title {
   font-family: var(--font-display);
-  font-size: clamp(2.65rem, 5.8vw, 4.15rem);
+  font-size: clamp(2.25rem, 4.4vw, 2.9rem);
   font-weight: 500;
-  letter-spacing: -0.052em;
-  line-height: 1.06;
-  max-width: 18ch;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+  max-width: 28ch;
+  text-wrap: balance;
   margin-inline: 0;
   color: var(--foreground);
 }
@@ -95,35 +96,12 @@
 }
 
 .exp-hero-linear-sub {
-  max-width: 34rem;
+  max-width: 38rem;
   margin-inline: 0;
   font-size: 1rem;
   line-height: 1.55;
   color: var(--muted-foreground);
   font-weight: 400;
-}
-
-.exp-hero-linear-proof {
-  margin-top: 1.15rem;
-}
-
-.exp-hero-linear-proof ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.exp-hero-linear-proof li {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--muted-foreground);
-  padding: 0.28rem 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 9999px;
 }
 
 .exp-hero-linear-actions {
@@ -141,21 +119,6 @@
   padding-inline: 1.1rem;
   font-size: 0.8125rem;
   font-weight: 500;
-}
-
-.exp-hero-linear-trust {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
-  margin-top: 0.9rem;
-  font-size: 0.8125rem;
-  letter-spacing: -0.01em;
-  color: color-mix(in srgb, var(--muted-foreground) 92%, var(--foreground));
-}
-
-.exp-hero-linear-trust-dot {
-  opacity: 0.45;
 }
 
 /*
@@ -474,8 +437,8 @@
   }
 
   .exp-hero-linear-title {
-    max-width: 16ch;
-    font-size: clamp(2.15rem, 8.5vw, 2.7rem);
+    max-width: none;
+    font-size: clamp(2.05rem, 8vw, 2.55rem);
     text-wrap: balance;
   }
 
@@ -2869,8 +2832,8 @@ html:not([data-perf-tier="low"]) .exp-site-header {
 }
 
 .pricing-panel-hero {
-  padding-top: clamp(6.5rem, 14vh, 9rem);
-  padding-bottom: clamp(4rem, 10vh, 6.5rem);
+  padding-top: clamp(5rem, 10vh, 7rem);
+  padding-bottom: clamp(3.5rem, 8vh, 5.5rem);
 }
 
 .pricing-panel-inner {
@@ -3267,56 +3230,6 @@ html:not([data-perf-tier="low"]) .exp-site-header {
   text-align: center;
 }
 
-.exp-pricing-strip-title {
-  max-width: 16ch;
-  margin: 0;
-  font-size: clamp(2rem, 4.5vw, 2.85rem);
-  letter-spacing: -0.04em;
-}
-
-.exp-pricing-strip-card {
-  width: min(100%, 32rem);
-  margin-top: 1.75rem;
-  padding: 1.6rem 1.35rem 1.35rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: var(--exp-radius);
-  background: color-mix(in srgb, var(--muted) 35%, var(--background));
-}
-
-.exp-pricing-strip-amount {
-  font-size: clamp(3rem, 7vw, 4.25rem);
-  font-weight: 600;
-  letter-spacing: -0.045em;
-  line-height: 1;
-}
-
-.exp-pricing-strip-included {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-  width: min(100%, 42rem);
-  margin: 1.35rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.exp-pricing-strip-included li {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--muted-foreground);
-  padding: 0.28rem 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 9999px;
-}
-
-.exp-pricing-strip-risk {
-  margin: 1rem 0 0;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-}
-
 @media (max-width: 640px) {
   .pricing-included-grid {
     grid-template-columns: 1fr;
@@ -3332,10 +3245,6 @@ html:not([data-perf-tier="low"]) .exp-site-header {
 
   .pricing-offer {
     padding: 0;
-  }
-
-  .exp-pricing-strip-card {
-    padding: 1.25rem 1rem 1.1rem;
   }
 
   .marketing-paddle-actions > * {

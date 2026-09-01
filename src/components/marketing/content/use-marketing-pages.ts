@@ -29,6 +29,9 @@ export function useMarketingPages() {
           intervalAria: t("pricing.plan.intervalAria"),
           note: t("pricing.plan.note"),
           yearlySave: t("pricing.plan.yearlySave"),
+          name: t("pricing.plan.name"),
+          billedMonthly: t("pricing.plan.billedMonthly"),
+          billedYearly: t("pricing.plan.billedYearly"),
         },
         cta: {
           primary: t("pricing.cta.primary"),

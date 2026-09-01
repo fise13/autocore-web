@@ -7,9 +7,7 @@ import { useLandingContent } from "@/components/marketing/experience/content/use
 import { ProductAppSurface } from "@/components/marketing/experience/surfaces/product-app-surface";
 import { ScaledDesktopStage } from "@/components/marketing/experience/ui/scaled-desktop-stage";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
-import { buttonVariants } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
+import { PaddleBuyButton } from "@/components/marketing/pricing/paddle-buy-button";
 
 /** Linear entrance curve */
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -91,32 +89,15 @@ export function HeroExperience() {
             <p className="exp-hero-linear-sub">{copy.subtitle}</p>
           </FadeUp>
 
-          <FadeUp className="exp-hero-linear-proof" delay={0.36} duration={0.6} y={10}>
-            <ul>
-              {copy.proof.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </FadeUp>
-
-          <FadeUp className="exp-hero-linear-actions" delay={0.42} duration={0.65} y={10}>
+          <FadeUp className="exp-hero-linear-actions" delay={0.38} duration={0.65} y={10}>
             <TrialButton className="exp-hero-linear-cta-primary">{copy.ctaPrimary}</TrialButton>
-            <Link
-              href="/pricing"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "exp-hero-linear-cta-secondary")}
+            <PaddleBuyButton
+              variant="outline"
+              size="lg"
+              className="exp-hero-linear-cta-secondary"
             >
-              {copy.ctaPricing}
-            </Link>
-          </FadeUp>
-
-          <FadeUp delay={0.54} duration={0.55} y={8}>
-            <p className="exp-hero-linear-trust">
-              <span>{copy.priceTeaser}</span>
-              <span className="exp-hero-linear-trust-dot" aria-hidden>
-                ·
-              </span>
-              <span>{copy.trust}</span>
-            </p>
+              {copy.ctaSecondary}
+            </PaddleBuyButton>
           </FadeUp>
         </div>
 

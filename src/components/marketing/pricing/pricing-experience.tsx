@@ -3,9 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 
-import { MarketingPaddlePlan } from "@/components/marketing/pricing/marketing-paddle-plan";
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
+import { MarketingPricingBlock } from "@/components/marketing/pricing/marketing-pricing-block";
 import {
   Accordion,
   AccordionContent,
@@ -88,66 +88,40 @@ export function PricingExperience() {
     <div className="pricing-page">
       <section className="pricing-panel pricing-panel-hero" aria-label={pages.breadcrumbs.pricing}>
         <div className="exp-section-inner pricing-panel-inner">
-          <HeroReveal delay={0} duration={0.7} y={14}>
-            <p className="pricing-kicker">{pages.breadcrumbs.pricing}</p>
-            <h1 className="exp-display pricing-hero-title">
-              <span className="block">{copy.hero.titleLine1}</span>
-              <span className="pricing-hero-title-line2">{copy.hero.titleLine2}</span>
-            </h1>
-          </HeroReveal>
-
-          <HeroReveal delay={0.1} duration={0.55} y={10}>
-            <p className="pricing-hero-lead">{copy.hero.lead}</p>
-          </HeroReveal>
-
-          <HeroReveal className="pricing-offer" delay={0.2} duration={0.6} y={14}>
-            <MarketingPaddlePlan
-              fallbackPrice={copy.plan.price}
-              fallbackPeriod={copy.plan.period}
-              fallbackYearlyPrice={copy.plan.yearlyPrice}
-              fallbackYearlyPeriod={copy.plan.yearlyPeriod}
-              monthlyLabel={copy.plan.monthlyLabel}
-              yearlyLabel={copy.plan.yearlyLabel}
-              intervalAriaLabel={copy.plan.intervalAria}
-              note={copy.plan.note}
-              yearlySaveLabel={copy.plan.yearlySave}
-              buyLabel={copy.cta.buy}
-              buyVariant="default"
-              priceClassName="pricing-hero-amount"
-              secondaryAction={<TrialButton variant="outline">{copy.cta.primary}</TrialButton>}
+          <HeroReveal className="w-full" delay={0.08} duration={0.6} y={14}>
+            <MarketingPricingBlock
+              layoutId="pricing-page-frequency"
+              copy={{
+                title: (
+                  <>
+                    <span className="block">{copy.hero.titleLine1}</span>
+                    <span className="block font-medium text-muted-foreground">{copy.hero.titleLine2}</span>
+                  </>
+                ),
+                titleId: "pricing-heading",
+                titleAs: "h1",
+                description: copy.hero.lead,
+                planName: copy.plan.name,
+                planInfo: copy.plan.note,
+                features: copy.included.items,
+                monthlyLabel: copy.plan.monthlyLabel,
+                yearlyLabel: copy.plan.yearlyLabel,
+                intervalAria: copy.plan.intervalAria,
+                billedMonthly: copy.plan.billedMonthly,
+                billedYearly: copy.plan.billedYearly,
+                monthlySuffix: copy.plan.period,
+                yearlySuffix: copy.plan.yearlyPeriod,
+                yearlySave: copy.plan.yearlySave,
+                buyLabel: copy.cta.buy,
+                footnote: `${copy.cta.trialDays}. ${copy.cta.noCard}.`,
+              }}
+              secondaryAction={
+                <TrialButton variant="outline" className="w-full">
+                  {copy.cta.primary}
+                </TrialButton>
+              }
             />
-            <p className="pricing-hero-note">
-              {copy.cta.trialDays}. {copy.cta.noCard}.
-            </p>
           </HeroReveal>
-        </div>
-      </section>
-
-      <section className="pricing-panel pricing-panel-included" aria-labelledby="pricing-included-heading">
-        <div className="exp-section-inner pricing-panel-inner">
-          <ScrollReveal margin="-80px">
-            <h2 id="pricing-included-heading" className="pricing-section-kicker">
-              {copy.included.title}
-            </h2>
-          </ScrollReveal>
-
-          <ol className="pricing-included-grid">
-            {copy.included.items.map((item, index) => (
-              <li key={item} className="pricing-included-row">
-                <ScrollReveal
-                  className="pricing-included-reveal"
-                  delay={0.03 + index * 0.04}
-                  y={8}
-                  margin="-40px"
-                >
-                  <span className="pricing-included-index" aria-hidden>
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="pricing-included-item">{item}</span>
-                </ScrollReveal>
-              </li>
-            ))}
-          </ol>
         </div>
       </section>
 
