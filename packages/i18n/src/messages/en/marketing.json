@@ -1034,7 +1034,7 @@
       ],
       "risk": "14 days free · payment method required · no extra fees for modules",
       "trial": "Open the demo",
-      "buy": "Buy now",
+      "buy": "Start your free trial",
       "buyModal": {
         "title": "Subscribe",
         "body": "Email us to get set up",
@@ -1655,7 +1655,7 @@
       },
       "cta": {
         "primary": "Open the demo",
-        "buy": "Buy now",
+        "buy": "Start your free trial",
         "trialDays": "14 days free",
         "noCard": "Payment method required"
       },
