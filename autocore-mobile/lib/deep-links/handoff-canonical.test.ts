@@ -23,6 +23,7 @@ describe('expoPathToCanonicalPath', () => {
       ['/', {}, '/'],
       ['/(tabs)', {}, '/'],
       ['/orders', {}, '/work-orders'],
+      ['/orders/new', {}, '/work-orders'],
       ['/orders/wo_123', {}, '/work-orders/wo_123'],
       ['/orders/wo_123', { tab: 'parts' }, '/work-orders/wo_123?tab=parts'],
       ['/warehouse', {}, '/warehouse'],

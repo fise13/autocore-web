@@ -26,7 +26,7 @@ export async function GET() {
     headers: {
       // Apple requires `application/json` and no redirect on this path.
       "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=300",
       Vary: "Host",
     },
   });

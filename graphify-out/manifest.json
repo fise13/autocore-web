@@ -6075,8 +6075,8 @@
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-app-site-association/route.ts": {
-    "mtime": 1788409823.2721338,
-    "ast_hash": "f53db4c34b657c4dfe624a256b97b631",
+    "mtime": 1788414513.7378352,
+    "ast_hash": "e4a73fd34fe405e8cffcd0576c58b39b",
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-developer-domain-association/route.ts": {
@@ -17505,18 +17505,18 @@
     "semantic_hash": ""
   },
   "autocore-mobile/lib/deep-links/apple-handoff.ts": {
-    "mtime": 1788409866.922493,
-    "ast_hash": "2a5ff77f7bb1dd72ec7f4ed7b48652e9",
+    "mtime": 1788414511.7162066,
+    "ast_hash": "b1e32a61afb2fe339b5e9f9517feb842",
     "semantic_hash": ""
   },
   "autocore-mobile/lib/deep-links/handoff-canonical.test.ts": {
-    "mtime": 1788409834.879977,
-    "ast_hash": "84953b0353f6740633a8d809316474af",
+    "mtime": 1788414513.738342,
+    "ast_hash": "bcafdea4cf150cfecfc4ff882447be3f",
     "semantic_hash": ""
   },
   "autocore-mobile/lib/deep-links/handoff-canonical.ts": {
-    "mtime": 1788409849.0613453,
-    "ast_hash": "7e38c78284ab951a1ac94f74aed397a6",
+    "mtime": 1788414512.9898093,
+    "ast_hash": "03ade1124f5dec1da75178bfb25da274",
     "semantic_hash": ""
   },
   "autocore-mobile/modules/apple-continuity/expo-module.config.json": {
@@ -17530,8 +17530,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/modules/apple-continuity/ios/AppleContinuityModule.swift": {
-    "mtime": 1788409860.721521,
-    "ast_hash": "fea3176bb8c3443f3a2f83e2c9c3849b",
+    "mtime": 1788414501.1370437,
+    "ast_hash": "974c93de4a602950873df14167c74855",
     "semantic_hash": ""
   },
   "autocore-mobile/modules/apple-continuity/package.json": {
@@ -17540,8 +17540,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/providers/handoff-head.tsx": {
-    "mtime": 1788410106.5789328,
-    "ast_hash": "4eda6be3b9fac00de821aef7b140f184",
+    "mtime": 1788414510.0080757,
+    "ast_hash": "eacef58303fc705d71dd87dee20d8a4f",
     "semantic_hash": ""
   },
   "src-tauri/src/handoff.rs": {

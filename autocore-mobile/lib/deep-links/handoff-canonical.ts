@@ -90,6 +90,9 @@ export function expoPathToCanonicalPath(
 
   if (path === '/' || path === '/work') return '/';
 
+  if (path === '/orders/new' || path === '/orders/create-item') {
+    return '/work-orders';
+  }
   if (path === '/orders' || path === '/orders/index') {
     return withQuery('/work-orders', p);
   }

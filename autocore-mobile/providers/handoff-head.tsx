@@ -10,18 +10,19 @@ import { expoPathToCanonicalHttps } from '@/lib/deep-links/handoff-canonical';
  * Mounted for the whole app (including invite/join). Login and other screens
  * without a claimed web URL clear the activity so the Mac Dock does not offer
  * a dead continue-target.
+ *
+ * Do not invalidate on effect cleanup: Expo Router updates search params
+ * while typing in a create-order form, and resigning the activity each time
+ * prevents Continuity from ever appearing in the Mac Dock.
  */
 export function HandoffHead() {
   const pathname = usePathname();
   const params = useGlobalSearchParams();
-  const paramKey = JSON.stringify(params);
+  const href = expoPathToCanonicalHttps(pathname, params as Record<string, unknown>);
 
   useEffect(() => {
-    const parsed = JSON.parse(paramKey) as Record<string, unknown>;
-    const href = expoPathToCanonicalHttps(pathname, parsed);
     setHandoffWebpageUrl(href);
-    return () => setHandoffWebpageUrl(null);
-  }, [pathname, paramKey]);
+  }, [href]);
 
   return null;
 }

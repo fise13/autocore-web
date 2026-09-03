@@ -1,4 +1,4 @@
-const { withEntitlementsPlist } = require('@expo/config-plugins');
+const { withEntitlementsPlist, withInfoPlist } = require('@expo/config-plugins');
 
 /**
  * Both public origins are claimed.
@@ -16,6 +16,8 @@ const ASSOCIATED_DOMAINS = [
   'activitycontinuation:myautocore.com',
 ];
 
+const BROWSING_WEB_ACTIVITY = 'NSUserActivityTypeBrowsingWeb';
+
 /**
  * Associated Domains requires the capability on the
  * `com.wise.autocore.mobile` App ID in Apple Developer. It is on by default so
@@ -29,7 +31,7 @@ function isUniversalLinksEnabled() {
 }
 
 function withIosUniversalLinks(config) {
-  return withEntitlementsPlist(config, (modConfig) => {
+  config = withEntitlementsPlist(config, (modConfig) => {
     if (!isUniversalLinksEnabled()) {
       delete modConfig.modResults['com.apple.developer.associated-domains'];
       return modConfig;
@@ -43,6 +45,20 @@ function withIosUniversalLinks(config) {
     modConfig.modResults['com.apple.developer.associated-domains'] = domains;
     return modConfig;
   });
+
+  // Expo Router writes `$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route` and
+  // used to replace our browsing-web type. Handoff webpageURL needs both.
+  config = withInfoPlist(config, (modConfig) => {
+    const existing = modConfig.modResults.NSUserActivityTypes;
+    const types = Array.isArray(existing) ? [...existing] : [];
+    if (!types.includes(BROWSING_WEB_ACTIVITY)) {
+      types.unshift(BROWSING_WEB_ACTIVITY);
+    }
+    modConfig.modResults.NSUserActivityTypes = types;
+    return modConfig;
+  });
+
+  return config;
 }
 
 module.exports = withIosUniversalLinks;
