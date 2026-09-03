@@ -49,13 +49,7 @@ mod macos {
     }
 
     pub fn set_current_url(url: Option<&Url>) {
-        let eligible = url.and_then(|candidate| {
-            if security::is_handoff_eligible(candidate) {
-                security::inbound_link_to_product_url(candidate).ok()
-            } else {
-                None
-            }
-        });
+        let eligible = url.and_then(security::handoff_webpage_url);
 
         let Some(target) = eligible else {
             clear_activity();

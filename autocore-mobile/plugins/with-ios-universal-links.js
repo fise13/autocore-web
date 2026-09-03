@@ -9,7 +9,12 @@ const { withEntitlementsPlist } = require('@expo/config-plugins');
  * marketing origin is claimed directly. Each origin serves its own
  * `apple-app-site-association` from the same Next.js route handler.
  */
-const ASSOCIATED_DOMAINS = ['applinks:app.myautocore.com', 'applinks:myautocore.com'];
+const ASSOCIATED_DOMAINS = [
+  'applinks:app.myautocore.com',
+  'applinks:myautocore.com',
+  'activitycontinuation:app.myautocore.com',
+  'activitycontinuation:myautocore.com',
+];
 
 /**
  * Associated Domains requires the capability on the

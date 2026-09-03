@@ -131,7 +131,9 @@ Expect `HTTP/2 200`, `content-type: application/json`, and no `location:` header
 curl -sS https://app.myautocore.com/.well-known/apple-app-site-association | python3 -m json.tool
 ```
 
-Expect `appIDs` to list both native clients:
+Expect `appIDs` to list both native clients, and `activitycontinuation.apps` to
+list the same two IDs (Handoff will not deliver a browsing-web activity without
+that block):
 
 ```
 45W7LA3QFP.com.wise.autocore.mobile
@@ -148,6 +150,8 @@ Expect `appIDs` to list both native clients:
 ```
 applinks:app.myautocore.com
 applinks:myautocore.com
+activitycontinuation:app.myautocore.com
+activitycontinuation:myautocore.com
 ```
 
 Both origins are claimed because iOS does **not** follow redirects when
@@ -159,7 +163,8 @@ against a provisioning profile that lacks the capability.
 
 ### macOS
 
-The same two `applinks:` entries live in [`src-tauri/entitlements.plist`](../src-tauri/entitlements.plist).
+The same two `applinks:` entries live in [`src-tauri/entitlements.plist`](../src-tauri/entitlements.plist), plus `activitycontinuation:` for the same hosts (required for Handoff `webpageURL`). Development-signed local builds use [`src-tauri/entitlements.development.plist`](../src-tauri/entitlements.development.plist) with `?mode=developer` so macOS fetches AASA from the origin instead of Apple's CDN. `scripts/sign-tauri-macos.mjs` picks that file when the identity is Apple Development.
+
 The Mac App ID `com.wise.autocore.desktop` must have **Associated Domains**
 enabled in Apple Developer, and the Mac development / Developer ID profile
 must be regenerated afterwards. Signing fails if the entitlement is present
@@ -216,7 +221,12 @@ debug build with a development profile. Test a Release/TestFlight build.
    into Safari's address bar *never* opens an app; that is expected iOS
    behaviour and is not a failure of the configuration. From Safari, pull down
    on the page to reveal the "Open in AutoCore" banner instead.
-4. **Test each scenario** — signed in, signed out, cold start (swipe the app out
+4. **On a Mac development build**, quit Safari, install the new `.app` (not by
+   typing the URL), open it once, then tap a Notes link such as
+   `https://app.myautocore.com/work-orders`. Do not replace `/Applications/AutoCore.app`
+   if that bundle is a different product (`fise.AutoCore`); use `~/Applications`
+   instead. Reinstall after every Associated Domains change so `swcd` re-fetches.
+5. **Test each scenario** — signed in, signed out, cold start (swipe the app out
    of the app switcher first), warm start, and a link with query params.
 
 ### Resetting a cached AASA

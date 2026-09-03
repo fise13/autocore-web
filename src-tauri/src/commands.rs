@@ -201,6 +201,9 @@ pub fn desktop_handoff_set_url(app: AppHandle, url: Option<String>) -> Result<()
         None | Some("") => None,
         Some(raw) => Some(url::Url::parse(raw).map_err(|error| error.to_string())?),
     };
+    if let Some(ref parsed) = parsed {
+        crate::session::remember(&app, parsed);
+    }
     crate::handoff::set_current_url(&app, parsed);
     Ok(())
 }

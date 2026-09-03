@@ -53,6 +53,15 @@ function matchesPattern(pattern: string, path: string): boolean {
   return regex.test(path);
 }
 
+describe("Handoff activitycontinuation", () => {
+  it("lists both native clients so Continuity can hand a webpageURL across devices", () => {
+    const aasa = buildAppleAppSiteAssociation("app") as {
+      activitycontinuation?: { apps?: string[] };
+    };
+    assert.deepEqual(aasa.activitycontinuation?.apps, [...UNIVERSAL_LINK_APP_IDS]);
+  });
+});
+
 describe("app identifiers", () => {
   it("uses the Team ID and Bundle IDs the iOS and Mac builds are signed with", () => {
     assert.equal(MOBILE_IOS_TEAM_ID, "45W7LA3QFP");

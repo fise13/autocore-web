@@ -16,6 +16,7 @@ mod deep_link;
 mod handoff;
 mod menu;
 mod security;
+mod session;
 mod updater;
 mod window;
 
@@ -131,7 +132,7 @@ pub fn run() {
 
             deep_link::setup(&handle);
             // A cold-start Universal Link / `autocore://` URL may already have
-            // created the window. Do not navigate that away to the default login URL.
+            // created the window. Do not navigate that away to the default home URL.
             if window::main_window(&handle).is_none() {
                 window::open_main_window(&handle, None)?;
             }

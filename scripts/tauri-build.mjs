@@ -70,4 +70,5 @@ run("npx", args);
 
 if (process.platform === "darwin") {
   run("node", ["scripts/sign-tauri-macos.mjs"]);
+  run("node", ["scripts/package-signed-tauri-dmg.mjs"]);
 }

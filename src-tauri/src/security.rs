@@ -211,12 +211,25 @@ fn path_is_handoff_claimed(path: &str, is_app_host: bool) -> bool {
         .any(|prefix| path == *prefix || path.starts_with(&format!("{prefix}/")))
 }
 
-/// Whether this product URL may be advertised as the current Handoff activity.
+/// Whether this product URL may be advertised as an Apple Handoff activity.
+///
+/// `/home` is the workspace overview in the web app, but AASA only claims `/`
+/// (the public alias that redirects there). Continuity will not open an app
+/// for a webpageURL it does not recognise, so `/home` is published as `/`.
+pub fn handoff_webpage_url(url: &Url) -> Option<Url> {
+    let mut target = inbound_link_to_product_url(url).ok()?;
+    if target.path() == "/home" {
+        target.set_path("/");
+    }
+    if !path_is_handoff_claimed(target.path(), true) {
+        return None;
+    }
+    Some(target)
+}
+
+#[allow(dead_code)] // used by unit tests; publish path calls `handoff_webpage_url` directly
 pub fn is_handoff_eligible(url: &Url) -> bool {
-    let Ok(target) = inbound_link_to_product_url(url) else {
-        return false;
-    };
-    path_is_handoff_claimed(target.path(), true)
+    handoff_webpage_url(url).is_some()
 }
 
 #[cfg(test)]
@@ -286,6 +299,14 @@ mod tests {
     }
 
     #[test]
+    fn app_host_root_is_a_workspace_link() {
+        let resolved =
+            inbound_link_to_product_url(&url("https://app.myautocore.com/?desktop=1")).unwrap();
+        assert_eq!(resolved.path(), "/");
+        assert_eq!(resolved.query(), Some("desktop=1"));
+    }
+
+    #[test]
     fn https_links_reject_browser_owned_routes_and_the_escape_hatch() {
         assert!(inbound_link_to_product_url(&url("https://app.myautocore.com/login")).is_err());
         assert!(inbound_link_to_product_url(&url("https://app.myautocore.com/auth/action")).is_err());
@@ -301,8 +322,11 @@ mod tests {
     fn handoff_is_eligible_for_workspace_urls_only() {
         assert!(is_handoff_eligible(&url("https://app.myautocore.com/work-orders/1")));
         assert!(is_handoff_eligible(&url("https://app.myautocore.com/")));
+        assert!(is_handoff_eligible(&url("https://app.myautocore.com/home")));
         assert!(!is_handoff_eligible(&url("https://app.myautocore.com/quotes")));
         assert!(!is_handoff_eligible(&url("https://app.myautocore.com/login?desktop=1")));
         assert!(!is_handoff_eligible(&url("https://appleid.apple.com/auth")));
+        let overview = handoff_webpage_url(&url("https://app.myautocore.com/home?desktop=1")).unwrap();
+        assert_eq!(overview.path(), "/");
     }
 }

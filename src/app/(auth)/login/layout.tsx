@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
+import { DesktopLoginBoot } from "./desktop-login-boot";
 import { marketingRoute } from "@/lib/marketing-routes";
 
-export const metadata: Metadata = {
+const WEB_METADATA: Metadata = {
   title: "Sign in",
   description: "Sign in to AutoCore — software for dismantlers and repair shops.",
   robots: {
@@ -13,11 +15,37 @@ export const metadata: Metadata = {
   },
 };
 
+const DESKTOP_METADATA: Metadata = {
+  title: "AutoCore",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+function isDesktopUserAgent(userAgent: string | null): boolean {
+  return /AutoCoreDesktop\//i.test(userAgent ?? "");
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const userAgent = (await headers()).get("user-agent");
+  return isDesktopUserAgent(userAgent) ? DESKTOP_METADATA : WEB_METADATA;
+}
+
 type LoginLayoutProps = {
   children: ReactNode;
 };
 
-export default function LoginLayout({ children }: LoginLayoutProps) {
+export default async function LoginLayout({ children }: LoginLayoutProps) {
+  const userAgent = (await headers()).get("user-agent");
+  if (isDesktopUserAgent(userAgent)) {
+    return (
+      <Suspense fallback={null}>
+        <DesktopLoginBoot>{children}</DesktopLoginBoot>
+      </Suspense>
+    );
+  }
+
   return (
     <>
       <Suspense fallback={children}>{children}</Suspense>

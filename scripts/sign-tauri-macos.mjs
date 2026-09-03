@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TAURI_DIR = join(ROOT, "src-tauri");
 const ENTITLEMENTS = join(TAURI_DIR, "entitlements.plist");
+const DEV_ENTITLEMENTS = join(TAURI_DIR, "entitlements.development.plist");
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd: ROOT, encoding: "utf8" });
@@ -76,12 +77,17 @@ function signApp(appPath, identity, profilePath) {
     cpSync(profilePath, join(appPath, "Contents", "embedded.provisionprofile"));
   }
 
+  const entitlements =
+    isDevelopmentIdentity(identity) && existsSync(DEV_ENTITLEMENTS)
+      ? DEV_ENTITLEMENTS
+      : ENTITLEMENTS;
+
   run("codesign", [
     "--force",
     "--sign",
     identity,
     "--entitlements",
-    ENTITLEMENTS,
+    entitlements,
     "--options",
     "runtime",
     "--timestamp=none",

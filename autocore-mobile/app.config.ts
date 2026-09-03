@@ -33,7 +33,12 @@ const appleSignInEnabled = appleSignInFlag !== '0' && appleSignInFlag !== 'false
 // `plugins/with-ios-universal-links.js`, which writes the entitlement.
 const universalLinksFlag = process.env.EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS?.trim().toLowerCase();
 const universalLinksEnabled = universalLinksFlag !== '0' && universalLinksFlag !== 'false';
-const associatedDomains = ['applinks:app.myautocore.com', 'applinks:myautocore.com'];
+const associatedDomains = [
+  'applinks:app.myautocore.com',
+  'applinks:myautocore.com',
+  'activitycontinuation:app.myautocore.com',
+  'activitycontinuation:myautocore.com',
+];
 
 const plugins: ExpoConfig['plugins'] = [
   'expo-router',

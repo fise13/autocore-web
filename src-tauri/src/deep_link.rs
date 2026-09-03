@@ -71,6 +71,7 @@ pub fn handle_urls(app: &AppHandle, urls: Vec<Url>) {
 
                 // Then navigate, so a link works identically whether or not the
                 // page happens to have a listener attached.
+                crate::session::remember(app, &target);
                 if let Err(error) = window::open_main_window(app, Some(target.clone())) {
                     log::error!("Could not follow deep link: {error}");
                 }

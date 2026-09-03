@@ -80,8 +80,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/app.config.ts": {
-    "mtime": 1788257678.776585,
-    "ast_hash": "0afdad5a1b5bfbd99b2d8a1e76ca4dab",
+    "mtime": 1788409874.9296732,
+    "ast_hash": "8e5d36e55f14c65d6313e5a86dbbfc3a",
     "semantic_hash": ""
   },
   "autocore-mobile/app/(auth)/_layout.tsx": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/app/_layout.tsx": {
-    "mtime": 1787460157.4339166,
-    "ast_hash": "6f09a7ba97881a4d3aae3042c09f40ef",
+    "mtime": 1788409874.3551464,
+    "ast_hash": "140fc29b85a6c2f09c8eb18f129d4970",
     "semantic_hash": ""
   },
   "autocore-mobile/app/design-system.tsx": {
@@ -4170,8 +4170,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/package.json": {
-    "mtime": 1788257678.941651,
-    "ast_hash": "dadb830f3e49fbaaba552a3e32eb7193",
+    "mtime": 1788409874.9292045,
+    "ast_hash": "85c47691bad958d46b163644bf7bf9ea",
     "semantic_hash": ""
   },
   "autocore-mobile/plugins/with-disable-swiftuicore-autolink.js": {
@@ -5845,8 +5845,8 @@
     "semantic_hash": ""
   },
   "src-tauri/build.rs": {
-    "mtime": 1786980856.359553,
-    "ast_hash": "39323aee7f1931c76f33fffa06dd97b5",
+    "mtime": 1788409966.2503457,
+    "ast_hash": "9626f8c44cfc769c1a3407f9d38cfca2",
     "semantic_hash": ""
   },
   "src-tauri/capabilities/default.json": {
@@ -5865,13 +5865,13 @@
     "semantic_hash": ""
   },
   "src-tauri/capabilities/remote.json": {
-    "mtime": 1788409142.8271549,
-    "ast_hash": "eda3a6fa6c78d4c7470b5b104ab72f99",
+    "mtime": 1788409966.6712284,
+    "ast_hash": "2ddea6ee62945151e8086e4899161ed0",
     "semantic_hash": ""
   },
   "src-tauri/src/lib.rs": {
-    "mtime": 1788409144.2680974,
-    "ast_hash": "7b14403270e9fc9bc5cb2a4f94b0a613",
+    "mtime": 1788409965.2761612,
+    "ast_hash": "3e72194c4929d86b58ea324696f444b3",
     "semantic_hash": ""
   },
   "src-tauri/src/main.rs": {
@@ -6075,8 +6075,8 @@
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-app-site-association/route.ts": {
-    "mtime": 1786940254.8710077,
-    "ast_hash": "d23d89b73b8a4b67426df1483e88eee3",
+    "mtime": 1788409823.2721338,
+    "ast_hash": "f53db4c34b657c4dfe624a256b97b631",
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-developer-domain-association/route.ts": {
@@ -12555,8 +12555,8 @@
     "semantic_hash": ""
   },
   "src/lib/mobile/universal-links.ts": {
-    "mtime": 1786940241.8012712,
-    "ast_hash": "93e7c3d21cca249bcc2125bdbc814be7",
+    "mtime": 1788409795.5065176,
+    "ast_hash": "072558ec6d3682fdca571bff1334ece2",
     "semantic_hash": ""
   },
   "src/lib/mobile/work-orders.server.ts": {
@@ -15040,8 +15040,8 @@
     "semantic_hash": ""
   },
   "src/lib/mobile/universal-links.test.ts": {
-    "mtime": 1786940408.992597,
-    "ast_hash": "9dd90334214c3e62bfeda7387b615268",
+    "mtime": 1788409807.700973,
+    "ast_hash": "d4fd4ab1abc7e770687019b434def093",
     "semantic_hash": ""
   },
   "src/lib/rate-limit/rate-limit.server.ts": {
@@ -15055,8 +15055,8 @@
     "semantic_hash": ""
   },
   "docs/DEEP-LINKS.md": {
-    "mtime": 1786940925.5933483,
-    "ast_hash": "3637944e324aeddd994aff71f324c819",
+    "mtime": 1788411024.1610055,
+    "ast_hash": "cb4b5e93332047e0d43cbac1d0ba56a9",
     "semantic_hash": ""
   },
   "autocore-mobile/store-assets/app-store/iphone-6.5/1242x2688-aso-01-work-engines.png": {
@@ -15305,18 +15305,18 @@
     "semantic_hash": ""
   },
   "src-tauri/src/commands.rs": {
-    "mtime": 1786980868.1945941,
-    "ast_hash": "94385a0ed962f80b900e8d98a3d10d25",
+    "mtime": 1788409978.3097217,
+    "ast_hash": "f849696be2437103067c59e1c3a7ddcb",
     "semantic_hash": ""
   },
   "src-tauri/src/config.rs": {
-    "mtime": 1786977592.9223933,
-    "ast_hash": "030c247734da030477be0ed6bd319334",
+    "mtime": 1788410080.0031161,
+    "ast_hash": "c6c13184637f940f7afe64c18f82d4de",
     "semantic_hash": ""
   },
   "src-tauri/src/deep_link.rs": {
-    "mtime": 1786977786.9798503,
-    "ast_hash": "4c066a9db3bc858aecc4f5e70c9db17d",
+    "mtime": 1788409953.9261446,
+    "ast_hash": "e3c0d30975dc05c4f76167111b4b812b",
     "semantic_hash": ""
   },
   "src-tauri/src/menu.rs": {
@@ -15325,8 +15325,8 @@
     "semantic_hash": ""
   },
   "src-tauri/src/security.rs": {
-    "mtime": 1786977633.9817383,
-    "ast_hash": "28312f7c49d42f4cf57c1bd294595d0e",
+    "mtime": 1788411008.486679,
+    "ast_hash": "1f915c4005090702ac5a91fd54b05754",
     "semantic_hash": ""
   },
   "src-tauri/src/updater.rs": {
@@ -15345,8 +15345,8 @@
     "semantic_hash": ""
   },
   "src/components/providers/desktop-shell-provider.tsx": {
-    "mtime": 1788409142.281045,
-    "ast_hash": "a7a7f4c666c9679e0058c48c56282b49",
+    "mtime": 1788410020.7736037,
+    "ast_hash": "101df6a72625e70816b7416dd20b12c2",
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/directory-repository.ts": {
@@ -15465,13 +15465,13 @@
     "semantic_hash": ""
   },
   "src/platform/desktop/bridge.ts": {
-    "mtime": 1786980868.1966937,
-    "ast_hash": "0e6611b5321df51c707c93056981254b",
+    "mtime": 1788409993.382969,
+    "ast_hash": "83bac2d8a37d6a3d12006813cce73823",
     "semantic_hash": ""
   },
   "src/platform/index.ts": {
-    "mtime": 1786980868.1973991,
-    "ast_hash": "bc03c1ad088deef2a2cd728da165fb34",
+    "mtime": 1788409997.624948,
+    "ast_hash": "c8e4279d045d46ffa2872e4d81d6127b",
     "semantic_hash": ""
   },
   "src/platform/notify.ts": {
@@ -15505,13 +15505,13 @@
     "semantic_hash": ""
   },
   "docs/DESKTOP-ARCHITECTURE.md": {
-    "mtime": 1786980332.6718435,
-    "ast_hash": "3912caac6cace7f41f78ccc45d6dde89",
+    "mtime": 1788410106.5789495,
+    "ast_hash": "0cab648dba149995ddca0ebc672d1f5c",
     "semantic_hash": ""
   },
   "docs/DESKTOP-RELEASE.md": {
-    "mtime": 1788407770.114019,
-    "ast_hash": "d57f90efbfe3cc15ff62ff6b550765d0",
+    "mtime": 1788410079.6409311,
+    "ast_hash": "ad3b3d59522077f90766209adde0d48e",
     "semantic_hash": ""
   },
   "autocore-mobile/components/ui/brand-backdrop.tsx": {
@@ -17502,6 +17502,56 @@
   "src-tauri/vendor/tauri-plugin-siwa/permissions/autogenerated/reference.md": {
     "mtime": 1153704088.0,
     "ast_hash": "b0b6cf71d29e59ebc425ecca9668fd0c",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/apple-handoff.ts": {
+    "mtime": 1788409866.922493,
+    "ast_hash": "2a5ff77f7bb1dd72ec7f4ed7b48652e9",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/handoff-canonical.test.ts": {
+    "mtime": 1788409834.879977,
+    "ast_hash": "84953b0353f6740633a8d809316474af",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/handoff-canonical.ts": {
+    "mtime": 1788409849.0613453,
+    "ast_hash": "7e38c78284ab951a1ac94f74aed397a6",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/expo-module.config.json": {
+    "mtime": 1788409855.920943,
+    "ast_hash": "f3b9a515705fa936c3589a7b003f5ced",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/index.ts": {
+    "mtime": 1788409862.9162123,
+    "ast_hash": "99cb7f53147b704e99971426406dbe3e",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/ios/AppleContinuityModule.swift": {
+    "mtime": 1788409860.721521,
+    "ast_hash": "fea3176bb8c3443f3a2f83e2c9c3849b",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/package.json": {
+    "mtime": 1788409860.1256278,
+    "ast_hash": "401cb4af3925c23916d97c9ff2804593",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/providers/handoff-head.tsx": {
+    "mtime": 1788410106.5789328,
+    "ast_hash": "4eda6be3b9fac00de821aef7b140f184",
+    "semantic_hash": ""
+  },
+  "src-tauri/src/handoff.rs": {
+    "mtime": 1788410170.7760496,
+    "ast_hash": "f64a2449856461dd5328a3011075f71d",
+    "semantic_hash": ""
+  },
+  "src/platform/handoff.ts": {
+    "mtime": 1788409994.801169,
+    "ast_hash": "d86c0f0b213d7489f662c4ab4a792e08",
     "semantic_hash": ""
   }
 }

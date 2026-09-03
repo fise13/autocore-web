@@ -106,6 +106,7 @@ fn allow_navigation(url: &Url) -> bool {
 fn build_main_window(app: &AppHandle, url: Url) -> Result<WebviewWindow, String> {
     let user_agent = config::desktop_user_agent();
     let handle = app.clone();
+    let nav_handle = app.clone();
 
     WebviewWindowBuilder::new(app, config::MAIN_WINDOW_LABEL, WebviewUrl::External(url))
         .title(config::APP_TITLE)
@@ -113,7 +114,13 @@ fn build_main_window(app: &AppHandle, url: Url) -> Result<WebviewWindow, String>
         .inner_size(1400.0, 900.0)
         .min_inner_size(1024.0, 700.0)
         .center()
-        .on_navigation(|url| allow_navigation(url))
+        .on_navigation(move |url| {
+            let allowed = allow_navigation(&url);
+            if allowed {
+                crate::session::remember(&nav_handle, &url);
+            }
+            allowed
+        })
         .on_new_window(move |url, features| route_new_window(&handle, url, features))
         .build()
         .map_err(|error| error.to_string())
@@ -127,7 +134,7 @@ fn build_main_window(app: &AppHandle, url: Url) -> Result<WebviewWindow, String>
 pub fn open_main_window(app: &AppHandle, url: Option<Url>) -> Result<(), String> {
     let target = match url {
         Some(url) => url,
-        None => config::app_url()?,
+        None => crate::session::restore(app).unwrap_or(config::app_url()?),
     };
 
     if let Some(window) = app.get_webview_window(config::MAIN_WINDOW_LABEL) {

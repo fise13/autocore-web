@@ -1,1 +1,1 @@
-https://app.myautocore.com/login?desktop=1
+https://app.myautocore.com/home?desktop=1

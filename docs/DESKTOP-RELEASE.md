@@ -77,13 +77,17 @@ and "installable by a customer":
    (`AuthenticationServices` error 1000). The Mac App ID is
    `com.wise.autocore.desktop` with Sign in with Apple (team `45W7LA3QFP`).
    Local runs need an Apple Development signature, `entitlements.plist` (Sign
-   in with Apple **and** Associated Domains), and a Mac development profile at
+   in with Apple **and** Associated Domains, including `activitycontinuation`
+   for Handoff), and a Mac development profile at
    `Contents/embedded.provisionprofile` that includes both capabilities.
    Enable **Associated Domains** on App ID `com.wise.autocore.desktop`, then
    regenerate the profile — signing fails if the entitlement is present and
    the profile is not. `npm run tauri:build:mac` calls
    `scripts/sign-tauri-macos.mjs` to embed that profile after Tauri signs the
-   bundle. The Sign in with Apple plugin is
+   bundle, then `scripts/package-signed-tauri-dmg.mjs` rebuilds the DMG from
+   the signed `.app` (Tauri writes the disk image *before* that re-sign).
+   Development identities use `entitlements.development.plist` (`?mode=developer`)
+   so Universal Links fetch AASA from the origin. The Sign in with Apple plugin is
    vendored at `src-tauri/vendor/tauri-plugin-siwa` so the system sheet is
    attached to a visible window (the crates.io build could hang the login
    spinner forever). Customer builds need a Developer ID
@@ -121,4 +125,7 @@ support link (opens in the system browser), open a document preview (opens a
 second app window), resize and restart (geometry restored), toggle macOS
 appearance (theme follows), `open autocore://work-orders` (focuses the app and
 navigates), and — on a signed build with Associated Domains — a Notes link to
-`https://app.myautocore.com/work-orders` plus Handoff from the iPhone app.
+`https://app.myautocore.com/work-orders` plus Handoff from the iPhone app
+(open a work order on the phone, then look for AutoCore on the Mac Dock;
+Safari's address bar will never open the app). The shell boots at `/home`, not
+`/login`, so a signed-in session does not flash the login form.

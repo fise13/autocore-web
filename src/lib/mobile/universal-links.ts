@@ -167,6 +167,12 @@ export function buildAppleAppSiteAssociation(
         },
       ],
     },
+    // Required for NSUserActivity webpageURL Handoff. `applinks` alone opens
+    // taps from Notes/Mail; Continuity will not hand a browsing-web activity
+    // to an app that is missing from this list.
+    activitycontinuation: {
+      apps: [...UNIVERSAL_LINK_APP_IDS],
+    },
   };
 }
 

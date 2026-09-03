@@ -21,6 +21,7 @@ import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
 import { canUseTauriNativeAppleSignIn } from "@/lib/tauri/is-tauri-ipc-available";
+import { isTauriDesktop } from "@/lib/tauri/is-tauri-desktop";
 import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
 import { RETURN_TO_PARAM, resolvePostLoginPath } from "@/lib/auth/return-to";
 import { useAppLocale } from "@/components/providers/app-locale-provider";
@@ -193,6 +194,7 @@ export default function LoginPage() {
   });
 
   const showAuthDebug = isAuthDebugEnabled();
+  const desktopShell = isTauriDesktop();
 
   // Keep the real sign-in UI in the HTML for crawlers / first paint.
   // "Preparing your workspace…" looks like a login wall or under-construction
@@ -227,6 +229,17 @@ export default function LoginPage() {
     return (
       <>
         <AppLoadingScreen message={userCopy.auth.completing} />
+        {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
+      </>
+    );
+  }
+
+  // Desktop always has a session store: never paint the login form while Firebase
+  // is still hydrating, or a signed-in launch flashes Sign in for a second.
+  if (desktopShell && (isLoading || !authReady)) {
+    return (
+      <>
+        <AppLoadingScreen message={userCopy.auth.loading} />
         {showAuthDebug ? <AuthDebugPanel snapshot={debugSnapshot} /> : null}
       </>
     );
