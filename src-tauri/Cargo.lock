@@ -283,6 +283,8 @@ version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "log",
+ "objc2",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",
@@ -4481,8 +4483,6 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-siwa"
 version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dcba3d6329e004a5750cc88575c511f0971012ffab34bf1d10de540798ac069"
 dependencies = [
  "serde",
  "serde_json",

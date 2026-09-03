@@ -23,6 +23,24 @@ function nativeAppleUnavailableMessage(): string {
   return "Native Apple Sign In недоступен.";
 }
 
+const NATIVE_SIWA_TIMEOUT_MS = 90_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 export async function signInWithAppleTauriNative(auth: Auth): Promise<UserCredential> {
   const { getAppleIdCredential } = await import("tauri-plugin-siwa-api");
 
@@ -31,11 +49,15 @@ export async function signInWithAppleTauriNative(auth: Auth): Promise<UserCreden
 
   logAppleJs("native-siwa-start", { rawNonceLength: rawNonce.length });
 
-  const response = await getAppleIdCredential({
-    scope: ["fullName", "email"],
-    nonce: hashedNonce,
-    state: "autocore-desktop",
-  });
+  const response = await withTimeout(
+    getAppleIdCredential({
+      scope: ["fullName", "email"],
+      nonce: hashedNonce,
+      state: "autocore-desktop",
+    }),
+    NATIVE_SIWA_TIMEOUT_MS,
+    "Sign in with Apple timed out waiting for the system sheet.",
+  );
 
   if (!response.identityToken?.trim()) {
     throw new Error("Apple did not return an identity token");

@@ -132,6 +132,7 @@ pub fn open_main_window(app: &AppHandle, url: Option<Url>) -> Result<(), String>
 
     if let Some(window) = app.get_webview_window(config::MAIN_WINDOW_LABEL) {
         window.navigate(target).map_err(|error| error.to_string())?;
+        let _ = window.set_title(config::APP_TITLE);
         focus(&window);
         return Ok(());
     }
@@ -145,6 +146,7 @@ pub fn open_main_window(app: &AppHandle, url: Option<Url>) -> Result<(), String>
     if let Err(error) = window.restore_state(StateFlags::all()) {
         log::warn!("Could not restore window geometry: {error}");
     }
+    let _ = window.set_title(config::APP_TITLE);
 
     Ok(())
 }

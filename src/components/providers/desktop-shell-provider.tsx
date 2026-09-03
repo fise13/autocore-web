@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useToast } from "@/components/ui/toast-provider";
 import { userCopy } from "@/lib/user-copy";
@@ -12,6 +12,7 @@ import {
   onDesktopDeepLink,
   onDesktopMenuAction,
   printCurrentPage,
+  publishDesktopHandoffUrl,
 } from "@/platform";
 import { runDesktopAction } from "@/platform/desktop-actions";
 
@@ -19,12 +20,20 @@ import { runDesktopAction } from "@/platform/desktop-actions";
  * The single place the desktop shell talks to the React app.
  *
  * Renders nothing and does nothing on web. Everything it wires up is native
- * plumbing the browser already provided for free — menu commands, `autocore://`
- * links, the window title — so no product component needs to know it exists.
+ * plumbing the browser already provided for free — menu commands and
+ * `autocore://` links — so no product component needs to know it exists.
+ * The native window title stays `AutoCore`; it is not mirrored from
+ * `document.title` (login metadata is "Sign in" and would stick after auth).
  */
 export function DesktopShellProvider() {
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!hasNativeBridge()) return;
+    publishDesktopHandoffUrl(window.location.href);
+  }, [pathname]);
 
   useEffect(() => {
     if (!hasNativeBridge()) return;
@@ -85,44 +94,6 @@ export function DesktopShellProvider() {
       }
     }
   }, [router, toast]);
-
-  // Keep the native window title in step with the page. A webview pointed at a
-  // remote origin does not propagate `document.title` on its own, so without
-  // this every window and Window-menu entry just reads "AutoCore".
-  useEffect(() => {
-    if (!hasNativeBridge()) return;
-
-    let cancelled = false;
-    let lastTitle = "";
-
-    const sync = async () => {
-      const title = document.title.trim();
-      if (!title || title === lastTitle || cancelled) return;
-      lastTitle = title;
-      try {
-        const { windowNative } = await import("@/platform/desktop/bridge");
-        const { getCurrentWindow } = await windowNative();
-        await getCurrentWindow().setTitle(title);
-      } catch {
-        // Title syncing is cosmetic; never let it surface as an error.
-      }
-    };
-
-    void sync();
-
-    const titleElement = document.querySelector("title");
-    if (!titleElement) return () => {
-      cancelled = true;
-    };
-
-    const observer = new MutationObserver(() => void sync());
-    observer.observe(titleElement, { childList: true });
-
-    return () => {
-      cancelled = true;
-      observer.disconnect();
-    };
-  }, []);
 
   return null;
 }

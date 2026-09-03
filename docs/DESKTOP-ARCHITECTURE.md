@@ -50,8 +50,9 @@ build one on.
 | `src-tauri/src/security.rs` | Navigation policy — classifies every URL (unit-tested) |
 | `src-tauri/src/window.rs` | Main window, link routing, window-state restore |
 | `src-tauri/src/menu.rs` | Native menu, shortcuts, zoom |
-| `src-tauri/src/deep_link.rs` | `autocore://` handling (cold start + running) |
-| `src-tauri/src/commands.rs` | Save / print / reveal / info — the only custom commands |
+| `src-tauri/src/deep_link.rs` | `autocore://`, HTTPS Universal Links, Handoff (cold start + running) |
+| `src-tauri/src/handoff.rs` | Publish the current product URL as `NSUserActivityTypeBrowsingWeb` |
+| `src-tauri/src/commands.rs` | Save / print / Handoff / info |
 | `src-tauri/src/updater.rs` | Updater plugin, registered only when configured |
 | `src/platform/` | The web-side adapter: one API, web + desktop implementations |
 
@@ -83,7 +84,7 @@ losing the feature.
 | `openExternalUrl` | `window.open` | system browser | Support/docs/payment pages belong in the user's browser with their session and password manager. |
 | `readClipboardText` | `navigator.clipboard` | OS clipboard | `readText()` is unreliable in WKWebView, and range paste is core to the inventory grids. |
 | `notifyDesktop` | no-op | OS notification | Additive — callers keep their in-app toast either way. |
-| deep links, menu events, updater | — | native only | No web equivalent. |
+| deep links, Handoff, menu events, updater | — | native only | No web equivalent. |
 
 ## Security model
 
@@ -113,7 +114,9 @@ user's Firebase session.
   be pointed at a local origin.
 - **Deep links cannot smuggle an origin.** `autocore://evil.example/x` resolves to
   `https://app.myautocore.com/evil.example/x`; only path, query and fragment
-  survive. Unit-tested.
+  survive. HTTPS Universal Links are rewritten onto the configured app origin
+  the same way. `/login`, `/auth/*`, marketing pages and `?mode=browser` are
+  rejected so Safari keeps web OAuth. Unit-tested.
 
 ## Known gaps
 
@@ -124,6 +127,6 @@ user's Firebase session.
   `tauri.conf.json`. A local CSP governs only local assets, and the app serves
   none; the real policy is the `Content-Security-Policy-Report-Only` header in
   `next.config.ts`, which is still report-only for the whole product.
-- **Deep links in dev on macOS** only work from the bundled `.app`, not from
-  `tauri dev` — macOS resolves schemes through `Info.plist` in a registered
-  bundle.
+- **Deep links and Handoff in dev on macOS** only work from the bundled `.app`,
+  not from `tauri dev` — macOS resolves schemes and Associated Domains through
+  `Info.plist` / entitlements in a registered bundle.

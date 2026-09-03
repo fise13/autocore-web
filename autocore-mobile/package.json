@@ -20,6 +20,7 @@
     "@shopify/react-native-skia": "~2.6.6",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-query-persist-client": "^5.101.2",
+    "apple-continuity": "file:modules/apple-continuity",
     "background-execution": "file:modules/background-execution",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

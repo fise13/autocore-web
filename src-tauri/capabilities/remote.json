@@ -14,7 +14,6 @@
   },
   "permissions": [
     "core:event:default",
-    "core:window:allow-set-title",
     "core:webview:allow-set-webview-zoom",
     "opener:allow-open-url",
     "opener:allow-default-urls",
@@ -24,6 +23,7 @@
     "allow-desktop-save-file",
     "allow-desktop-print-document",
     "allow-desktop-print-page",
-    "allow-desktop-info"
+    "allow-desktop-info",
+    "allow-desktop-handoff-set-url"
   ]
 }

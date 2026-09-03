@@ -1,12 +1,11 @@
-//! `autocore://` deep links.
+//! Deep links into the desktop shell.
 //!
-//! Covers the three cases that matter: the app is closed and a link launches it,
-//! the app is already running, and a second launch is attempted (which the
-//! single-instance plugin folds back into the first).
+//! `autocore://` custom-scheme links, HTTPS Universal Links, and Handoff
+//! `webpageURL` values all arrive here. Custom-scheme links work on every
+//! desktop OS; `https://` product URLs are claimed on macOS via Associated
+//! Domains (same paths as the iPhone app — see `docs/DEEP-LINKS.md`).
 //!
-//! `https://` links to the product are deliberately *not* claimed here. Those
-//! belong to the browser and to the mobile app's Universal Links (see
-//! `docs/DEEP-LINKS.md`); a desktop app that hijacked them would break both.
+//! `/login`, `/auth/*`, marketing pages and `?mode=browser` stay in Safari.
 
 use tauri::{AppHandle, Emitter, Url};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -53,7 +52,7 @@ pub fn urls_from_argv(argv: &[String]) -> Vec<Url> {
 
 pub fn handle_urls(app: &AppHandle, urls: Vec<Url>) {
     for link in urls {
-        match security::deep_link_to_product_url(&link) {
+        match security::inbound_link_to_product_url(&link) {
             Ok(target) => {
                 log::info!("Deep link {link} → {target}");
 
@@ -72,9 +71,11 @@ pub fn handle_urls(app: &AppHandle, urls: Vec<Url>) {
 
                 // Then navigate, so a link works identically whether or not the
                 // page happens to have a listener attached.
-                if let Err(error) = window::open_main_window(app, Some(target)) {
+                if let Err(error) = window::open_main_window(app, Some(target.clone())) {
                     log::error!("Could not follow deep link: {error}");
                 }
+
+                crate::handoff::set_current_url(app, Some(target));
             }
             Err(error) => log::warn!("Ignoring deep link {link}: {error}"),
         }

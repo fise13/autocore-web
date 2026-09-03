@@ -67,3 +67,7 @@ if (patch) {
 }
 
 run("npx", args);
+
+if (process.platform === "darwin") {
+  run("node", ["scripts/sign-tauri-macos.mjs"]);
+}

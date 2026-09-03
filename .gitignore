@@ -82,3 +82,5 @@ scripts/.apple-auth-code.json
 /src-tauri/target/
 /src-tauri/gen/
 /src-tauri/resources/next-server/
+*.provisionprofile
+*.mobileprovision

@@ -1,13 +1,18 @@
-/** iOS Universal Links + Android App Links for AutoCore Mobile. */
+/** iOS / macOS Universal Links + Android App Links. */
 
 export const MOBILE_IOS_TEAM_ID = "45W7LA3QFP";
 export const MOBILE_IOS_BUNDLE_ID = "com.wise.autocore.mobile";
+export const DESKTOP_MAC_BUNDLE_ID = "com.wise.autocore.desktop";
 export const MOBILE_ANDROID_PACKAGE = "com.wise.autocore.mobile";
 
 export const MOBILE_UNIVERSAL_LINKS_HOST = "app.myautocore.com";
 export const MOBILE_UNIVERSAL_LINKS_MARKETING_HOST = "myautocore.com";
 
 export const MOBILE_IOS_APP_ID = `${MOBILE_IOS_TEAM_ID}.${MOBILE_IOS_BUNDLE_ID}`;
+export const DESKTOP_MAC_APP_ID = `${MOBILE_IOS_TEAM_ID}.${DESKTOP_MAC_BUNDLE_ID}`;
+
+/** Team ID + bundle IDs claimed in `apple-app-site-association`. iOS first. */
+export const UNIVERSAL_LINK_APP_IDS = [MOBILE_IOS_APP_ID, DESKTOP_MAC_APP_ID] as const;
 
 export type UniversalLinkHostKind = "app" | "marketing";
 
@@ -132,23 +137,33 @@ export function universalLinkHostKind(host: string | null | undefined): Universa
 /**
  * `apple-app-site-association` body for one host.
  *
- * Exclusions come first because iOS stops at the first matching component.
+ * Exclusions come first because iOS/macOS stop at the first matching component.
+ * Both the iPhone app and the Mac desktop shell claim the same paths so a
+ * shared `https://app.myautocore.com/...` link (and Handoff `webpageURL`)
+ * opens the native client on whichever device received it.
  */
 export function buildAppleAppSiteAssociation(
   hostKind: UniversalLinkHostKind = "app",
 ): Record<string, unknown> {
+  const components = [...excludeComponents(), ...includeComponents(hostKind)];
+  const legacyPaths = legacyPathsForHost(hostKind);
+
   return {
     applinks: {
       apps: [],
       details: [
         {
-          appIDs: [MOBILE_IOS_APP_ID],
-          components: [...excludeComponents(), ...includeComponents(hostKind)],
+          appIDs: [...UNIVERSAL_LINK_APP_IDS],
+          components,
         },
         // iOS 12 and earlier ignore `components` and read this block instead.
         {
           appID: MOBILE_IOS_APP_ID,
-          paths: legacyPathsForHost(hostKind),
+          paths: legacyPaths,
+        },
+        {
+          appID: DESKTOP_MAC_APP_ID,
+          paths: legacyPaths,
         },
       ],
     },

@@ -8,9 +8,12 @@ import {
   parseCanonicalUrl,
 } from "../../../autocore-mobile/lib/deep-links/canonical-deep-links";
 import {
+  DESKTOP_MAC_APP_ID,
+  DESKTOP_MAC_BUNDLE_ID,
   MOBILE_IOS_APP_ID,
   MOBILE_IOS_BUNDLE_ID,
   MOBILE_IOS_TEAM_ID,
+  UNIVERSAL_LINK_APP_IDS,
   buildAppleAppSiteAssociation,
   universalLinkHostKind,
 } from "./universal-links";
@@ -51,16 +54,19 @@ function matchesPattern(pattern: string, path: string): boolean {
 }
 
 describe("app identifiers", () => {
-  it("uses the Team ID and Bundle ID the iOS build is signed with", () => {
+  it("uses the Team ID and Bundle IDs the iOS and Mac builds are signed with", () => {
     assert.equal(MOBILE_IOS_TEAM_ID, "45W7LA3QFP");
     assert.equal(MOBILE_IOS_BUNDLE_ID, "com.wise.autocore.mobile");
+    assert.equal(DESKTOP_MAC_BUNDLE_ID, "com.wise.autocore.desktop");
     assert.equal(MOBILE_IOS_APP_ID, "45W7LA3QFP.com.wise.autocore.mobile");
+    assert.equal(DESKTOP_MAC_APP_ID, "45W7LA3QFP.com.wise.autocore.desktop");
   });
 
-  it("declares the same app id in the modern and legacy detail blocks", () => {
-    const [modern, legacy] = detailsOf("app");
-    assert.deepEqual(modern.appIDs, [MOBILE_IOS_APP_ID]);
-    assert.equal(legacy.appID, MOBILE_IOS_APP_ID);
+  it("lists iOS then Mac in the modern block, and both in legacy blocks", () => {
+    const [modern, legacyIos, legacyMac] = detailsOf("app");
+    assert.deepEqual(modern.appIDs, [...UNIVERSAL_LINK_APP_IDS]);
+    assert.equal(legacyIos.appID, MOBILE_IOS_APP_ID);
+    assert.equal(legacyMac.appID, DESKTOP_MAC_APP_ID);
   });
 });
 

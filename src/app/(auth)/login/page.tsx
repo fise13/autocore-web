@@ -20,6 +20,7 @@ import { isFirebaseHandlerAppleAuthMode } from "@/lib/auth/apple-auth-mode";
 import { bootstrapAppleRedirect } from "@/lib/auth/apple-redirect";
 import { prepareAppleSignInSession, isAppleJsReturnLanding } from "@/lib/auth/apple-js-sign-in";
 import { completeAppleJsReturnIfNeeded } from "@/lib/auth/sign-in-with-apple-credential";
+import { canUseTauriNativeAppleSignIn } from "@/lib/tauri/is-tauri-ipc-available";
 import { navigateToAppAfterAuth } from "@/lib/motion/auth-session-transition";
 import { RETURN_TO_PARAM, resolvePostLoginPath } from "@/lib/auth/return-to";
 import { useAppLocale } from "@/components/providers/app-locale-provider";
@@ -66,6 +67,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (!isFirebaseReady) return;
     if (isFirebaseHandlerAppleAuthMode()) return;
+    if (canUseTauriNativeAppleSignIn()) return;
 
     void prepareAppleSignInSession().catch((error) => {
       logAppleAuthError("login-page:prepare-apple-session", error);
@@ -74,6 +76,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isFirebaseReady || isFirebaseHandlerAppleAuthMode()) return;
+    if (canUseTauriNativeAppleSignIn()) {
+      setAppleReturnPending(false);
+      return;
+    }
 
     let cancelled = false;
     const auth = getFirebaseAuth();

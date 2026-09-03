@@ -32,6 +32,8 @@ export type { DesktopNotification } from "@/platform/notify";
 export { onDesktopDeepLink, onDesktopMenuAction } from "@/platform/desktop-events";
 export type { DesktopDeepLink, DesktopMenuAction } from "@/platform/desktop-events";
 
+export { publishDesktopHandoffUrl } from "@/platform/handoff";
+
 export { getDesktopInfo } from "@/platform/desktop-info";
 export type { DesktopInfo } from "@/platform/desktop-info";
 

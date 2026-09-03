@@ -80,8 +80,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/app.config.ts": {
-    "mtime": 1788257678.776585,
-    "ast_hash": "0afdad5a1b5bfbd99b2d8a1e76ca4dab",
+    "mtime": 1788409874.9296732,
+    "ast_hash": "8e5d36e55f14c65d6313e5a86dbbfc3a",
     "semantic_hash": ""
   },
   "autocore-mobile/app/(auth)/_layout.tsx": {
@@ -295,8 +295,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/app/_layout.tsx": {
-    "mtime": 1787460157.4339166,
-    "ast_hash": "6f09a7ba97881a4d3aae3042c09f40ef",
+    "mtime": 1788409874.3551464,
+    "ast_hash": "140fc29b85a6c2f09c8eb18f129d4970",
     "semantic_hash": ""
   },
   "autocore-mobile/app/design-system.tsx": {
@@ -4170,8 +4170,8 @@
     "semantic_hash": ""
   },
   "autocore-mobile/package.json": {
-    "mtime": 1788257678.941651,
-    "ast_hash": "dadb830f3e49fbaaba552a3e32eb7193",
+    "mtime": 1788409874.9292045,
+    "ast_hash": "85c47691bad958d46b163644bf7bf9ea",
     "semantic_hash": ""
   },
   "autocore-mobile/plugins/with-disable-swiftuicore-autolink.js": {
@@ -5845,8 +5845,8 @@
     "semantic_hash": ""
   },
   "src-tauri/build.rs": {
-    "mtime": 1786980856.359553,
-    "ast_hash": "39323aee7f1931c76f33fffa06dd97b5",
+    "mtime": 1788409966.2503457,
+    "ast_hash": "9626f8c44cfc769c1a3407f9d38cfca2",
     "semantic_hash": ""
   },
   "src-tauri/capabilities/default.json": {
@@ -5865,13 +5865,13 @@
     "semantic_hash": ""
   },
   "src-tauri/capabilities/remote.json": {
-    "mtime": 1786980856.362547,
-    "ast_hash": "7b0a3f5b284fc09b3623a126eb84cd22",
+    "mtime": 1788409966.6712284,
+    "ast_hash": "2ddea6ee62945151e8086e4899161ed0",
     "semantic_hash": ""
   },
   "src-tauri/src/lib.rs": {
-    "mtime": 1786981620.348197,
-    "ast_hash": "812d5b3f57d5ec3686ac37b1cafb839b",
+    "mtime": 1788409965.2761612,
+    "ast_hash": "3e72194c4929d86b58ea324696f444b3",
     "semantic_hash": ""
   },
   "src-tauri/src/main.rs": {
@@ -5880,8 +5880,8 @@
     "semantic_hash": ""
   },
   "src-tauri/tauri.conf.json": {
-    "mtime": 1786980289.8661942,
-    "ast_hash": "b503d705d62fb736b7f8f7a08b2089c9",
+    "mtime": 1788406873.9777913,
+    "ast_hash": "9768825a7d3752e7065ecce0fe8d259d",
     "semantic_hash": ""
   },
   "src/app/(auth)/auth/action/page.tsx": {
@@ -5900,8 +5900,8 @@
     "semantic_hash": ""
   },
   "src/app/(auth)/login/page.tsx": {
-    "mtime": 1787459905.7338796,
-    "ast_hash": "6ea087f6e7cd8a78539ff46b2d3d277a",
+    "mtime": 1788407310.909014,
+    "ast_hash": "2effeef243105012a2405c9c135c0c39",
     "semantic_hash": ""
   },
   "src/app/(dashboard)/accounting/page.tsx": {
@@ -6075,8 +6075,8 @@
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-app-site-association/route.ts": {
-    "mtime": 1786940254.8710077,
-    "ast_hash": "d23d89b73b8a4b67426df1483e88eee3",
+    "mtime": 1788409823.2721338,
+    "ast_hash": "f53db4c34b657c4dfe624a256b97b631",
     "semantic_hash": ""
   },
   "src/app/.well-known/apple-developer-domain-association/route.ts": {
@@ -7390,8 +7390,8 @@
     "semantic_hash": ""
   },
   "src/components/auth/login-screen.tsx": {
-    "mtime": 1788257680.8021286,
-    "ast_hash": "bdeace65abc247d69d34532da476f6c3",
+    "mtime": 1788407293.001966,
+    "ast_hash": "2e54fcd6c749bc0dc770188aa08c6964",
     "semantic_hash": ""
   },
   "src/components/auth/password-field.tsx": {
@@ -11045,8 +11045,8 @@
     "semantic_hash": ""
   },
   "src/lib/auth/apple-auth-log.ts": {
-    "mtime": 1780992442.164191,
-    "ast_hash": "aa0e634a0f7b7b06835955e3e41ad25a",
+    "mtime": 1788407675.0661714,
+    "ast_hash": "8899acc9ad34caa363ddef86ea821d81",
     "semantic_hash": ""
   },
   "src/lib/auth/apple-auth-mode.ts": {
@@ -11120,8 +11120,8 @@
     "semantic_hash": ""
   },
   "src/lib/auth/apple-tauri-native.ts": {
-    "mtime": 1787501658.3938112,
-    "ast_hash": "7eaa4c0c669a750c8eba4e50a700bd85",
+    "mtime": 1788407674.7728138,
+    "ast_hash": "4cbe9398d8c216d50d308e8160268039",
     "semantic_hash": ""
   },
   "src/lib/auth/apple-web-setup.ts": {
@@ -12555,8 +12555,8 @@
     "semantic_hash": ""
   },
   "src/lib/mobile/universal-links.ts": {
-    "mtime": 1786940241.8012712,
-    "ast_hash": "93e7c3d21cca249bcc2125bdbc814be7",
+    "mtime": 1788409795.5065176,
+    "ast_hash": "072558ec6d3682fdca571bff1334ece2",
     "semantic_hash": ""
   },
   "src/lib/mobile/work-orders.server.ts": {
@@ -13925,7 +13925,7 @@
     "semantic_hash": ""
   },
   "src-tauri/desktop-app-url.txt": {
-    "mtime": 1786981809.643479,
+    "mtime": 1788409159.5844,
     "ast_hash": "189383b17fadb2b46d0ca63d424d0efb",
     "semantic_hash": ""
   },
@@ -15040,8 +15040,8 @@
     "semantic_hash": ""
   },
   "src/lib/mobile/universal-links.test.ts": {
-    "mtime": 1786940408.992597,
-    "ast_hash": "9dd90334214c3e62bfeda7387b615268",
+    "mtime": 1788409807.700973,
+    "ast_hash": "d4fd4ab1abc7e770687019b434def093",
     "semantic_hash": ""
   },
   "src/lib/rate-limit/rate-limit.server.ts": {
@@ -15055,8 +15055,8 @@
     "semantic_hash": ""
   },
   "docs/DEEP-LINKS.md": {
-    "mtime": 1786940925.5933483,
-    "ast_hash": "3637944e324aeddd994aff71f324c819",
+    "mtime": 1788411024.1610055,
+    "ast_hash": "cb4b5e93332047e0d43cbac1d0ba56a9",
     "semantic_hash": ""
   },
   "autocore-mobile/store-assets/app-store/iphone-6.5/1242x2688-aso-01-work-engines.png": {
@@ -15300,23 +15300,23 @@
     "semantic_hash": ""
   },
   "scripts/tauri-build.mjs": {
-    "mtime": 1786979149.0313213,
-    "ast_hash": "75a8181a8bf3ee52acccbba61e639425",
+    "mtime": 1788407276.3351202,
+    "ast_hash": "eae96aa8c976feb7b0b4adaac15ddb0b",
     "semantic_hash": ""
   },
   "src-tauri/src/commands.rs": {
-    "mtime": 1786980868.1945941,
-    "ast_hash": "94385a0ed962f80b900e8d98a3d10d25",
+    "mtime": 1788409978.3097217,
+    "ast_hash": "f849696be2437103067c59e1c3a7ddcb",
     "semantic_hash": ""
   },
   "src-tauri/src/config.rs": {
-    "mtime": 1786977592.9223933,
-    "ast_hash": "030c247734da030477be0ed6bd319334",
+    "mtime": 1788410080.0031161,
+    "ast_hash": "c6c13184637f940f7afe64c18f82d4de",
     "semantic_hash": ""
   },
   "src-tauri/src/deep_link.rs": {
-    "mtime": 1786977786.9798503,
-    "ast_hash": "4c066a9db3bc858aecc4f5e70c9db17d",
+    "mtime": 1788409953.9261446,
+    "ast_hash": "e3c0d30975dc05c4f76167111b4b812b",
     "semantic_hash": ""
   },
   "src-tauri/src/menu.rs": {
@@ -15325,8 +15325,8 @@
     "semantic_hash": ""
   },
   "src-tauri/src/security.rs": {
-    "mtime": 1786977633.9817383,
-    "ast_hash": "28312f7c49d42f4cf57c1bd294595d0e",
+    "mtime": 1788411008.486679,
+    "ast_hash": "1f915c4005090702ac5a91fd54b05754",
     "semantic_hash": ""
   },
   "src-tauri/src/updater.rs": {
@@ -15335,8 +15335,8 @@
     "semantic_hash": ""
   },
   "src-tauri/src/window.rs": {
-    "mtime": 1786978129.4898345,
-    "ast_hash": "29458acd1051c56c3fccb5c5b755661b",
+    "mtime": 1788409151.8944306,
+    "ast_hash": "81d2157089c89b0195ecbdc8c673d536",
     "semantic_hash": ""
   },
   "src/app/api/import-ai/route.ts": {
@@ -15345,8 +15345,8 @@
     "semantic_hash": ""
   },
   "src/components/providers/desktop-shell-provider.tsx": {
-    "mtime": 1786980635.57072,
-    "ast_hash": "d1bd2bf29d55f4ea65b5ce698d7a2cd7",
+    "mtime": 1788410020.7736037,
+    "ast_hash": "101df6a72625e70816b7416dd20b12c2",
     "semantic_hash": ""
   },
   "src/infrastructure/firestore/directory-repository.ts": {
@@ -15465,13 +15465,13 @@
     "semantic_hash": ""
   },
   "src/platform/desktop/bridge.ts": {
-    "mtime": 1786980868.1966937,
-    "ast_hash": "0e6611b5321df51c707c93056981254b",
+    "mtime": 1788409993.382969,
+    "ast_hash": "83bac2d8a37d6a3d12006813cce73823",
     "semantic_hash": ""
   },
   "src/platform/index.ts": {
-    "mtime": 1786980868.1973991,
-    "ast_hash": "bc03c1ad088deef2a2cd728da165fb34",
+    "mtime": 1788409997.624948,
+    "ast_hash": "c8e4279d045d46ffa2872e4d81d6127b",
     "semantic_hash": ""
   },
   "src/platform/notify.ts": {
@@ -15505,13 +15505,13 @@
     "semantic_hash": ""
   },
   "docs/DESKTOP-ARCHITECTURE.md": {
-    "mtime": 1786980332.6718435,
-    "ast_hash": "3912caac6cace7f41f78ccc45d6dde89",
+    "mtime": 1788410106.5789495,
+    "ast_hash": "0cab648dba149995ddca0ebc672d1f5c",
     "semantic_hash": ""
   },
   "docs/DESKTOP-RELEASE.md": {
-    "mtime": 1786983409.8864615,
-    "ast_hash": "35342faa364dbd0e3244f70ee66e4bb1",
+    "mtime": 1788410079.6409311,
+    "ast_hash": "ad3b3d59522077f90766209adde0d48e",
     "semantic_hash": ""
   },
   "autocore-mobile/components/ui/brand-backdrop.tsx": {
@@ -17387,6 +17387,171 @@
   "src/components/analytics/google-ads-subscription-conversion.tsx": {
     "mtime": 1788406051.898865,
     "ast_hash": "7d175d992a6a3e30416d48d9f274e808",
+    "semantic_hash": ""
+  },
+  "scripts/sign-tauri-macos.mjs": {
+    "mtime": 1788407271.6513505,
+    "ast_hash": "7b4b16cced69674f80ffe473697831ac",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/build.rs": {
+    "mtime": 1153704088.0,
+    "ast_hash": "2912816c1e6a5246520c9636b99101fc",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/guest-js/index.ts": {
+    "mtime": 1153704088.0,
+    "ast_hash": "7474251bb8888c886430d4407a76fd7c",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/ios/Package.swift": {
+    "mtime": 1153704088.0,
+    "ast_hash": "3f8cce8c265774515cce21b7507e33fd",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/ios/Sources/SignInWithAppleAuthorizationController.swift": {
+    "mtime": 1153704088.0,
+    "ast_hash": "5c89d34413ad8c0baaf6291c9e88856e",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/ios/Sources/SignInWithApplePlugin.swift": {
+    "mtime": 1153704088.0,
+    "ast_hash": "bff47cb5609f50c019b75ca6d396e70e",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/ios/Tests/PluginTests/PluginTests.swift": {
+    "mtime": 1153704088.0,
+    "ast_hash": "e5f49d95c84ea251c89987dc8e5320c8",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/macos/Package.swift": {
+    "mtime": 1788408254.0199947,
+    "ast_hash": "dfaf913abb09d5fb8b2b9ba13dbd8d0a",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/macos/Sources/SignInWithApplePlugin.swift": {
+    "mtime": 1788408251.3802257,
+    "ast_hash": "3097d3e185584103e38444e4a736f762",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/package.json": {
+    "mtime": 1153704088.0,
+    "ast_hash": "96494b7a98270bda96f4bf3f9ecacd24",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/permissions/schemas/schema.json": {
+    "mtime": 1153704088.0,
+    "ast_hash": "312d3c020e3fc5a1009e5f9981055cd0",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/rollup.config.js": {
+    "mtime": 1153704088.0,
+    "ast_hash": "9340bb742ccf97cb6eb1814d7bcb46f7",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/commands.rs": {
+    "mtime": 1788408731.0622659,
+    "ast_hash": "c71ba20847e42b68202d501e1e34f489",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/desktop.rs": {
+    "mtime": 1788408756.0538197,
+    "ast_hash": "4bb54f0269a31135bafbbc9af9b1f034",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/error.rs": {
+    "mtime": 1153704088.0,
+    "ast_hash": "23982683b0cfa1b37a6001c5f93d0209",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/lib.rs": {
+    "mtime": 1153704088.0,
+    "ast_hash": "41fdf723cf7cee2867e9cbc65090a0ab",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/mobile.rs": {
+    "mtime": 1153704088.0,
+    "ast_hash": "a5d9ddc935b3e17cd5b3a726ac123972",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/src/models.rs": {
+    "mtime": 1153704088.0,
+    "ast_hash": "fd1683fd15c0c390c5792cb5f9671993",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/tsconfig.json": {
+    "mtime": 1153704088.0,
+    "ast_hash": "abe7e40dadcc4cb4d7ee38e629198a44",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/AUTOCORE.md": {
+    "mtime": 1788408733.1871612,
+    "ast_hash": "733b3db13b777201a48f2215558bb509",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/README.md": {
+    "mtime": 1153704088.0,
+    "ast_hash": "202315e408891f1b7cc2b78dc7ad93d7",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/ios/README.md": {
+    "mtime": 1153704088.0,
+    "ast_hash": "bac89e29710c7edc724ffed2f30fafde",
+    "semantic_hash": ""
+  },
+  "src-tauri/vendor/tauri-plugin-siwa/permissions/autogenerated/reference.md": {
+    "mtime": 1153704088.0,
+    "ast_hash": "b0b6cf71d29e59ebc425ecca9668fd0c",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/apple-handoff.ts": {
+    "mtime": 1788409866.922493,
+    "ast_hash": "2a5ff77f7bb1dd72ec7f4ed7b48652e9",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/handoff-canonical.test.ts": {
+    "mtime": 1788409834.879977,
+    "ast_hash": "84953b0353f6740633a8d809316474af",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/lib/deep-links/handoff-canonical.ts": {
+    "mtime": 1788409849.0613453,
+    "ast_hash": "7e38c78284ab951a1ac94f74aed397a6",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/expo-module.config.json": {
+    "mtime": 1788409855.920943,
+    "ast_hash": "f3b9a515705fa936c3589a7b003f5ced",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/index.ts": {
+    "mtime": 1788409862.9162123,
+    "ast_hash": "99cb7f53147b704e99971426406dbe3e",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/ios/AppleContinuityModule.swift": {
+    "mtime": 1788409860.721521,
+    "ast_hash": "fea3176bb8c3443f3a2f83e2c9c3849b",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/modules/apple-continuity/package.json": {
+    "mtime": 1788409860.1256278,
+    "ast_hash": "401cb4af3925c23916d97c9ff2804593",
+    "semantic_hash": ""
+  },
+  "autocore-mobile/providers/handoff-head.tsx": {
+    "mtime": 1788410106.5789328,
+    "ast_hash": "4eda6be3b9fac00de821aef7b140f184",
+    "semantic_hash": ""
+  },
+  "src-tauri/src/handoff.rs": {
+    "mtime": 1788410170.7760496,
+    "ast_hash": "f64a2449856461dd5328a3011075f71d",
+    "semantic_hash": ""
+  },
+  "src/platform/handoff.ts": {
+    "mtime": 1788409994.801169,
+    "ast_hash": "d86c0f0b213d7489f662c4ab4a792e08",
     "semantic_hash": ""
   }
 }

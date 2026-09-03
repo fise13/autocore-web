@@ -170,6 +170,9 @@ export default (): ExpoConfig => ({
       // Standard HTTPS/TLS only — no proprietary or non-exempt cryptography.
       // Declaring it here means App Store Connect stops asking on every build.
       ITSAppUsesNonExemptEncryption: false,
+      // Browsing-web activities with a canonical webpageURL — Mac Tauri only
+      // continues this type; a custom activity type would be dropped on Mac.
+      NSUserActivityTypes: ['NSUserActivityTypeBrowsingWeb'],
       NSSupportsLiveActivities: true,
       NSSupportsLiveActivitiesFrequentUpdates: true,
       UIBackgroundModes: ['remote-notification', 'processing', 'fetch'],

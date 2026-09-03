@@ -7,7 +7,7 @@ import {
 } from "@/lib/mobile/universal-links";
 
 /**
- * iOS Universal Links.
+ * iOS and macOS Universal Links.
  *
  * Served from the app route tree rather than `public/` so both public origins
  * get the file with no redirect and no auth: `middleware.ts` excludes

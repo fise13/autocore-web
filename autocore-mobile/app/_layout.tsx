@@ -14,6 +14,7 @@ import '@/lib/firestore/ignore-sdk-assertions';
 
 import { AuthGate } from '@/authentication/auth-gate';
 import { AuthProvider, StoreShotsAuthProvider } from '@/authentication/auth-provider';
+import { HandoffHead } from '@/providers/handoff-head';
 import { InAppBannerProvider } from '@/components/notifications';
 import { RootNavigator } from '@/components/navigation/root-navigator';
 import { ThemeProvider } from '@/hooks/use-theme';
@@ -75,6 +76,7 @@ function AppProviders({ children }: { children: React.ReactNode }) {
           </StoreShotsAuthProvider>
         ) : (
           <AuthProvider>
+            <HandoffHead />
             <AutocompleteProvider>
               <BottomSheetModalProvider>
                 <AuthGate>{children}</AuthGate>

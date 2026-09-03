@@ -7,6 +7,7 @@ const APP_COMMANDS: &[&str] = &[
     "desktop_print_document",
     "desktop_print_page",
     "desktop_info",
+    "desktop_handoff_set_url",
 ];
 
 fn main() {

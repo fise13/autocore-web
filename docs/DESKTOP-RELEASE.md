@@ -72,11 +72,22 @@ those are protected by Firestore rules, not by secrecy.
 The app builds and runs today. These are the gaps between "runs on this machine"
 and "installable by a customer":
 
-1. **Apple Developer ID signing + notarization.** Unsigned builds are blocked by
-   Gatekeeper. Needs a Developer ID Application certificate and the `APPLE_*`
-   variables above. `entitlements.plist` currently declares only
-   `com.apple.developer.applesignin`, which is what native Sign in with Apple
-   needs; hardened runtime requires no additions for this app.
+1. **Apple Developer ID signing + notarization.** Ad-hoc unsigned builds are
+   blocked by Gatekeeper **and** fail native Sign in with Apple
+   (`AuthenticationServices` error 1000). The Mac App ID is
+   `com.wise.autocore.desktop` with Sign in with Apple (team `45W7LA3QFP`).
+   Local runs need an Apple Development signature, `entitlements.plist` (Sign
+   in with Apple **and** Associated Domains), and a Mac development profile at
+   `Contents/embedded.provisionprofile` that includes both capabilities.
+   Enable **Associated Domains** on App ID `com.wise.autocore.desktop`, then
+   regenerate the profile — signing fails if the entitlement is present and
+   the profile is not. `npm run tauri:build:mac` calls
+   `scripts/sign-tauri-macos.mjs` to embed that profile after Tauri signs the
+   bundle. The Sign in with Apple plugin is
+   vendored at `src-tauri/vendor/tauri-plugin-siwa` so the system sheet is
+   attached to a visible window (the crates.io build could hang the login
+   spinner forever). Customer builds need a Developer ID
+   Application certificate and the `APPLE_*` variables above.
 2. **Updater keypair.** `npx tauri signer generate`, private key into CI secrets,
    public key into `TAURI_UPDATER_PUBKEY`.
 3. **An update manifest endpoint.** `TAURI_UPDATER_ENDPOINT` has no server behind
@@ -108,5 +119,6 @@ Then, in the running app: ⌘C/⌘V in a grid, ⌘S and ⌘P on a document previ
 export a PDF and a CSV (native dialog appears, file lands where chosen), click a
 support link (opens in the system browser), open a document preview (opens a
 second app window), resize and restart (geometry restored), toggle macOS
-appearance (theme follows), and `open autocore://work-orders` (focuses the app and
-navigates).
+appearance (theme follows), `open autocore://work-orders` (focuses the app and
+navigates), and — on a signed build with Associated Domains — a Notes link to
+`https://app.myautocore.com/work-orders` plus Handoff from the iPhone app.

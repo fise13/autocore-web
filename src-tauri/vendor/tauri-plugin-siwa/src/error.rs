@@ -1,0 +1,26 @@
+use serde::{ser::Serializer, Serialize};
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Unsupported platform for sign_in_with_apple")]
+    UnsupportedPlatformError,
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[cfg(mobile)]
+    #[error(transparent)]
+    PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
+    #[cfg(target_os = "macos")]
+    #[error("Sign In With Apple error: {0}")]
+    MacOS(String),
+}
+
+impl Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_ref())
+    }
+}

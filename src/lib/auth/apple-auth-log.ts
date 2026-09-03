@@ -1,4 +1,5 @@
 import { isAuthDebugEnabled, logAuthDebug } from "@/lib/auth/auth-debug";
+import { getActiveUserCopyLocale } from "@/lib/user-copy";
 
 type FirebaseLikeError = {
   code?: string;
@@ -83,6 +84,17 @@ export function formatAppleAuthErrorForUi(error: unknown): string {
       "Добавьте точный URL вида https://ваш-домен/login в Services ID → Return URLs " +
       "(сейчас нужен тот же origin, с которого открыт сайт)."
     );
+  }
+
+  if (
+    message.includes("timed out waiting for the system sheet") ||
+    message.includes("AuthorizationError error 1000") ||
+    message.includes("com.apple.AuthenticationServices.AuthorizationError")
+  ) {
+    const en = getActiveUserCopyLocale() === "en";
+    return en
+      ? "Sign in with Apple could not start on this Mac build. The app must be signed with team 45W7LA3QFP, entitlement com.apple.developer.applesignin, and Contents/embedded.provisionprofile. Rebuild with npm run tauri:build:mac."
+      : "Sign in with Apple не запустился в этой сборке. Нужна подпись команды 45W7LA3QFP, entitlement com.apple.developer.applesignin и профиль в Contents/embedded.provisionprofile. Пересоберите: npm run tauri:build:mac.";
   }
 
   if (error instanceof Error) {

@@ -16,7 +16,8 @@ export type NativeCommand =
   | "desktop_save_file"
   | "desktop_print_document"
   | "desktop_print_page"
-  | "desktop_info";
+  | "desktop_info"
+  | "desktop_handoff_set_url";
 
 export async function invokeNative<T>(
   command: NativeCommand,

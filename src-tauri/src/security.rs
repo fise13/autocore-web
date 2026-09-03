@@ -109,6 +109,116 @@ pub fn deep_link_to_product_url(link: &Url) -> Result<Url, String> {
     Ok(target)
 }
 
+/// Paths that must stay in the browser — same list as
+/// `src/lib/mobile/universal-links.ts` exclusions. Hijacking `/login` or
+/// `/auth/*` would break web OAuth; marketing pages are not the product.
+const BROWSER_OWNED_PREFIXES: &[&str] = &[
+    "/login",
+    "/auth",
+    "/demo",
+    "/deck",
+    "/api",
+    "/render",
+    "/documents",
+    "/migration",
+    "/warranty",
+    "/.well-known",
+    "/product",
+    "/modules",
+    "/pricing",
+    "/security",
+    "/contact",
+    "/legal",
+    "/marketing",
+];
+
+fn normalized_host(url: &Url) -> Option<String> {
+    url.host_str().map(|host| {
+        let lower = host.to_ascii_lowercase();
+        lower.strip_prefix("www.").unwrap_or(&lower).to_string()
+    })
+}
+
+fn path_is_browser_owned(path: &str) -> bool {
+    BROWSER_OWNED_PREFIXES.iter().any(|prefix| path == *prefix || path.starts_with(&format!("{prefix}/")))
+}
+
+fn has_browser_mode_query(url: &Url) -> bool {
+    url.query_pairs()
+        .any(|(key, value)| key == "mode" && value == "browser")
+}
+
+/// Universal Links, Handoff `webpageURL`, and `autocore://` all resolve here.
+///
+/// HTTPS links are rewritten onto the configured app origin so a marketing-host
+/// link (`https://myautocore.com/work-orders/1`) opens the workspace, not the
+/// public site, inside the shell. Browser-owned routes and `?mode=browser`
+/// are rejected so Safari keeps OAuth and the escape hatch.
+pub fn inbound_link_to_product_url(link: &Url) -> Result<Url, String> {
+    if link.scheme().eq_ignore_ascii_case(config::DEEP_LINK_SCHEME) {
+        return deep_link_to_product_url(link);
+    }
+
+    if classify(link) != UrlKind::Product {
+        return Err(format!("Not a product link: {link}"));
+    }
+
+    if has_browser_mode_query(link) {
+        return Err(format!("Browser override on {link}"));
+    }
+
+    let path = if link.path().is_empty() { "/" } else { link.path() };
+    if path_is_browser_owned(path) {
+        return Err(format!("Browser-owned route: {link}"));
+    }
+
+    if normalized_host(link).as_deref() == Some("myautocore.com") && (path == "/" || path.is_empty()) {
+        return Err(format!("Marketing root is not a workspace link: {link}"));
+    }
+
+    let mut target = config::app_origin()?;
+    target.set_path(path);
+    target.set_query(link.query());
+    target.set_fragment(None);
+    Ok(target)
+}
+
+/// Paths advertised as the current Handoff activity. Same set as the AASA
+/// include list — a Mac user on `/quotes` must not offer AutoCore on the
+/// iPhone Dock when the iPhone app has no screen for it.
+const HANDOFF_PREFIXES: &[&str] = &[
+    "/invite",
+    "/join",
+    "/work-orders",
+    "/warehouse",
+    "/motors",
+    "/engine-intake",
+    "/accounting",
+    "/my-earnings",
+    "/team",
+    "/settings",
+    "/ai",
+    "/import",
+    "/imports",
+];
+
+fn path_is_handoff_claimed(path: &str, is_app_host: bool) -> bool {
+    if path == "/" || path.is_empty() {
+        return is_app_host;
+    }
+    HANDOFF_PREFIXES
+        .iter()
+        .any(|prefix| path == *prefix || path.starts_with(&format!("{prefix}/")))
+}
+
+/// Whether this product URL may be advertised as the current Handoff activity.
+pub fn is_handoff_eligible(url: &Url) -> bool {
+    let Ok(target) = inbound_link_to_product_url(url) else {
+        return false;
+    };
+    path_is_handoff_claimed(target.path(), true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,5 +272,37 @@ mod tests {
         assert_eq!(resolved.host_str(), Some(expected_host.as_str()));
         assert_eq!(resolved.path(), "/evil.example/steal");
         assert_eq!(classify(&resolved), UrlKind::Product);
+    }
+
+    #[test]
+    fn https_universal_links_rewrite_onto_the_app_origin() {
+        let expected_host = config::app_host().unwrap();
+        let resolved =
+            inbound_link_to_product_url(&url("https://myautocore.com/work-orders/wo_1?tab=parts"))
+                .unwrap();
+        assert_eq!(resolved.host_str(), Some(expected_host.as_str()));
+        assert_eq!(resolved.path(), "/work-orders/wo_1");
+        assert_eq!(resolved.query(), Some("tab=parts"));
+    }
+
+    #[test]
+    fn https_links_reject_browser_owned_routes_and_the_escape_hatch() {
+        assert!(inbound_link_to_product_url(&url("https://app.myautocore.com/login")).is_err());
+        assert!(inbound_link_to_product_url(&url("https://app.myautocore.com/auth/action")).is_err());
+        assert!(inbound_link_to_product_url(&url(
+            "https://app.myautocore.com/work-orders/1?mode=browser"
+        ))
+        .is_err());
+        assert!(inbound_link_to_product_url(&url("https://myautocore.com/")).is_err());
+        assert!(inbound_link_to_product_url(&url("https://example.com/work-orders")).is_err());
+    }
+
+    #[test]
+    fn handoff_is_eligible_for_workspace_urls_only() {
+        assert!(is_handoff_eligible(&url("https://app.myautocore.com/work-orders/1")));
+        assert!(is_handoff_eligible(&url("https://app.myautocore.com/")));
+        assert!(!is_handoff_eligible(&url("https://app.myautocore.com/quotes")));
+        assert!(!is_handoff_eligible(&url("https://app.myautocore.com/login?desktop=1")));
+        assert!(!is_handoff_eligible(&url("https://appleid.apple.com/auth")));
     }
 }

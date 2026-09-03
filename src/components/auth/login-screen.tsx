@@ -21,6 +21,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { formatAppleAuthErrorForUi, logAppleAuthError } from "@/lib/auth/apple-auth-log";
 import { isAppleJsAuthMode } from "@/lib/auth/apple-auth-mode";
 import { getAppleJsSetupIssue } from "@/lib/auth/apple-js-setup";
+import { canUseTauriNativeAppleSignIn } from "@/lib/tauri/is-tauri-ipc-available";
 import { isAppleUserCancellationError, normalizeAppleJsError } from "@/lib/auth/apple-js-sign-in";
 import { logAuthDebug } from "@/lib/auth/auth-debug";
 import { track } from "@/lib/analytics/events";
@@ -91,7 +92,8 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
   const isBusy = authPhase !== "idle";
   const isInviteFlow = inviteFlowActive || Boolean(inviteCompanyName) || Boolean(searchParams.get("invite")?.trim());
   const inviteBootstrapping = isInviteFlow && authPhase === "detecting" && !emailStep;
-  const appleSetupIssue = isAppleJsAuthMode() ? getAppleJsSetupIssue() : null;
+  const appleSetupIssue =
+    isAppleJsAuthMode() && !canUseTauriNativeAppleSignIn() ? getAppleJsSetupIssue() : null;
   const copy = userCopy.auth.login;
   const isSignUp = emailMode === "signup";
   const reducedMotion = prefersReducedMotion();

@@ -190,6 +190,21 @@ pub fn desktop_info(app: AppHandle) -> DesktopInfo {
     }
 }
 
+/// Publish (or clear) the current workspace URL as an Apple Handoff activity.
+///
+/// The page reports client-side Next.js navigations that never fire a native
+/// `on_navigation`. Non-product URLs are ignored rather than rejected so a
+/// login screen simply stops advertising the previous work-order.
+#[tauri::command]
+pub fn desktop_handoff_set_url(app: AppHandle, url: Option<String>) -> Result<(), String> {
+    let parsed = match url.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(raw) => Some(url::Url::parse(raw).map_err(|error| error.to_string())?),
+    };
+    crate::handoff::set_current_url(&app, parsed);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::sanitize_filename;

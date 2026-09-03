@@ -13,6 +13,7 @@
 mod commands;
 mod config;
 mod deep_link;
+mod handoff;
 mod menu;
 mod security;
 mod updater;
@@ -34,7 +35,6 @@ const DEV_LOCALHOST_CAPABILITY: &str = r#"{
   "remote": { "urls": ["http://localhost:*/*", "http://127.0.0.1:*/*"] },
   "permissions": [
     "core:event:default",
-    "core:window:allow-set-title",
     "core:webview:allow-set-webview-zoom",
     "opener:allow-open-url",
     "opener:allow-default-urls",
@@ -44,7 +44,8 @@ const DEV_LOCALHOST_CAPABILITY: &str = r#"{
     "allow-desktop-save-file",
     "allow-desktop-print-document",
     "allow-desktop-print-page",
-    "allow-desktop-info"
+    "allow-desktop-info",
+    "allow-desktop-handoff-set-url"
   ]
 }"#;
 
@@ -94,6 +95,7 @@ pub fn run() {
             commands::desktop_print_document,
             commands::desktop_print_page,
             commands::desktop_info,
+            commands::desktop_handoff_set_url,
         ])
         .setup(|app| {
             let handle = app.handle().clone();
@@ -128,7 +130,11 @@ pub fn run() {
             app.on_menu_event(menu::handle_event);
 
             deep_link::setup(&handle);
-            window::open_main_window(&handle, None)?;
+            // A cold-start Universal Link / `autocore://` URL may already have
+            // created the window. Do not navigate that away to the default login URL.
+            if window::main_window(&handle).is_none() {
+                window::open_main_window(&handle, None)?;
+            }
 
             Ok(())
         })

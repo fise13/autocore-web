@@ -37,3 +37,11 @@ tauri-plugin-window-state = "2.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-siwa = "1.0.0"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSURL", "NSUserActivity"] }
+
+# Local fork: the crates.io plugin can hang the login spinner when Apple's
+# sheet is attached to an invisible NSWindow (AuthenticationServices never
+# calls back). See vendor/tauri-plugin-siwa/macos/Sources/SignInWithApplePlugin.swift.
+[patch.crates-io]
+tauri-plugin-siwa = { path = "vendor/tauri-plugin-siwa" }

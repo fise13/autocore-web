@@ -14,7 +14,8 @@ pub const MAIN_WINDOW_LABEL: &str = "main";
 
 /// Custom scheme registered for OAuth callbacks and `autocore://` links.
 /// Distinct from the mobile app's `autocoremobile` scheme on purpose — the two
-/// clients must not compete for the same links.
+/// clients must not compete for the same custom-scheme links. HTTPS Universal
+/// Links are shared (both App IDs in the AASA file).
 pub const DEEP_LINK_SCHEME: &str = "autocore";
 
 /// Labels of product windows opened from an in-app `target="_blank"`.

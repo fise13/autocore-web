@@ -1,13 +1,15 @@
 # Deep links — Universal Links and web fallback
 
-One canonical URL space serves both clients. `https://app.myautocore.com/work-orders/123`
-names the same resource on the web and in the iOS app; if the app is installed
-the link opens the app, otherwise it opens the page in the browser.
+One canonical URL space serves web, iOS, and the Mac desktop shell.
+`https://app.myautocore.com/work-orders/123` names the same resource everywhere;
+if a native app is installed the link opens that app, otherwise it opens the
+page in the browser. The same URL is the Handoff payload, so a work order
+started on iPhone continues on Mac (and the other way around).
 
 ## Architecture
 
 ```
-HTTPS URL
+HTTPS URL / Handoff webpageURL
    │
    ├── iOS, app installed ─────────────────────────────────────────────┐
    │     app/+native-intent.tsx        redirectSystemPath()            │
@@ -18,6 +20,12 @@ HTTPS URL
    │     AuthGate (session restored, company resolved, billing settled)│
    │       └── providers/deep-link-head.tsx → guardedPush(target) ─────┘
    │
+   ├── macOS, AutoCore.app installed
+   │     Associated Domains → Tauri RunEvent::Opened
+   │       └── src-tauri/src/deep_link.rs → product origin + path
+   │             ├── emit autocore:deep-link (React router.replace)
+   │             └── open_main_window (webview navigate)
+   │
    └── no app, or an excluded path → browser
          signed in  → the page
          signed out → /login?next=<path> → the page after sign-in
@@ -25,7 +33,8 @@ HTTPS URL
 
 The URL → route table lives in exactly one place,
 [`autocore-mobile/lib/deep-links/canonical-deep-links.ts`](../autocore-mobile/lib/deep-links/canonical-deep-links.ts).
-Universal Links, push notification payloads
+Universal Links, Handoff (`handoff-canonical.ts` reverse-maps Expo routes back
+to that table), push notification payloads
 ([`services/notifications/deep-link-resolver.ts`](../autocore-mobile/services/notifications/deep-link-resolver.ts))
 and in-app navigation all resolve through it. `src/lib/mobile/universal-links.ts`
 generates the `apple-app-site-association` from the same list, and
@@ -122,9 +131,16 @@ Expect `HTTP/2 200`, `content-type: application/json`, and no `location:` header
 curl -sS https://app.myautocore.com/.well-known/apple-app-site-association | python3 -m json.tool
 ```
 
-Expect `appIDs: ["45W7LA3QFP.com.wise.autocore.mobile"]`.
+Expect `appIDs` to list both native clients:
+
+```
+45W7LA3QFP.com.wise.autocore.mobile
+45W7LA3QFP.com.wise.autocore.desktop
+```
 
 ## Associated Domains
+
+### iOS
 
 `autocore-mobile/plugins/with-ios-universal-links.js` writes
 `com.apple.developer.associated-domains` during prebuild:
@@ -141,7 +157,48 @@ in a browser, but a Universal Link tap has to match the origin in the link.
 Set `EXPO_PUBLIC_ENABLE_UNIVERSAL_LINKS=0` to drop the entitlement when signing
 against a provisioning profile that lacks the capability.
 
-## Testing on a physical iPhone
+### macOS
+
+The same two `applinks:` entries live in [`src-tauri/entitlements.plist`](../src-tauri/entitlements.plist).
+The Mac App ID `com.wise.autocore.desktop` must have **Associated Domains**
+enabled in Apple Developer, and the Mac development / Developer ID profile
+must be regenerated afterwards. Signing fails if the entitlement is present
+and the profile is not.
+
+The desktop shell used to leave `https://` to Safari on purpose. That is no
+longer true for **claimed** product paths: Mac now participates in the same
+Universal Link space as iPhone. `/login`, `/auth/*`, marketing pages and
+`?mode=browser` are still excluded so web OAuth and the Safari escape hatch
+keep working.
+
+Custom scheme `autocore://` remains registered for OAuth-style callbacks that
+are not HTTPS.
+
+## Handoff (continue on Mac / iPhone)
+
+Continuity uses Apple's browsing-web user activity, not a custom activity
+type. Tauri's macOS event loop (tao) only continues
+`NSUserActivityTypeBrowsingWeb`; a custom type would open on iPhone and be
+dropped on Mac.
+
+| Direction | Publish | Receive |
+| --- | --- | --- |
+| iPhone | `HandoffHead` → `AppleContinuity.setWebpageURL` with the canonical `https://app.myautocore.com/...` for the current Expo route | Universal Link → `+native-intent.tsx` (existing) |
+| Mac | `DesktopShellProvider` → `desktop_handoff_set_url` from `window.location` | `RunEvent::Opened` → `deep_link.rs` (same as a Universal Link) |
+
+Rules:
+
+- `webpageURL` is the canonical HTTPS URL. No tokens, cookies, or Firebase IDs.
+- Login, `/auth/*`, and screens with no claimed web URL (engine detail, scan)
+  clear the activity instead of advertising a dead target.
+- Signed-out receive still goes through the auth gate (`/login?next=` on web;
+  parked deep link on iOS). Handoff does not bypass RBAC.
+- `NSUserActivityTypes` on both Info.plists lists `NSUserActivityTypeBrowsingWeb`.
+
+Activity type `com.wise.autocore.viewing` is reserved for later (Spotlight /
+custom userInfo) and is **not** published today, because Mac would ignore it.
+
+## Testing on a physical iPhone or Mac
 
 Universal Links do not work in the iOS Simulator and behave differently in a
 debug build with a development profile. Test a Release/TestFlight build.
@@ -180,6 +237,10 @@ iOS caches the association aggressively, and Apple's CDN caches it for up to
   **Associated Domains** capability enabled, and the provisioning profiles must
   be regenerated afterwards (`npm run ios:provision`). Without it, signing a
   build with the entitlement fails.
+- **Apple Developer → Identifiers → `com.wise.autocore.desktop`** needs the
+  same **Associated Domains** capability, then a new Mac development /
+  Developer ID profile. Embed it with `scripts/sign-tauri-macos.mjs` after
+  `tauri build`.
 - Nothing is required in App Store Connect.
 - Android App Links remain limited to the existing invite/join/import paths and
   stay unverified until `ANDROID_APP_LINKS_SHA256` is set on Vercel.
@@ -189,7 +250,7 @@ iOS caches the association aggressively, and Apple's CDN caches it for up to
 - `/work-orders/:id?tab=parts` forwards `tab` to the order screen, which does
   not currently read it — the link opens the order, not the Parts tab.
 - Mobile-only screens (warehouse location detail, engine detail, intake session)
-  have no canonical web URL and therefore cannot be deep-linked.
+  have no canonical web URL and therefore cannot be deep-linked or handed off.
 - Deep links land after billing settles. On a workspace without an active
   subscription the paywall is shown instead of the app tree, so the link stays
   parked until the paywall clears or its 15-minute window expires.

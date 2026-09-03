@@ -7,9 +7,9 @@
     <key>CFBundleName</key>
     <string>AutoCore</string>
 
-    <!-- Deep links. `autocore` is the desktop scheme; the mobile app owns
-         `autocoremobile` and the https Universal Links, so the two clients never
-         compete for the same URL. See docs/DEEP-LINKS.md. -->
+    <!-- Deep links. `autocore` is the desktop custom scheme; HTTPS Universal
+         Links are claimed via Associated Domains (same paths as iOS). See
+         docs/DEEP-LINKS.md. -->
     <key>CFBundleURLTypes</key>
     <array>
       <dict>
@@ -22,6 +22,14 @@
           <string>autocore</string>
         </array>
       </dict>
+    </array>
+
+    <!-- Handoff / Universal Links arrive as browsing-web user activities.
+         Tauri (tao) only continues this type — a custom activity type would
+         be dropped on Mac. -->
+    <key>NSUserActivityTypes</key>
+    <array>
+      <string>NSUserActivityTypeBrowsingWeb</string>
     </array>
 
     <!-- The app talks to Firebase and the hosted product over TLS only; no ATS
