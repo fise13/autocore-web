@@ -154,7 +154,7 @@ NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
 NEXT_PUBLIC_STRIPE_PRICE_FREE
 ```
 
-Google Ads conversion tracking for Pro checkout uses GA4 measurement id `G-QEVTMP0BYB` on production hosts. Override with `NEXT_PUBLIC_GA_MEASUREMENT_ID` if the stream changes. Mark `purchase` as a key event in GA4 and import it into Google Ads.
+Google Ads conversion tracking for Pro checkout loads GA4 `G-QEVTMP0BYB` and Ads `AW-18344172044` on production hosts after cookie consent. The "Подписка" conversion (`AW-18344172044/FsM2CKqomuscEIy0l6tE`) fires on Paddle checkout completion and on the thank-you pages (`/welcome`, `?checkout=success`). Override with `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`, and `NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO` if the account changes.
 
 Stripe secret keys belong in Firebase Functions configuration, not public Next.js variables.
 

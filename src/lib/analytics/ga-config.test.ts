@@ -3,8 +3,13 @@ import { describe, it } from "node:test";
 
 import {
   PRODUCTION_GA_MEASUREMENT_ID,
+  PRODUCTION_GOOGLE_ADS_ID,
+  PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO,
   allowsProductionGoogleTag,
+  isSafeGoogleAdsSendTo,
+  isSafeGtagId,
   pickMeasurementId,
+  resolveGoogleAdsIdFrom,
   resolveMeasurementIdFrom,
 } from "./ga-config";
 
@@ -90,5 +95,29 @@ describe("production Google tag fallback", () => {
       resolveMeasurementIdFrom("localhost", { default: "G-EXPLICIT1", app: "" }, PRODUCTION_GA_MEASUREMENT_ID),
       "G-EXPLICIT1",
     );
+  });
+});
+
+describe("Google Ads conversion id", () => {
+  it("loads the Ads id on live hosts when env is unset", () => {
+    assert.equal(resolveGoogleAdsIdFrom(MARKETING, "", PRODUCTION_GOOGLE_ADS_ID), PRODUCTION_GOOGLE_ADS_ID);
+    assert.equal(resolveGoogleAdsIdFrom(APP, "", PRODUCTION_GOOGLE_ADS_ID), PRODUCTION_GOOGLE_ADS_ID);
+  });
+
+  it("does not send the Ads id from localhost or a Vercel preview", () => {
+    assert.equal(resolveGoogleAdsIdFrom("localhost", "", PRODUCTION_GOOGLE_ADS_ID), "");
+    assert.equal(resolveGoogleAdsIdFrom("autocore-web.vercel.app", "", PRODUCTION_GOOGLE_ADS_ID), "");
+  });
+
+  it("honours an explicit Ads id on localhost", () => {
+    assert.equal(resolveGoogleAdsIdFrom("localhost", "AW-111", PRODUCTION_GOOGLE_ADS_ID), "AW-111");
+  });
+
+  it("accepts only interpolatable gtag ids and the Подписка send_to", () => {
+    assert.equal(isSafeGtagId(PRODUCTION_GA_MEASUREMENT_ID), true);
+    assert.equal(isSafeGtagId(PRODUCTION_GOOGLE_ADS_ID), true);
+    assert.equal(isSafeGtagId("G-QEVTMP0BYB';alert(1)//"), false);
+    assert.equal(isSafeGoogleAdsSendTo(PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO), true);
+    assert.equal(isSafeGoogleAdsSendTo("AW-1/not valid"), false);
   });
 });

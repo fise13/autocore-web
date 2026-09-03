@@ -2156,7 +2156,7 @@
           ],
           "bullets": [
             "Google Firebase: authentication, database, hosting",
-            "Google Analytics: aggregated website and product usage statistics, and measurement of advertising campaigns",
+            "Google Analytics and Google Ads: aggregated website and product usage statistics, and measurement of advertising campaigns including subscription conversions",
             "Paddle: merchant of record for product sales, subscription management, payments, tax compliance, invoicing, and refunds",
             "Stripe and app-store payment providers: legacy or platform-specific subscription processing where applicable",
             "Email and support providers: transactional communications and customer support",
@@ -2176,7 +2176,7 @@
           "id": "cookies",
           "title": "8. Cookies and analytics",
           "paragraphs": [
-            "The marketing site and the AutoCore app use Google Analytics 4 to understand how visitors find us and where people get stuck, and to measure advertising campaigns. It sets cookies and records events such as page views, sign-up, workspace creation, trial start, and subscription purchase.",
+            "The marketing site and the AutoCore app use Google Analytics 4 and the Google Ads conversion tag to understand how visitors find us and where people get stuck, and to measure advertising campaigns. They set cookies and record events such as page views, sign-up, workspace creation, trial start, and subscription purchase.",
             "We do not send your name, email address, company name, or any content you store in AutoCore to Google Analytics. Events carry only which step occurred and, for a purchase, which billing interval was chosen.",
             "Within the AutoCore app, cookies are also used to maintain your sign-in session; these are technical and cannot be switched off without breaking sign-in.",
             "You can opt out of Google Analytics on any site by installing the Google Analytics Opt-out Browser Add-on, or by blocking analytics cookies in your browser. Doing so does not affect your use of AutoCore."

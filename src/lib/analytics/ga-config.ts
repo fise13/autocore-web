@@ -34,12 +34,27 @@ import { getHostKind } from "@/lib/site-urls";
  */
 export const PRODUCTION_GA_MEASUREMENT_ID = "G-QEVTMP0BYB";
 
+/**
+ * Google Ads conversion linker. Loaded next to GA4 via `gtag('config', …)`
+ * so the "Подписка" conversion can fire without a second script tag.
+ */
+export const PRODUCTION_GOOGLE_ADS_ID = "AW-18344172044";
+
+/** Event snippet send_to for the Ads conversion named "Подписка". */
+export const PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO =
+  "AW-18344172044/FsM2CKqomuscEIy0l6tE";
+
 /** Env override. Empty means "use the production tag on live hosts only". */
 const CONFIGURED_GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
 /** Optional separate stream for `app.myautocore.com`. */
 export const GA_MEASUREMENT_ID_APP =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID_APP?.trim() ?? "";
+
+const CONFIGURED_GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() ?? "";
+
+const CONFIGURED_GOOGLE_ADS_SUBSCRIPTION_SEND_TO =
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_SUBSCRIPTION_SEND_TO?.trim() ?? "";
 
 /** Effective default id: env override, otherwise the production Google tag. */
 export const GA_MEASUREMENT_ID = CONFIGURED_GA_MEASUREMENT_ID || PRODUCTION_GA_MEASUREMENT_ID;
@@ -109,6 +124,41 @@ export function resolveMeasurementId(hostname: string): string {
     { default: CONFIGURED_GA_MEASUREMENT_ID, app: GA_MEASUREMENT_ID_APP },
     PRODUCTION_GA_MEASUREMENT_ID,
   );
+}
+
+/**
+ * Google Ads account id for this hostname.
+ *
+ * Same production-host gate as GA4: live domains get the baked-in AW id,
+ * localhost and Vercel previews stay silent unless an id is set explicitly.
+ */
+export function resolveGoogleAdsIdFrom(
+  hostname: string,
+  configured: string,
+  productionFallback: string,
+): string {
+  if (configured) return configured;
+  if (productionFallback && allowsProductionGoogleTag(hostname)) {
+    return productionFallback;
+  }
+  return "";
+}
+
+export function resolveGoogleAdsId(hostname: string): string {
+  return resolveGoogleAdsIdFrom(hostname, CONFIGURED_GOOGLE_ADS_ID, PRODUCTION_GOOGLE_ADS_ID);
+}
+
+export function resolveGoogleAdsSubscriptionSendTo(): string {
+  return CONFIGURED_GOOGLE_ADS_SUBSCRIPTION_SEND_TO || PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO;
+}
+
+/** IDs interpolated into the gtag bootstrap must be this shape — nothing else. */
+export function isSafeGtagId(id: string): boolean {
+  return /^(G-[A-Z0-9]+|AW-\d+)$/.test(id);
+}
+
+export function isSafeGoogleAdsSendTo(value: string): boolean {
+  return /^AW-\d+\/[A-Za-z0-9_-]+$/.test(value);
 }
 
 export function isAnalyticsEnabled(): boolean {

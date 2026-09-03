@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { CookieConsentBanner } from "@/components/analytics/cookie-consent-banner";
+import { GoogleAdsSubscriptionConversion } from "@/components/analytics/google-ads-subscription-conversion";
 import { GoogleAnalyticsTag } from "@/components/analytics/google-analytics-tag";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -46,12 +48,15 @@ export default function RootLayout({
         <AppProviders>{children}</AppProviders>
         <Analytics />
         {/*
-          Production hosts load the Google tag (G-QEVTMP0BYB) for Ads conversion
-          import. Local and preview builds stay silent unless an env id is set,
-          so they never write into the property the ads account is judged on.
+          Production hosts load GA4 (G-QEVTMP0BYB) plus Google Ads (AW-18344172044).
+          Local and preview builds stay silent unless an env id is set, so they
+          never write into the property the ads account is judged on.
           See `lib/analytics/ga-config.ts`.
         */}
         <GoogleAnalyticsTag />
+        <Suspense fallback={null}>
+          <GoogleAdsSubscriptionConversion />
+        </Suspense>
         <CookieConsentBanner />
       </body>
     </html>

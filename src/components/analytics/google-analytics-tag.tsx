@@ -1,10 +1,15 @@
 "use client";
 
+import Script from "next/script";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { GoogleAnalytics } from "@next/third-parties/google";
 
 import { getConsent, getServerConsent, subscribeConsent } from "@/lib/analytics/consent";
-import { isAnalyticsEnabled, resolveMeasurementId } from "@/lib/analytics/ga-config";
+import {
+  isAnalyticsEnabled,
+  isSafeGtagId,
+  resolveGoogleAdsId,
+  resolveMeasurementId,
+} from "@/lib/analytics/ga-config";
 
 /**
  * Loads the Google tag for whichever host the page is being served from.
@@ -22,19 +27,44 @@ import { isAnalyticsEnabled, resolveMeasurementId } from "@/lib/analytics/ga-con
  * Nothing loads before consent is granted. That is what makes the banner a
  * gate rather than a notice: no script, no cookie, no request to Google until
  * someone has said yes.
+ *
+ * GA4 (`G-…`) and Google Ads (`AW-…`) share one gtag bootstrap. The Ads
+ * `config` line is the conversion-linker Google's snippet asks for when the
+ * Analytics tag is already on the site.
  */
 export function GoogleAnalyticsTag() {
   const consent = useSyncExternalStore(subscribeConsent, getConsent, getServerConsent);
-  const [measurementId, setMeasurementId] = useState<string | null>(null);
+  const [ids, setIds] = useState<{ ga: string; ads: string } | null>(null);
 
   useEffect(() => {
     if (!isAnalyticsEnabled()) return;
-    const resolved = resolveMeasurementId(window.location.hostname);
-    if (resolved) setMeasurementId(resolved);
+    const host = window.location.hostname;
+    setIds({
+      ga: resolveMeasurementId(host),
+      ads: resolveGoogleAdsId(host),
+    });
   }, []);
 
   if (consent !== "granted") return null;
-  if (!measurementId) return null;
+  if (!ids) return null;
 
-  return <GoogleAnalytics gaId={measurementId} />;
+  const ga = isSafeGtagId(ids.ga) ? ids.ga : "";
+  const ads = isSafeGtagId(ids.ads) ? ids.ads : "";
+  const unique = [...new Set([ga, ads].filter(Boolean))];
+  const primary = unique[0];
+  if (!primary) return null;
+
+  return (
+    <>
+      <Script src={`https://www.googletagmanager.com/gtag/js?id=${primary}`} strategy="afterInteractive" />
+      <Script id="autocore-gtag" strategy="afterInteractive">
+        {`
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+${unique.map((id) => `gtag('config', '${id}');`).join("\n")}
+`}
+      </Script>
+    </>
+  );
 }

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { purchaseParamsFromCheckout } from "./events";
+import {
+  googleAdsSubscriptionConversionParams,
+  isSubscriptionThankYou,
+  purchaseParamsFromCheckout,
+} from "./events";
+import { PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO } from "./ga-config";
 
 describe("purchaseParamsFromCheckout", () => {
   it("keeps the plan interval when Paddle sent nothing else", () => {
@@ -36,5 +41,39 @@ describe("purchaseParamsFromCheckout", () => {
       ),
       { transaction_id: "txn_01def", currency: "EUR", value: 49 },
     );
+  });
+});
+
+describe("googleAdsSubscriptionConversionParams", () => {
+  it("always sends the Ads conversion id", () => {
+    assert.deepEqual(
+      googleAdsSubscriptionConversionParams({}, PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO),
+      { send_to: PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO },
+    );
+  });
+
+  it("forwards money and the opaque transaction id when Paddle had them", () => {
+    assert.deepEqual(
+      googleAdsSubscriptionConversionParams(
+        { interval: "yearly", value: 29, currency: "USD", transaction_id: "txn_01abc" },
+        PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO,
+      ),
+      {
+        send_to: PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO,
+        value: 29,
+        currency: "USD",
+        transaction_id: "txn_01abc",
+      },
+    );
+  });
+});
+
+describe("isSubscriptionThankYou", () => {
+  it("matches the welcome page and checkout success query", () => {
+    assert.equal(isSubscriptionThankYou("/welcome", null), true);
+    assert.equal(isSubscriptionThankYou("/welcome/", null), true);
+    assert.equal(isSubscriptionThankYou("/settings", "success"), true);
+    assert.equal(isSubscriptionThankYou("/settings", "canceled"), false);
+    assert.equal(isSubscriptionThankYou("/pricing", null), false);
   });
 });

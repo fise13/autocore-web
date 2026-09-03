@@ -1,6 +1,11 @@
 "use client";
 
-import { isAnalyticsEnabled } from "./ga-config";
+import {
+  isAnalyticsEnabled,
+  isSafeGoogleAdsSendTo,
+  resolveGoogleAdsId,
+  resolveGoogleAdsSubscriptionSendTo,
+} from "./ga-config";
 
 /**
  * The funnel, as events.
@@ -54,8 +59,10 @@ export type AnalyticsParams = {
 };
 
 type GtagWindow = Window & {
-  gtag?: (command: "event", eventName: string, params?: Record<string, unknown>) => void;
+  gtag?: (command: "event" | "config" | "js", ...args: unknown[]) => void;
 };
+
+const ADS_SUBSCRIPTION_CONVERSION_LOCK = "autocore-aw-subscription-conversion";
 
 function readTrimmed(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
@@ -97,6 +104,66 @@ export function purchaseParamsFromCheckout(data: unknown, interval: string | nul
 }
 
 /**
+ * Google Ads `conversion` payload for the "Подписка" action.
+ *
+ * `send_to` is the Ads event snippet. Value, currency, and transaction id are
+ * optional extras: they let Ads optimise on money and drop duplicate fires
+ * when overlay checkout and the thank-you page both report the same payment.
+ */
+export function googleAdsSubscriptionConversionParams(
+  params: AnalyticsParams,
+  sendTo: string,
+): Record<string, unknown> {
+  const event: Record<string, unknown> = { send_to: sendTo };
+  if (params.value !== undefined) event.value = params.value;
+  if (params.currency) event.currency = params.currency;
+  if (params.transaction_id) event.transaction_id = params.transaction_id;
+  return event;
+}
+
+function markSubscriptionConversionSent(): boolean {
+  try {
+    if (sessionStorage.getItem(ADS_SUBSCRIPTION_CONVERSION_LOCK) === "1") return false;
+    sessionStorage.setItem(ADS_SUBSCRIPTION_CONVERSION_LOCK, "1");
+  } catch {
+    // Private mode can refuse sessionStorage. Prefer one extra hit over silence.
+  }
+  return true;
+}
+
+/** Thank-you routes Google's conversion snippet is meant to run on. */
+export function isSubscriptionThankYou(pathname: string, checkout: string | null): boolean {
+  const path = pathname.replace(/\/$/, "") || "/";
+  return path === "/welcome" || checkout === "success";
+}
+
+/**
+ * Fire the Google Ads "Подписка" conversion once per tab.
+ *
+ * Called from Paddle `checkout.completed` (has money + transaction id) and
+ * from the thank-you pages (`/welcome`, `?checkout=success`) so a redirect
+ * that skipped the overlay event is still counted.
+ */
+export function trackGoogleAdsSubscriptionConversion(params: AnalyticsParams = {}): void {
+  if (!isAnalyticsEnabled()) return;
+  if (typeof window === "undefined") return;
+  if (!resolveGoogleAdsId(window.location.hostname)) return;
+
+  const sendTo = resolveGoogleAdsSubscriptionSendTo();
+  if (!isSafeGoogleAdsSendTo(sendTo)) return;
+
+  const gtag = (window as GtagWindow).gtag;
+  if (typeof gtag !== "function") return;
+  if (!markSubscriptionConversionSent()) return;
+
+  try {
+    gtag("event", "conversion", googleAdsSubscriptionConversionParams(params, sendTo));
+  } catch {
+    // An analytics call is never worth an interrupted user action.
+  }
+}
+
+/**
  * Record a funnel event.
  *
  * Never throws and never blocks: analytics failing must not take a signup or a
@@ -115,6 +182,9 @@ export function track(event: AnalyticsEvent, params: AnalyticsParams = {}): void
     // here would send app-host events to the marketing stream whenever the two
     // domains are on separate streams.
     gtag("event", event, params);
+    if (event === "purchase") {
+      trackGoogleAdsSubscriptionConversion(params);
+    }
   } catch {
     // An analytics call is never worth an interrupted user action.
   }
