@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -79,6 +79,7 @@ type CommandPaletteProviderProps = {
 
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const workspace = useWorkspace();
   const { profile } = useAuth();
   const { isPro } = useBillingGate();
@@ -124,6 +125,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
       const key = event.key.toLowerCase();
 
       if (key === "k") {
+        if (pathname === "/ai" || pathname.startsWith("/ai/")) return;
         event.preventDefault();
         setOpen((current) => !current);
         return;
@@ -148,7 +150,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     }
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, []);
+  }, [pathname]);
 
   const navigate = useCallback(
     (href: string) => {

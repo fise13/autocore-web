@@ -15,7 +15,7 @@ export function AIProductWorkspace() {
 
   return (
     <motion.div
-      className="flex h-full min-h-0 flex-1 flex-col bg-background"
+      className="flex h-full min-h-0 w-full flex-1 flex-col bg-background"
       initial={reduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={

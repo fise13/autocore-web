@@ -29,6 +29,7 @@ import {
 import { loadChatSessions, saveChatSessions } from "@/lib/ai/assistant-chats.storage";
 import { resolveAssistantContext, type AssistantContext } from "@/lib/ai/assistant-context";
 import type { AssistantRequestContext } from "@/lib/ai/assistant-context-request";
+import { requestCoreFocus } from "@/lib/ai/core-focus";
 import { useAuth } from "@/components/providers/auth-provider";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { parseCollectionFromSearchParams } from "@/lib/navigation/inventory-collections";
@@ -48,7 +49,7 @@ type AssistantContextValue = {
   returnPath: string;
   open: () => void;
   close: () => void;
-  /** Compact liquid-glass Ask Core — the dock “+” bubble on web. */
+  /** Compact Ask Core overlay from the rest of the app. */
   isCompactOpen: boolean;
   openCompact: () => void;
   closeCompact: () => void;
@@ -106,6 +107,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
   const sessionsRef = useRef<AssistantChatSession[]>([]);
   const activeSessionIdRef = useRef<string | null>(null);
+  const pendingSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     sessionsRef.current = sessions;
@@ -144,10 +146,23 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, [companyId, hydratedKey, sessions, storageReady, uid]);
 
   // Sync active session from ?chat= and ensure a draft exists when open.
+  // In-memory selection (new/select/delete) is marked pending so a stale
+  // `?chat=` value cannot snap the workspace back before `router.replace` lands.
   useEffect(() => {
     if (!isOpen || !hydratedKey) return;
 
     const fromQuery = searchParams.get(AI_CHAT_QUERY);
+    const pending = pendingSessionIdRef.current;
+
+    if (pending && sessions.some((session) => session.id === pending)) {
+      if (activeSessionId !== pending) setActiveSessionId(pending);
+      if (fromQuery !== pending) {
+        router.replace(aiHref(pending), { scroll: false });
+      } else {
+        pendingSessionIdRef.current = null;
+      }
+      return;
+    }
 
     if (fromQuery && sessions.some((session) => session.id === fromQuery)) {
       if (activeSessionId !== fromQuery) setActiveSessionId(fromQuery);
@@ -171,6 +186,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
 
     const draft = createEmptyChatSession();
+    pendingSessionIdRef.current = draft.id;
     setSessions([draft]);
     setActiveSessionId(draft.id);
     router.replace(aiHref(draft.id), { scroll: false });
@@ -212,6 +228,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleMessagesChange = useCallback((sessionId: string, messages: CoreUIMessage[]) => {
+    if (sessionId === "boot") return;
     setSessions((current) => {
       const index = current.findIndex((session) => session.id === sessionId);
       const base = index >= 0 ? current[index]! : createEmptyChatSession(sessionId);
@@ -258,6 +275,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const newChat = useCallback(() => {
     setState("idle");
     const draft = createEmptyChatSession();
+    pendingSessionIdRef.current = draft.id;
     setSessions((current) => sortSessionsByUpdated([draft, ...current]));
     setActiveSessionId(draft.id);
     router.replace(aiHref(draft.id), { scroll: false });
@@ -267,6 +285,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     (sessionId: string) => {
       if (!sessionsRef.current.some((session) => session.id === sessionId)) return;
       if (activeSessionIdRef.current === sessionId) return;
+      pendingSessionIdRef.current = sessionId;
       setState("idle");
       setActiveSessionId(sessionId);
       router.replace(aiHref(sessionId), { scroll: false });
@@ -295,12 +314,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
         if (remaining.length === 0) {
           const draft = createEmptyChatSession();
+          pendingSessionIdRef.current = draft.id;
           setActiveSessionId(draft.id);
           router.replace(aiHref(draft.id), { scroll: false });
           return [draft];
         }
 
         const next = sortSessionsByUpdated(remaining)[0]!;
+        pendingSessionIdRef.current = next.id;
         setActiveSessionId(next.id);
         router.replace(aiHref(next.id), { scroll: false });
         return remaining;
@@ -320,22 +341,26 @@ export function AIProvider({ children }: { children: ReactNode }) {
         closeCompact();
         return;
       }
-      if (event.key === "Escape" && isOpen) {
+      if (event.key === "Escape" && isOpen && !isAiRoute(pathname)) {
         event.preventDefault();
         close();
         return;
       }
       if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return;
+      if (event.key.toLowerCase() === "k" && isOpen) {
+        event.preventDefault();
+        requestCoreFocus();
+        return;
+      }
       if (event.key.toLowerCase() !== "j") return;
       event.preventDefault();
-      if (compactOpen) closeCompact();
-      else if (isOpen) close();
-      else openCompact();
+      if (isOpen) close();
+      else open();
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close, closeCompact, compactOpen, isOpen, openCompact]);
+  }, [close, closeCompact, compactOpen, isOpen, open, pathname]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -387,8 +412,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
   return (
     <AssistantStore.Provider value={value}>
       <CoreChatRuntime
-        key={activeSessionId ?? "core-draft"}
-        sessionId={activeSessionId ?? "core-draft"}
+        key={activeSessionId ?? "boot"}
+        sessionId={activeSessionId ?? "boot"}
         readInitialMessages={readSessionMessages}
         companyId={companyId}
         requestContext={requestContext}

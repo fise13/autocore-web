@@ -22,6 +22,8 @@ import { BillingGateProvider } from "@/components/billing/billing-gate-provider"
 import { DashboardLayoutProvider } from "@/components/layout/dashboard-layout-context";
 import { DashboardTopBar } from "@/components/layout/dashboard-top-bar";
 import { DemoSessionBanner } from "@/components/demo/demo-session-banner";
+import { GuideProvider } from "@/components/guides/guide-provider";
+import { AiGuidePlaygroundBanner } from "@/components/playground/ai-guide/playground-banner";
 import { useDemoExitReset } from "@/hooks/use-demo-exit-reset";
 import { BarcodeScanProvider } from "@/components/barcode/barcode-scan-provider";
 import { DomainDictionaryPersistence } from "@/components/domain/domain-dictionary-persistence";
@@ -383,17 +385,18 @@ function DashboardShellInner({ children }: DashboardShellProps) {
             </div>
 
             <motion.div
-              layout
+              layout={!isAiRoute}
               transition={sidebarLayoutTransition}
               ref={barbaWrapperRef}
               data-barba="wrapper"
               className={cn(
-                "relative flex min-w-0 flex-1 flex-col",
+                "relative flex min-h-0 min-w-0 flex-1 flex-col",
                 isAiRoute && "bg-background",
               )}
             >
               <SidebarEditBlur />
               {!isAiRoute ? <DemoSessionBanner /> : null}
+              {!isAiRoute ? <AiGuidePlaygroundBanner /> : null}
               {!isAiRoute ? (
                 <div data-app-reveal>
                   <DashboardTopBar />
@@ -453,7 +456,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <FirestoreListenerGuard />
                 <PresenceHeartbeatHead />
                 <AIProvider>
-                  <DashboardShellInner>{children}</DashboardShellInner>
+                  <GuideProvider>
+                    <DashboardShellInner>{children}</DashboardShellInner>
+                  </GuideProvider>
                 </AIProvider>
               </DomainDictionaryPersistence>
             </BarcodeScanProvider>

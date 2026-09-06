@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { NotificationEventContext } from "@/domain/notifications";
+import { compileCompanyBrain } from "@/lib/ai/company-brain.server";
 import { emitNotificationEvent } from "@/lib/notifications/engine.server";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
@@ -135,4 +136,33 @@ export async function runEveningNotificationRules(companyId: string): Promise<vo
 
 export async function runMorningNotificationRules(companyId: string): Promise<void> {
   await evaluateExpiringWarrantiesRule(companyId);
+  await runMorningCoreBriefing(companyId);
+}
+
+function briefingSummary(companyName: string, attention: { id: string; count?: number }[]): string {
+  if (attention.length === 0) return `${companyName}: quiet morning.`;
+  return attention
+    .map((item) => {
+      if (item.id === "lowStock") return `${item.count ?? 0} parts below reorder`;
+      if (item.id === "openWorkOrders") return `${item.count ?? 0} open work orders`;
+      if (item.id === "negativeNet") return "7-day net is negative";
+      if (item.id === "noEngines") return "no engines available";
+      return item.id;
+    })
+    .join("; ");
+}
+
+export async function runMorningCoreBriefing(companyId: string): Promise<void> {
+  const { briefing } = await compileCompanyBrain(companyId);
+  const dayKey = new Date().toISOString().slice(0, 10);
+  await emitNotificationEvent({
+    companyId,
+    eventType: "core.shift_briefing",
+    payload: {
+      summary: briefingSummary(briefing.companyName, briefing.attention),
+      companyName: briefing.companyName,
+      dayKey,
+    },
+    deepLink: "/",
+  });
 }

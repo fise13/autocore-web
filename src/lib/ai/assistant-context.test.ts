@@ -59,3 +59,13 @@ test("collection focus is dropped where it means nothing", () => {
   const context = resolveAssistantContext({ pathname: "/work-orders", collection: "engines" });
   assert.deepEqual(context.focus, []);
 });
+
+test("customers override keeps the work-order path but a customer area", () => {
+  const context = resolveAssistantContext({
+    pathname: "/work-orders",
+    areaOverride: "customers",
+  });
+  assert.equal(context.areaId, "customers");
+  assert.equal(context.areaLabel, "Customers");
+  assert.ok(context.suggestions.some((item) => /customer/i.test(item)));
+});

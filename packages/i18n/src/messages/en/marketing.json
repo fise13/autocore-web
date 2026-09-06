@@ -1233,6 +1233,9 @@
       "spacesLabel": "1 workspace",
       "searchPlaceholder": "Search company…",
       "sidebarAria": "Sidebar",
+      "sidebarCollapseAria": "Collapse sidebar",
+      "sidebarExpandAria": "Expand sidebar",
+      "navLocked": "Dashboard playground only",
       "nav": {
         "dashboard": "Dashboard",
         "warehouse": "Stock",
@@ -1256,6 +1259,10 @@
       "charts": {
         "revenue": "Revenue",
         "revenueDesc": "Daily revenue · 7 days",
+        "revenueDesc30": "Daily revenue · 30 days",
+        "periodAria": "Revenue period",
+        "period7": "7 days",
+        "period30": "30 days",
         "stock": "Stock mix",
         "stockDesc": "Engines and warehouse mix",
         "ops": "Income & expense",
@@ -1282,6 +1289,40 @@
       },
       "openOrders": "Open work orders",
       "activity": "Activity",
+      "activityDesc": "Latest shop floor events",
+      "attention": {
+        "title": "Needs attention",
+        "items": [
+          { "count": "6", "text": "Front brake pads · C-14" },
+          { "count": "1", "text": "WO-2026-0151 waiting for parts" },
+          { "count": "1", "text": "G4KC · A-12 · ready for sale" }
+        ]
+      },
+      "team": {
+        "title": "Team on duty",
+        "description": "Who is on the floor",
+        "online": "Online",
+        "away": "Away",
+        "people": [
+          { "name": "Daniyar A.", "role": "Parts", "status": "online", "jobs": "2 open" },
+          { "name": "Sergey M.", "role": "Shop", "status": "online", "jobs": "1 open" },
+          { "name": "Office", "role": "Documents", "status": "away", "jobs": "Desk" }
+        ]
+      },
+      "recentOps": {
+        "title": "Recent operations",
+        "description": "Latest cash movements",
+        "type": "Type",
+        "date": "Date",
+        "amount": "Amount",
+        "status": "Status",
+        "rows": [
+          { "type": "Sale", "date": "Today", "amount": "$380,000", "status": "Posted" },
+          { "type": "Expense", "date": "Today", "amount": "$9,800", "status": "Posted" },
+          { "type": "Sale", "date": "Yesterday", "amount": "$126,000", "status": "Posted" },
+          { "type": "Income", "date": "Yesterday", "amount": "$22,000", "status": "Posted" }
+        ]
+      },
       "orderStatus": {
         "in_progress": "In progress",
         "waiting_parts": "Waiting for parts",
@@ -1849,17 +1890,19 @@
     "contact": {
       "meta": {
         "title": "Contact",
-        "description": "Demo auto parts inventory software for salvage yards and recyclers. Sales, support, partnerships — reply within one business day."
+        "description": "Demo auto parts inventory software for salvage yards and recyclers. Sales, support, partnerships. Reply within one business day."
       },
       "hero": {
-        "title": "Demo AutoCore inventory software",
-        "description": "Questions about salvage yard workflows? Need help mapping warehouse and engines? Want a demo of auto recycler software? We're here."
+        "title": "How can we help?",
+        "description": "Get in touch with sales and support for a demo, onboarding, or a product question."
       },
       "intentsHeading": "How can we help?",
-      "methodsHeading": "Contact details",
+      "methodsHeading": "Get in touch",
       "intents": [
         {
+          "id": "sales",
           "title": "Sales",
+          "description": "Plans, pricing, or a walkthrough of AutoCore for your yard.",
           "topics": [
             "Learn more about the product",
             "Schedule a demo",
@@ -1868,7 +1911,9 @@
           "mailSubject": "Sales Inquiry"
         },
         {
+          "id": "support",
           "title": "Support",
+          "description": "Product questions, something broken, or feedback from a live company.",
           "topics": [
             "Technical help",
             "Report a bug",
@@ -1877,7 +1922,9 @@
           "mailSubject": "Technical Support"
         },
         {
+          "id": "partnerships",
           "title": "Partnerships",
+          "description": "Integrations and business opportunities.",
           "topics": [
             "Integrations",
             "Business opportunities"
@@ -1885,7 +1932,9 @@
           "mailSubject": "Partnership"
         },
         {
+          "id": "general",
           "title": "General questions",
+          "description": "Anything that does not fit sales or support.",
           "topics": [
             "Everything else"
           ],
@@ -1902,6 +1951,47 @@
           "Russian",
           "Kazakh"
         ]
+      },
+      "touch": {
+        "emailTitle": "Email",
+        "emailDescription": "For anything else, write us directly. We reply within a business day.",
+        "copyEmail": "Copy email address",
+        "copied": "Copied",
+        "demoTitle": "Live demo",
+        "demoDescription": "A real company with warehouse, engines, and work orders.",
+        "demoAction": "Open demo",
+        "productTitle": "Product",
+        "productDescription": "How AutoCore runs a yard, from stock to documents.",
+        "productAction": "See AutoCore",
+        "partnershipsTitle": "Partnerships",
+        "partnershipsDescription": "Integrations and business opportunities.",
+        "partnershipsAction": "Write to us"
+      },
+      "form": {
+        "heading": "Tell us how we can help",
+        "hint": "Share anything we need to answer you.",
+        "nameLabel": "Name",
+        "namePlaceholder": "Your name",
+        "emailLabel": "Work email",
+        "emailPlaceholder": "you@company.com",
+        "companyLabel": "Company",
+        "companyPlaceholder": "Yard or shop name",
+        "messageLabel": "Message",
+        "messagePlaceholder": "What do you want to get done?",
+        "submit": "Send message",
+        "sending": "Sending...",
+        "successTitle": "Message sent",
+        "successBody": "We will reply within one business day.",
+        "sendAnother": "Send another",
+        "errorGeneric": "Could not send. Try again, or email us.",
+        "errorInvalid": "Check the highlighted fields and try again.",
+        "errorRateLimited": "Too many messages from this network. Try again in a bit.",
+        "orEmail": "Or email us at",
+        "back": "All topics",
+        "switchToSales": "Contact sales",
+        "switchToSupport": "Contact support",
+        "salesPrompt": "Questions about plans, pricing, or a demo?",
+        "supportPrompt": "Already using AutoCore?"
       },
       "closing": {
         "line": "Still have questions?",
@@ -2503,9 +2593,9 @@
         "ogTitle": "AutoCore pricing — $40/mo inventory software for salvage yards"
       },
       "contact": {
-        "title": "Demo Auto Parts Inventory Software | Contact AutoCore",
+        "title": "Contact AutoCore | Auto Parts Inventory Software",
         "description": "Request a demo of AutoCore salvage yard and auto recycler software. Ask about warehouse inventory, used engines, and onboarding — we reply in a business day.",
-        "ogTitle": "Contact AutoCore — demo for salvage yards & recyclers"
+        "ogTitle": "Contact AutoCore for salvage yards & recyclers"
       },
       "download": {
         "title": "Download Warehouse Inventory Software | Windows, Web — AutoCore",

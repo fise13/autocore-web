@@ -342,6 +342,22 @@
   line-height: 1;
 }
 
+/* Nested tray for Core employee surfaces (briefing, memory, tool slips). */
+.core-shift-sheet {
+  border-radius: 1.25rem;
+  padding: 0.2rem;
+  background: color-mix(in oklab, var(--ai-subtle) 72%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+  outline: 1px solid var(--ai-border);
+  outline-offset: 0;
+}
+
+.core-shift-sheet__inner {
+  border-radius: calc(1.25rem - 0.2rem);
+  background: color-mix(in oklab, var(--background) 82%, var(--ai-subtle));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
 .core-liquid-glass {
   background: var(--glass);
   border: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
@@ -361,20 +377,8 @@
 }
 
 .core-composer-pill {
-  min-height: 3.25rem;
-  border-radius: 9999px;
-}
-
-.core-composer-pill:focus-within {
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--foreground) 12%, transparent);
-}
-
-.core-ask-orb {
-  width: min(40rem, calc(100vw - 2rem));
-  min-height: 3.5rem;
-  border-radius: 9999px;
+  min-height: 3rem;
+  border-radius: 12px;
 }
 
 .core-ask-orb-layer {
@@ -386,19 +390,21 @@
 .core-ask-orb-scrim {
   position: absolute;
   inset: 0;
-  background: color-mix(in oklab, var(--foreground) 18%, transparent);
-  -webkit-backdrop-filter: blur(6px) saturate(1.2);
-  backdrop-filter: blur(6px) saturate(1.2);
+  background: color-mix(in oklab, var(--background) 55%, transparent);
 }
 
 .core-ask-orb-slot {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: max(1.75rem, calc(env(safe-area-inset-bottom) + 1rem));
+  top: 22%;
   display: flex;
   justify-content: center;
   padding-inline: 1rem;
+}
+
+.core-ask-orb {
+  width: min(40rem, calc(100vw - 2rem));
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -409,10 +415,14 @@
     backdrop-filter: none;
     background: var(--secondary);
   }
-}
 
-.core-composer-lift {
-  padding-bottom: max(1.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+  .core-shift-sheet {
+    background: var(--ai-subtle);
+  }
+
+  .core-shift-sheet__inner {
+    background: var(--background);
+  }
 }
 
 .core-menu-glyph {
@@ -442,10 +452,614 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 9999px;
-  background: var(--ai);
+  background: var(--foreground);
+}
+
+/* ── Core command center ──────────────────────────────────────────────── */
+
+.core-workspace {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--background) 92%, var(--muted));
+}
+
+.core-kicker {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.core-kbd {
+  display: inline-flex;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--background) 70%, var(--muted));
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+}
+
+.core-icon-btn {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--foreground);
+  transition: background-color 120ms var(--ai-ease), color 120ms var(--ai-ease);
+}
+
+.core-icon-btn:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
+@media (min-width: 768px) {
+  .core-topbar__menu {
+    display: none;
+  }
+}
+
+.core-text-btn {
+  height: 1.75rem;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0 0.5rem;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  transition: color 120ms var(--ai-ease), background-color 120ms var(--ai-ease);
+}
+
+.core-text-btn:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+
+.core-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem 0.55rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+}
+
+.core-topbar__search {
+  display: none;
+}
+
+.core-nav {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: color-mix(in oklab, var(--sidebar) 88%, var(--background));
+  padding: 0.85rem 0.7rem 0.75rem;
+  color: var(--sidebar-foreground);
+}
+
+.core-nav--collapsed {
+  align-items: center;
+  padding-inline: 0.4rem;
+}
+
+.core-mark {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.core-nav-search {
+  display: flex;
+  height: 2rem;
+  flex: 1;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 0.45rem;
+}
+
+.core-nav-row {
+  display: flex;
+  width: 100%;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  padding: 0 0.45rem;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--sidebar-foreground);
+  transition: background-color 120ms var(--ai-ease);
+}
+
+.core-nav-row:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
+.core-nav-row.is-active {
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.core-empty {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1.5rem;
+  padding: clamp(2.25rem, 9vh, 5.5rem) 1.25rem 2.5rem;
+}
+
+.core-empty__copy {
+  display: flex;
+  width: min(40rem, 100%);
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.core-empty__title {
+  margin: 0;
+  max-width: 22rem;
+  font-family: var(--font-heading, inherit);
+  font-size: clamp(1.55rem, 2.4vw, 1.9rem);
+  font-weight: 560;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.core-empty__chips {
+  display: flex;
+  width: min(40rem, 100%);
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.core-chip {
+  height: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--background) 70%, var(--card));
+  padding: 0 0.7rem;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  transition: color 120ms var(--ai-ease), border-color 120ms var(--ai-ease);
+}
+
+.core-chip:hover {
+  border-color: color-mix(in oklab, var(--foreground) 18%, var(--border));
+  color: var(--foreground);
+}
+
+.core-composer {
+  width: min(40rem, 100%);
+  margin-inline: auto;
+}
+
+.core-workspace__composer {
+  padding: 0.65rem 1rem max(1.15rem, env(safe-area-inset-bottom));
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  background: color-mix(in oklab, var(--background) 88%, var(--muted));
+}
+
+.core-composer-dock {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  transition: border-color 150ms var(--ai-ease);
+}
+
+.core-composer-dock.is-focused {
+  border-color: color-mix(in oklab, var(--foreground) 22%, var(--border));
+}
+
+.core-composer-dock.is-listening {
+  border-color: color-mix(in oklab, var(--foreground) 32%, var(--border));
+}
+
+.core-composer-dock.is-dropping {
+  border-color: color-mix(in oklab, var(--foreground) 40%, var(--border));
+  background: color-mix(in oklab, var(--foreground) 4%, var(--card));
+}
+
+.core-attach-chip {
+  background: color-mix(in oklab, var(--background) 70%, var(--muted));
+}
+
+.core-composer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.7rem 0;
+}
+
+.core-composer-context {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.core-composer-hint {
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.core-composer-field {
+  max-height: 7.5rem;
+  min-height: 2.35rem;
+  width: 100%;
+  resize: none;
+  background: transparent;
+  padding: 0.4rem 0.7rem 0.45rem;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--foreground);
+  outline: none;
+}
+
+.core-composer-field::placeholder {
+  color: var(--muted-foreground);
+}
+
+.core-composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  padding: 0.35rem 0.4rem 0.4rem;
+}
+
+.core-composer-toolbar .core-icon-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+}
+
+.core-composer-toolbar .core-icon-btn:hover {
+  color: var(--foreground);
+}
+
+.core-run {
+  display: inline-flex;
+  height: 1.75rem;
+  margin-left: auto;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 6px;
+  background: var(--foreground);
+  padding: 0 0.7rem;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  color: var(--background);
+}
+
+.core-run:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.core-run:disabled {
+  opacity: 0.28;
+}
+
+.core-submit {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.core-context-token {
+  display: none;
+  max-width: 7.5rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+@media (min-width: 640px) {
+  .core-context-token {
+    display: inline-block;
+  }
+}
+
+.core-attach-menu {
+  margin-bottom: 0.4rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.core-attach-menu button {
+  display: flex;
+  height: 2.5rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 0.85rem;
+  font-size: 13px;
+  transition: background-color 120ms var(--ai-ease);
+}
+
+.core-attach-menu button:hover {
+  background: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.core-composer-dock .core-command-list {
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-top: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  border-radius: 0 0 12px 12px;
+  background: transparent;
+}
+
+.core-command-list {
+  margin-bottom: 0.45rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.core-composer > .core-command-list:last-child {
+  margin-bottom: 0;
+  margin-top: 0.45rem;
+}
+
+.core-command-list__section + .core-command-list__section {
+  border-top: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+}
+
+.core-command-list__section {
+  padding: 0.55rem 0.4rem 0.4rem;
+}
+
+.core-command-list__section .core-kicker {
+  padding-inline: 0.45rem;
+  margin-bottom: 0.3rem;
+}
+
+.core-command-list__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.core-command-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.15rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 100ms var(--ai-ease);
+}
+
+.core-command-row svg {
+  flex-shrink: 0;
+}
+
+.core-command-row.is-active,
+.core-command-row:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+
+.core-thread {
+  width: min(40rem, 100%);
+  margin-inline: auto;
+  gap: 1.75rem;
+  padding: 1.25rem 1rem 1.5rem;
+}
+
+.core-turn {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.core-request {
+  margin: 0;
+  font-family: var(--font-heading, inherit);
+  font-size: 1.15rem;
+  font-weight: 550;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+}
+
+.core-request-follow {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.core-prose {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.core-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.core-status__mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--muted-foreground);
+  opacity: 0.55;
+}
+
+.core-status__mark.is-live {
+  animation: core-status-pulse 1.4s var(--ai-ease-inout) infinite;
+}
+
+@keyframes core-status-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.core-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.core-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.core-error p {
+  margin: 0;
+}
+
+.core-action {
+  display: inline-flex;
+  height: 1.85rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 0.65rem;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--foreground);
+  transition: background-color 120ms var(--ai-ease);
+}
+
+.core-action:hover {
+  background: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
+
+.core-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem 0.7rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+}
+
+.core-metric__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.core-metric__value {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-scroll-fab {
+  left: auto !important;
+  right: 1rem !important;
+  bottom: 5.5rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  transform: none !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 767px) {
+  .core-topbar {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.65rem 0.85rem 0.5rem;
+  }
+
+  .core-empty {
+    justify-content: flex-start;
+    padding: 1.5rem 1rem max(1.25rem, env(safe-area-inset-bottom));
+  }
+
+  .core-workspace__composer {
+    padding-inline: 0.85rem;
+  }
+
+  .core-composer-dock {
+    border-radius: 14px;
+  }
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────── */
@@ -458,7 +1072,8 @@
   .ai-entry-button__halo,
   .ai-rise,
   .core-orb__sheen,
-  .core-orb__body {
+  .core-orb__body,
+  .core-status__mark {
     animation: none !important;
     transition-duration: 1ms !important;
   }

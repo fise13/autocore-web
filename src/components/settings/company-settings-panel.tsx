@@ -10,6 +10,7 @@ import { PlanComparisonTable } from "@/components/billing/plan-comparison-table"
 import { AnimatedUpgradeCta } from "@/components/billing/animated-upgrade-cta";
 import { CompanyTeamTabs, type CompanyTeamTab } from "@/components/settings/company-team-tabs";
 import { KnowledgeEngineSettingsCard } from "@/components/settings/knowledge-engine-settings-card";
+import { CoreMemorySettingsCard } from "@/components/settings/core-memory-settings-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -230,6 +231,10 @@ export function CompanySettingsPanel({
 
       <FadeIn delay={120}>
         <KnowledgeEngineSettingsCard onStatus={onStatus} />
+      </FadeIn>
+
+      <FadeIn delay={130}>
+        <CoreMemorySettingsCard onStatus={onStatus} />
       </FadeIn>
 
       {canViewTeam ? (

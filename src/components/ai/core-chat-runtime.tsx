@@ -121,7 +121,7 @@ export function CoreChatRuntime({
     onMessagesChange(sessionId, messages);
   }, [messages, onMessagesChange, sessionId, status]);
 
-  const busy = status === "streaming" || status === "submitted";
+  const busy = !error && (status === "streaming" || status === "submitted");
 
   const ask = useCallback(
     (text: string, files?: FileUIPart[]) => {

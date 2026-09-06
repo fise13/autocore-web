@@ -89,4 +89,17 @@ describe("notification message copy", () => {
     assert.match(copy.body, /1042/);
     assert.equal(def.buildDeepLink(ctx({ aggregateId: "wo-42" })), "autocoremobile://orders/wo-42");
   });
+
+  it("builds Core shift briefing copy", () => {
+    const def = getNotificationEventDefinition("core.shift_briefing");
+    const copy = def.buildCopy(
+      ctx({
+        eventType: "core.shift_briefing",
+        payload: { summary: "Ridgeway Performance: 3 open work orders" },
+      }),
+    );
+    assert.equal(copy.title, "Core shift briefing");
+    assert.match(copy.body, /Ridgeway Performance/);
+    assert.equal(def.buildDeepLink(ctx({ eventType: "core.shift_briefing" })), "/");
+  });
 });

@@ -299,7 +299,7 @@ export async function ensureKnowledgeHistorySeeded(
   };
 }
 
-async function listPatternsByKindAdmin(
+export async function listPatternsByKindAdmin(
   companyId: string,
   kind: KnowledgePatternKind,
   max: number,
@@ -312,6 +312,17 @@ async function listPatternsByKindAdmin(
     .map((entry) => mapPattern(entry.id, companyId, entry.data() as Record<string, unknown>))
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, max);
+}
+
+export async function listTopPatterns(
+  companyId: string,
+  kinds: KnowledgePatternKind[],
+  maxPerKind: number,
+): Promise<KnowledgePattern[]> {
+  const lists = await Promise.all(
+    kinds.map((kind) => listPatternsByKindAdmin(companyId, kind, maxPerKind)),
+  );
+  return lists.flat();
 }
 
 /**

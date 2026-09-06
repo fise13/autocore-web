@@ -157,7 +157,9 @@ export function useMarketingPages() {
         intentsHeading: t("contact.intentsHeading"),
         methodsHeading: t("contact.methodsHeading"),
         intents: t.raw("contact.intents") as Array<{
+          id: string;
           title: string;
+          description: string;
           topics: string[];
           mailSubject: string;
         }>,
@@ -167,6 +169,47 @@ export function useMarketingPages() {
           response: t("contact.methods.response"),
           languagesLabel: t("contact.methods.languagesLabel"),
           languages: t.raw("contact.methods.languages") as string[],
+        },
+        touch: {
+          emailTitle: t("contact.touch.emailTitle"),
+          emailDescription: t("contact.touch.emailDescription"),
+          copyEmail: t("contact.touch.copyEmail"),
+          copied: t("contact.touch.copied"),
+          demoTitle: t("contact.touch.demoTitle"),
+          demoDescription: t("contact.touch.demoDescription"),
+          demoAction: t("contact.touch.demoAction"),
+          productTitle: t("contact.touch.productTitle"),
+          productDescription: t("contact.touch.productDescription"),
+          productAction: t("contact.touch.productAction"),
+          partnershipsTitle: t("contact.touch.partnershipsTitle"),
+          partnershipsDescription: t("contact.touch.partnershipsDescription"),
+          partnershipsAction: t("contact.touch.partnershipsAction"),
+        },
+        form: {
+          heading: t("contact.form.heading"),
+          hint: t("contact.form.hint"),
+          nameLabel: t("contact.form.nameLabel"),
+          namePlaceholder: t("contact.form.namePlaceholder"),
+          emailLabel: t("contact.form.emailLabel"),
+          emailPlaceholder: t("contact.form.emailPlaceholder"),
+          companyLabel: t("contact.form.companyLabel"),
+          companyPlaceholder: t("contact.form.companyPlaceholder"),
+          messageLabel: t("contact.form.messageLabel"),
+          messagePlaceholder: t("contact.form.messagePlaceholder"),
+          submit: t("contact.form.submit"),
+          sending: t("contact.form.sending"),
+          successTitle: t("contact.form.successTitle"),
+          successBody: t("contact.form.successBody"),
+          sendAnother: t("contact.form.sendAnother"),
+          errorGeneric: t("contact.form.errorGeneric"),
+          errorInvalid: t("contact.form.errorInvalid"),
+          errorRateLimited: t("contact.form.errorRateLimited"),
+          orEmail: t("contact.form.orEmail"),
+          back: t("contact.form.back"),
+          switchToSales: t("contact.form.switchToSales"),
+          switchToSupport: t("contact.form.switchToSupport"),
+          salesPrompt: t("contact.form.salesPrompt"),
+          supportPrompt: t("contact.form.supportPrompt"),
         },
         closing: {
           line: t("contact.closing.line"),

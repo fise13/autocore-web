@@ -33,20 +33,16 @@ export function ToolActivity({
 
   return (
     <div
-      className={cn(
-        "inline-flex max-w-full items-center gap-2 rounded-full border border-border/70",
-        "bg-muted/40 py-1 pl-2.5 pr-3 text-[13px] leading-none",
-        className,
-      )}
+      className={cn("core-status", className)}
       role="status"
       aria-live="polite"
     >
-      <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      <Icon className="size-3.5 shrink-0" aria-hidden />
       <Shimmer as="span" className="shrink-0" duration={1.4}>
         {label}
       </Shimmer>
       {detail ? (
-        <span className="hidden min-w-0 truncate text-muted-foreground sm:inline">
+        <span className="hidden min-w-0 truncate sm:inline">
           {detail}
         </span>
       ) : null}

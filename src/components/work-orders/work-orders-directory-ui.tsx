@@ -23,6 +23,7 @@ export function WorkOrdersPrimaryAction({
   return (
     <Link
       href={href}
+      data-guide="work-order-create"
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90",
         compact ? "h-9 px-3 text-sm" : "min-h-10 w-full px-3 py-2.5 text-sm",

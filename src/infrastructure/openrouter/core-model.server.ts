@@ -99,6 +99,20 @@ export function resolveCoreLane(): CoreLane | null {
   return { transport, modelId, canStream: false, baseURL: toBaseUrl(transport.url) };
 }
 
+function messagesHaveVisionParts(messages: unknown): boolean {
+  if (!Array.isArray(messages)) return false;
+  return messages.some((message) => {
+    if (!message || typeof message !== "object") return false;
+    const content = (message as { content?: unknown }).content;
+    if (!Array.isArray(content)) return false;
+    return content.some((part) => {
+      if (!part || typeof part !== "object") return false;
+      const type = (part as { type?: unknown }).type;
+      return type === "image_url" || type === "file" || type === "input_audio";
+    });
+  });
+}
+
 /**
  * `fetch` shim that attaches lane credentials and OpenRouter-specific body
  * fields. This is why the plan picked `@ai-sdk/openai-compatible` over the
@@ -124,14 +138,19 @@ function coreFetch(lane: CoreLane): typeof fetch {
       }
     }
 
-    // Ask OpenRouter for reasoning tokens. When the model emits none, the
-    // stream simply carries no reasoning parts — the UI renders the panel only
-    // when a real reasoning part arrives, so nothing is fabricated.
+    // Ask OpenRouter for reasoning tokens on text turns. Vision + thinking
+    // on this lane has dropped image_url parts, so attachments stay on the
+    // non-reasoning path. When the model emits no reasoning, the stream simply
+    // carries no reasoning parts — the UI renders the panel only when a real
+    // reasoning part arrives.
     let body = init?.body;
     if (typeof body === "string") {
       try {
         const parsed = JSON.parse(body) as Record<string, unknown>;
-        parsed.reasoning = { enabled: true, effort: "medium", exclude: false };
+        const hasVision = messagesHaveVisionParts(parsed.messages);
+        parsed.reasoning = hasVision
+          ? { enabled: false }
+          : { enabled: true, effort: "medium", exclude: false };
         body = JSON.stringify(parsed);
       } catch {
         // Non-JSON body: forward untouched.

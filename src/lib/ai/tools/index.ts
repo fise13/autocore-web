@@ -9,6 +9,7 @@ import { allowedRouteList, isAllowedHref } from "@/domain/ai/internal-href";
 import {
   createAccountingOperationInput,
   createClientInput,
+  searchClientsInput,
   createEngineInput,
   createEngineIntakeJobInput,
   createInventoryItemInput,
@@ -21,6 +22,11 @@ import {
   listCapabilitiesInput,
   listWorkOrdersInput,
   navigateToInput,
+  showGuideInput,
+  getShiftBriefingInput,
+  recallCompanyKnowledgeInput,
+  rememberCompanyFactInput,
+  forgetCompanyFactInput,
   receiveStockInput,
   relocateStockInput,
   searchEnginesInput,
@@ -29,7 +35,7 @@ import {
   transitionWorkOrderStatusInput,
   type CoreToolName,
 } from "@/domain/ai/tool-schemas";
-import { createClient } from "@/lib/ai/tools/clients.server";
+import { createClient, searchClients } from "@/lib/ai/tools/clients.server";
 import { describeToolError, toolFailure, type CoreToolContext } from "@/lib/ai/tools/context";
 import { ensureWorkOrderDocuments } from "@/lib/ai/tools/documents.server";
 import {
@@ -48,11 +54,18 @@ import {
 } from "@/lib/ai/tools/inventory.server";
 import { getWarehouseLocation } from "@/lib/ai/tools/warehouse.server";
 import {
+  forgetCompanyFact,
+  getShiftBriefing,
+  recallCompanyKnowledge,
+  rememberCompanyFact,
+} from "@/lib/ai/tools/brain.server";
+import {
   createWorkOrder,
   getWorkOrder,
   listWorkOrders,
   transitionWorkOrderStatus,
 } from "@/lib/ai/tools/work-orders.server";
+import { describeKnownGuides, getGuide } from "@/lib/guides/catalog";
 
 /**
  * Wrap an executor so a failing tool degrades to a rendered reason instead of
@@ -87,6 +100,39 @@ function guarded<TInput, TOutput>(
  */
 export function buildCoreTools(ctx: CoreToolContext): ToolSet {
   const tools: ToolSet = {};
+
+  tools.getShiftBriefing = tool({
+    description:
+      "Read this company's current shift briefing: what needs attention, live pulse figures, and a suggested first question. Call this when they ask what's going on, what's on fire, or what they should do this morning.",
+    inputSchema: getShiftBriefingInput,
+    execute: guarded("getShiftBriefing", getShiftBriefing, ctx, "Could not read the shift briefing."),
+  });
+
+  tools.recallCompanyKnowledge = tool({
+    description:
+      "Recall learned company habits: kits for an engine, frequently-bought-together parts, mechanic and client preferences. Use before guessing how this shop usually does a job.",
+    inputSchema: recallCompanyKnowledgeInput,
+    execute: guarded(
+      "recallCompanyKnowledge",
+      recallCompanyKnowledge,
+      ctx,
+      "Could not recall company knowledge.",
+    ),
+  });
+
+  if (hasPermission(ctx.profile, "settings_manage")) {
+    tools.rememberCompanyFact = tool({
+      description:
+        "Store a company rule or fact in Core's memory. Use when the owner or admin says to remember something. Do not use for stock counts or one-off jobs.",
+      inputSchema: rememberCompanyFactInput,
+      execute: guarded("rememberCompanyFact", rememberCompanyFact, ctx, "Could not store that rule."),
+    });
+    tools.forgetCompanyFact = tool({
+      description: "Forget a stored company rule by memory id from rememberCompanyFact.",
+      inputSchema: forgetCompanyFactInput,
+      execute: guarded("forgetCompanyFact", forgetCompanyFact, ctx, "Could not forget that rule."),
+    });
+  }
 
   if (ctx.scopes.inventory !== "none") {
     tools.searchInventory = tool({
@@ -151,7 +197,7 @@ export function buildCoreTools(ctx: CoreToolContext): ToolSet {
   if (ctx.scopes.workOrders !== "none") {
     tools.listWorkOrders = tool({
       description:
-        "List open work orders, optionally filtered by status. Results are limited to the caller's assigned orders when their role requires it.",
+        "List work orders. Defaults to open jobs. Set includeClosed for last client / last purchase including completed jobs. Results are limited to the caller's assigned orders when their role requires it.",
       inputSchema: listWorkOrdersInput,
       execute: guarded("listWorkOrders", listWorkOrders, ctx, "Could not read work orders."),
     });
@@ -167,7 +213,7 @@ export function buildCoreTools(ctx: CoreToolContext): ToolSet {
   if (hasPermission(ctx.profile, "work_orders_edit")) {
     tools.createWorkOrder = tool({
       description:
-        "Create a work order for a client and vehicle. Use when the user asks to open/create a job or repair order.",
+        "Create a work order. For last client / same as last job, pass sourceWorkOrderId from listWorkOrders or searchClients. Otherwise pass clientName and clientPhone.",
       inputSchema: createWorkOrderInput,
       execute: guarded("createWorkOrder", createWorkOrder, ctx, "Could not create that work order."),
     });
@@ -196,6 +242,15 @@ export function buildCoreTools(ctx: CoreToolContext): ToolSet {
         ctx,
         "Could not generate documents.",
       ),
+    });
+  }
+
+  if (hasPermission(ctx.profile, "clients_manage") || ctx.scopes.workOrders !== "none") {
+    tools.searchClients = tool({
+      description:
+        "Search customers by name or phone. Empty query returns the most recent customers, with their last work order id. Use for last client, find customer, who bought.",
+      inputSchema: searchClientsInput,
+      execute: guarded("searchClients", searchClients, ctx, "Could not read customers."),
     });
   }
 
@@ -268,6 +323,26 @@ export function buildCoreTools(ctx: CoreToolContext): ToolSet {
         );
       }
       return { ok: true as const, href: input.href, label: input.label, reason: input.reason };
+    },
+  });
+
+  tools.showGuide = tool({
+    description:
+      `Offer an interactive UI walkthrough on the real AutoCore workspace. Known guideIds: ${describeKnownGuides()}. Use for how-to questions that match those workflows. Do not invent other ids. Do not manipulate the DOM — return a guideId only.`,
+    inputSchema: showGuideInput,
+    execute: async (input) => {
+      const guide = getGuide(input.guideId);
+      if (!guide) {
+        return toolFailure(
+          `Unknown guide "${input.guideId}". Known ids: ${describeKnownGuides()}.`,
+        );
+      }
+      return {
+        ok: true as const,
+        guideId: guide.id,
+        title: guide.title,
+        summary: guide.summary,
+      };
     },
   });
 

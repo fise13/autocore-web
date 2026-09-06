@@ -59,6 +59,7 @@ import {
   toSearchOptions,
 } from "@/lib/work-order/build-composer-suggestions";
 import { rememberComposerFieldValue } from "@/lib/work-order/composer-field-memory";
+import { emitGuideSignal } from "@/lib/guides/signals";
 import { formatGroupedNumber } from "@/lib/money/format-number";
 import type { SearchOption } from "@/lib/search/filter-options";
 import { KnowledgeKitBanner } from "@/components/knowledge/knowledge-kit-banner";
@@ -136,6 +137,7 @@ type WorkOrderComposerProps = {
   onRemovePartById: (lineId: string) => void;
   onRemoveMotor: (index: number) => void;
   onCancel: () => void;
+  onSave?: () => void;
 };
 
 type VehicleFieldKey = "vehicleMake" | "vehicleModel" | "licensePlate" | "vin";
@@ -204,6 +206,7 @@ export function WorkOrderComposer({
   onRemovePartById,
   onRemoveMotor,
   onCancel,
+  onSave,
 }: WorkOrderComposerProps) {
   const wo = userCopy.workOrders;
   const c = wo.composer;
@@ -523,7 +526,11 @@ export function WorkOrderComposer({
   const step1Valid = form.clientName.trim() && form.clientPhone.trim() && (form.vin.trim() || form.licensePlate.trim());
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className="flex h-full min-h-0 flex-col"
+      data-guide="work-order-composer"
+      data-guide-complete={step >= 2 ? "true" : "false"}
+    >
       <div className="border-b bg-card/60 px-6 py-4 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -590,7 +597,12 @@ export function WorkOrderComposer({
             ) : null}
             <Section icon={User} title={c.clientSection} description={c.clientSectionDesc}>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={c.clientName} required>
+                <Field
+                  label={c.clientName}
+                  required
+                  guideId="work-order-client"
+                  complete={Boolean(form.clientName.trim() && (form.vin.trim() || form.licensePlate.trim()))}
+                >
                   <SearchCombobox
                     value={form.clientName}
                     onValueChange={(value) => {
@@ -787,7 +799,7 @@ export function WorkOrderComposer({
                     </span>
                   ) : null}
                 </TabsTrigger>
-                <TabsTrigger value="motors" className="gap-1.5">
+                <TabsTrigger value="motors" className="gap-1.5" data-guide="work-order-motors-tab">
                   <Cog className="size-3.5" />
                   {c.tabMotors}
                   {form.motorLines.length > 0 ? (
@@ -1013,7 +1025,11 @@ export function WorkOrderComposer({
               </TabsContent>
 
               <TabsContent value="motors" className="space-y-4">
-                <AddRowCard title={c.addMotor}>
+                <AddRowCard
+                  title={c.addMotor}
+                  guideId="work-order-engine"
+                  complete={form.motorLines.length > 0}
+                >
                   <div className="grid gap-3 sm:grid-cols-[1fr_140px_140px_auto]">
                     <SearchCombobox
                       value={form.motorSerial}
@@ -1210,25 +1226,28 @@ export function WorkOrderComposer({
             <Button
               type="button"
               disabled={step === 1 && !step1Valid}
-              onClick={() => onStepChange(step + 1)}
+              data-guide="work-order-next"
+              onClick={() => {
+                emitGuideSignal("work-order-step-advanced");
+                onStepChange(step + 1);
+              }}
             >
               {c.next}
               <ArrowRight className="size-4" />
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm",
-                  canEdit && step1Valid
-                    ? "border-primary/30 bg-primary/5 text-primary"
-                    : "border-border text-muted-foreground opacity-60",
-                )}
+              <Button
+                type="button"
+                variant={canEdit && step1Valid ? "default" : "outline"}
+                disabled={!canEdit || !step1Valid || saving}
+                data-guide="work-order-save"
                 title={`${c.saveDraft} (${modShortcutLabel("S")})`}
+                onClick={() => onSave?.()}
               >
                 <Save className="size-4" />
                 {saving ? c.saving : `${c.saveDraft} (${modShortcutLabel("S")})`}
-              </span>
+              </Button>
             </div>
           )}
         </div>
@@ -1272,14 +1291,22 @@ function Field({
   required,
   hint,
   children,
+  guideId,
+  complete,
 }: {
   label: string;
   required?: boolean;
   hint?: string;
   children: React.ReactNode;
+  guideId?: string;
+  complete?: boolean;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div
+      className="space-y-1.5"
+      data-guide={guideId}
+      data-guide-complete={guideId ? (complete ? "true" : "false") : undefined}
+    >
       <div className="flex items-baseline justify-between gap-2">
         <Label className="text-xs font-medium text-muted-foreground">
           {label}
@@ -1298,13 +1325,21 @@ function AddRowCard({
   title,
   description,
   children,
+  guideId,
+  complete,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  guideId?: string;
+  complete?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-dashed bg-muted/15 p-4 transition-colors duration-200 hover:bg-muted/20">
+    <div
+      className="rounded-xl border border-dashed bg-muted/15 p-4 transition-colors duration-200 hover:bg-muted/20"
+      data-guide={guideId}
+      data-guide-complete={guideId ? (complete ? "true" : "false") : undefined}
+    >
       <div className="mb-3 space-y-0.5">
         <p className="text-sm font-medium">{title}</p>
         {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}

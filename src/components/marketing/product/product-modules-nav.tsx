@@ -1,44 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 
 import { useProductContent } from "@/components/marketing/product/content/use-product-content";
+import { smoothScrollToElement } from "@/lib/motion/smooth-scroll-to";
 import { cn } from "@/lib/utils";
+
+/** Matches `scroll-mt-28` on product walk sections. */
+const SCROLL_OFFSET = 112;
+
+function readActiveSectionId(ids: string[]) {
+  if (ids.length === 0) return "";
+
+  const lastId = ids[ids.length - 1];
+  const doc = document.documentElement;
+  const nearBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 8;
+  if (nearBottom) return lastId;
+
+  let current = ids[0];
+  for (const id of ids) {
+    const node = document.getElementById(id);
+    if (!node) continue;
+    if (node.getBoundingClientRect().top <= SCROLL_OFFSET + 8) current = id;
+  }
+  return current;
+}
 
 export function ProductModulesNav({ className }: { className?: string }) {
   const reduced = useReducedMotion();
   const { toc: TOC } = useProductContent();
-  const [activeId, setActiveId] = useState<string>(TOC.items[0]?.id ?? "engine-search");
+  const ids = TOC.items.map((item) => item.id);
+  const idsRef = useRef(ids);
+  idsRef.current = ids;
+
+  const [activeId, setActiveId] = useState<string>(ids[0] ?? "engine-search");
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
+  const linkRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const lockRef = useRef(false);
+  const frameRef = useRef(0);
 
   useEffect(() => {
-    const ids = TOC.items.map((item) => item.id);
-    const nodes = ids
-      .map((id) => document.getElementById(id))
-      .filter((node): node is HTMLElement => Boolean(node));
-
-    if (nodes.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        const top = visible[0]?.target.id;
-        if (top) setActiveId(top);
-      },
-      { rootMargin: "-28% 0px -55% 0px", threshold: [0.12, 0.35, 0.6] },
-    );
-
-    for (const node of nodes) observer.observe(node);
-    return () => observer.disconnect();
-    // Section ids are stable across locales (only labels are translated) — observe once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const hash = window.location.hash.slice(1);
+    if (hash && idsRef.current.includes(hash)) {
+      setActiveId(hash);
+    }
   }, []);
 
-  const onNavigate = (id: string) => {
+  useEffect(() => {
+    const sync = () => {
+      if (lockRef.current) return;
+      const next = readActiveSectionId(idsRef.current);
+      if (next && next !== activeIdRef.current) setActiveId(next);
+    };
+
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = requestAnimationFrame(sync);
+    };
+
+    sync();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const link = linkRefs.current.get(activeId);
+    const list = link?.closest(".product-toc-list");
+    if (!link || !(list instanceof HTMLElement)) return;
+    if (list.scrollWidth <= list.clientWidth + 1) return;
+    link.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+  }, [activeId]);
+
+  function onNavigate(event: MouseEvent<HTMLAnchorElement>, id: string) {
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    event.preventDefault();
     setActiveId(id);
-  };
+    history.replaceState(null, "", `#${id}`);
+
+    if (reduced) {
+      section.scrollIntoView({ behavior: "auto", block: "start" });
+      return;
+    }
+
+    lockRef.current = true;
+    void smoothScrollToElement(section, SCROLL_OFFSET).finally(() => {
+      lockRef.current = false;
+      const next = readActiveSectionId(idsRef.current);
+      if (next) setActiveId(next);
+    });
+  }
 
   return (
     <nav className={cn("product-toc", className)} aria-label={TOC.ariaLabel}>
@@ -51,10 +113,14 @@ export function ProductModulesNav({ className }: { className?: string }) {
             return (
               <li key={item.id}>
                 <a
+                  ref={(node) => {
+                    if (node) linkRefs.current.set(item.id, node);
+                    else linkRefs.current.delete(item.id);
+                  }}
                   href={`#${item.id}`}
                   className={cn("product-toc-link", active && "is-active")}
                   aria-current={active ? "location" : undefined}
-                  onClick={() => onNavigate(item.id)}
+                  onClick={(event) => onNavigate(event, item.id)}
                 >
                   {active ? (
                     <motion.span

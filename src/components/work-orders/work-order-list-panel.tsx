@@ -113,7 +113,12 @@ export function WorkOrderListPanel({
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-r bg-muted/20">
       <div className="space-y-3 border-b bg-card/80 p-3 backdrop-blur-sm">
         {canEdit ? (
-          <Button type="button" className="w-full justify-center gap-2" onClick={onStartCreate}>
+          <Button
+            type="button"
+            className="w-full justify-center gap-2"
+            onClick={onStartCreate}
+            data-guide="work-order-create"
+          >
             <Plus className="size-4" />
             {userCopy.workOrders.newOrder}
           </Button>

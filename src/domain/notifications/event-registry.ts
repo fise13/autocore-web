@@ -504,6 +504,21 @@ export const NOTIFICATION_EVENT_REGISTRY: Record<
     }),
     buildDeepLink: () => "autocoremobile://accounting",
   },
+  "core.shift_briefing": {
+    eventType: "core.shift_briefing",
+    category: "system",
+    priority: "medium",
+    defaultChannels: ["inbox", "push"],
+    roles: ["owner", "admin", "manager"],
+    groupable: true,
+    groupWindowMinutes: 60 * 18,
+    buildGroupKey: () => `core-briefing:${new Date().toISOString().slice(0, 10)}`,
+    buildCopy: (ctx) => ({
+      title: "Core shift briefing",
+      body: String(ctx.payload?.summary ?? "Core has the morning briefing ready."),
+    }),
+    buildDeepLink: () => "/",
+  },
 };
 
 export function getNotificationEventDefinition(

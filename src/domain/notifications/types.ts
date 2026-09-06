@@ -70,6 +70,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   "scan.completed",
   "sales.daily_summary",
   "sales.large_sale",
+  "core.shift_briefing",
 ] as const;
 
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];

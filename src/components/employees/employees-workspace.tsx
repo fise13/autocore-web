@@ -19,6 +19,7 @@ import { getFirebaseAuth, getFirestoreDb } from "@/infrastructure/firebase/clien
 import { createEmployeeRbacRepository } from "@/infrastructure/firestore/employee-rbac-repository";
 import { createDirectoryRepository } from "@/infrastructure/firestore/directory-repository";
 import { createInviteRepository } from "@/infrastructure/firestore/invite-repository";
+import { emitGuideSignal } from "@/lib/guides/signals";
 import { useAccountingPreferences } from "@/hooks/use-accounting-preferences";
 import { doc, getDoc } from "firebase/firestore";
 import { WorkspaceSection } from "@/components/layout/workspace-section";
@@ -749,7 +750,9 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
         )}
         action={
           canManage ? (
-            <Button onClick={openInviteDialog}>{userCopy.employees.inviteEmployee}</Button>
+            <Button onClick={openInviteDialog} data-guide="team-invite">
+              {userCopy.employees.inviteEmployee}
+            </Button>
           ) : null
         }
       >
@@ -987,7 +990,7 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
           if (!open) resetInviteDialog();
         }}
       >
-        <DialogContent>
+        <DialogContent data-guide="invite-dialog">
           <DialogHeader>
             <DialogTitle>{userCopy.employees.inviteDialogTitle}</DialogTitle>
             <DialogDescription>
@@ -1007,6 +1010,8 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                   onChange={(event) => setInviteEmail(event.target.value)}
                   placeholder="colleague@company.ru"
                   disabled={busy}
+                  data-guide="invite-email"
+                  data-guide-complete={inviteEmail.includes("@") ? "true" : "false"}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -1014,12 +1019,17 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
                     }
                   }}
                 />
-                <Button type="button" disabled={busy} onClick={() => void sendEmailInvite()}>
+                <Button
+                  type="button"
+                  disabled={busy}
+                  data-guide="invite-send"
+                  onClick={() => void sendEmailInvite()}
+                >
                   {busy ? userCopy.employees.sending : userCopy.employees.sendEmail}
                 </Button>
               </div>
               {emailInviteSent ? (
-                <div className="space-y-2">
+                <div className="space-y-2" data-guide="invite-sent" data-guide-complete="true">
                   <p className="text-xs text-muted-foreground">{emailInviteSent}</p>
                   {emailInviteJoinUrl ? (
                     <Button
@@ -1042,12 +1052,16 @@ export function EmployeesWorkspace({ embedded = false }: { embedded?: boolean } 
 
             <div className="grid gap-2">
               <p className="text-sm font-medium">{userCopy.employees.newEmployeeRole}</p>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2" data-guide="invite-roles">
                 {INVITE_ROLES.map((role) => (
                   <button
                     key={role}
                     type="button"
-                    onClick={() => setInviteRole(role)}
+                    data-guide={`invite-role-${role}`}
+                    onClick={() => {
+                      setInviteRole(role);
+                      emitGuideSignal("invite-role-selected", { role });
+                    }}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-colors",
                       inviteRole === role

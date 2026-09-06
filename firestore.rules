@@ -1171,6 +1171,18 @@ service cloud.firestore {
           && request.resource.data.companyId == companyId;
         allow delete: if false;
       }
+
+      // Core company brain — compiled snapshot + owner rules. Members read;
+      // writes go through the Admin SDK (assistant tools / morning cron).
+      match /core/{docId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if false;
+      }
+
+      match /coreMemories/{memoryId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if false;
+      }
     }
 
     // -------------------------

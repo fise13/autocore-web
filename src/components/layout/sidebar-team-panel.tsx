@@ -45,6 +45,7 @@ export function SidebarTeamPanel({
             collapsed={collapsed}
             onNavigate={onNavigate}
             animationIndex={linkAnimationIndex}
+            guideId="nav-team"
           />
         </SidebarMenu>
       </SidebarGroupContent>

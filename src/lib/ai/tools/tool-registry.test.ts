@@ -31,12 +31,15 @@ function expectedToolsFor(user: UserEntity): CoreToolName[] {
       "sellEngine",
     );
   }
-  if (scopes.workOrders !== "none") names.push("listWorkOrders", "getWorkOrder");
+  if (scopes.workOrders !== "none") names.push("listWorkOrders", "getWorkOrder", "searchClients");
   if (hasPermission(user, "work_orders_edit")) {
     names.push("createWorkOrder", "transitionWorkOrderStatus");
   }
   if (hasPermission(user, "work_orders_view")) names.push("ensureWorkOrderDocuments");
   if (hasPermission(user, "clients_manage")) names.push("createClient");
+  if (hasPermission(user, "clients_manage") && scopes.workOrders === "none") {
+    names.push("searchClients");
+  }
   if (scopes.motors !== "none") names.push("searchEngines");
   if (
     hasPermission(user, "engine_intake_verify") ||
@@ -48,7 +51,10 @@ function expectedToolsFor(user: UserEntity): CoreToolName[] {
   if (scopes.accounting === "company" && hasPermission(user, "accounting_edit")) {
     names.push("createAccountingOperation");
   }
-  names.push("navigateTo", "listCapabilities");
+  names.push("navigateTo", "showGuide", "getShiftBriefing", "recallCompanyKnowledge", "listCapabilities");
+  if (hasPermission(user, "settings_manage")) {
+    names.push("rememberCompanyFact", "forgetCompanyFact");
+  }
   return names;
 }
 
@@ -73,6 +79,14 @@ test("every Core tool has a purpose string", () => {
   for (const name of CORE_TOOL_NAMES) {
     assert.ok(CORE_TOOL_PURPOSES[name], `${name} missing purpose`);
   }
+});
+
+test("mechanic cannot remember or forget company facts", () => {
+  const tools = expectedToolsFor(userWithRole("mechanic"));
+  assert.ok(tools.includes("getShiftBriefing"));
+  assert.ok(tools.includes("recallCompanyKnowledge"));
+  assert.ok(!tools.includes("rememberCompanyFact"));
+  assert.ok(!tools.includes("forgetCompanyFact"));
 });
 
 test("mechanic cannot reach accounting, inventory or engines", () => {
@@ -128,7 +142,10 @@ test("accountant gets finance writes but no warehouse or engines", () => {
 
 test("deactivated user gets navigation and capabilities only", () => {
   const tools = expectedToolsFor(userWithRole("admin", { isActive: false }));
-  assert.deepEqual([...tools].sort(), ["listCapabilities", "navigateTo"].sort());
+  assert.deepEqual(
+    [...tools].sort(),
+    ["getShiftBriefing", "listCapabilities", "navigateTo", "recallCompanyKnowledge", "showGuide"].sort(),
+  );
 });
 
 test("every registered name is a known tool", () => {

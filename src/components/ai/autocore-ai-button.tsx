@@ -15,8 +15,7 @@ type AutoCoreAIButtonProps = {
 };
 
 /**
- * Dock “+” on web — liquid-glass Ask Core.
- * Opens the compact orb; send expands into `/ai`.
+ * Sidebar Ask Core on web — opens the Core workspace at `/ai`.
  */
 export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIButtonProps) {
   const assistant = useAssistantOptional();
@@ -31,10 +30,9 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
 
   if (!assistant) return null;
 
-  const { state, isOpen, isCompactOpen, openCompact, closeCompact, close, setPointer } = assistant;
+  const { state, isOpen, open, setPointer } = assistant;
   const busy = chat?.busy ?? false;
-  const expanded = isCompactOpen || isOpen;
-  const glyphState = busy ? "thinking" : expanded ? "active" : state;
+  const glyphState = busy ? "thinking" : isOpen ? "active" : state;
   const entryAria = `${userCopy.ai.entryLabel}, ${userCopy.ai.entryBeta}`;
 
   return (
@@ -51,18 +49,13 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
         data-ai-entry
         data-state={glyphState}
         aria-current={isOpen ? "page" : undefined}
-        aria-expanded={isCompactOpen}
-        aria-label={expanded ? userCopy.ai.close : entryAria}
+        aria-label={entryAria}
         title={collapsed ? entryAria : undefined}
         onPointerEnter={() => setPointer("enter")}
         onPointerLeave={() => setPointer("leave")}
         onFocus={() => setPointer("enter")}
         onBlur={() => setPointer("leave")}
-        onClick={() => {
-          if (isOpen) close();
-          else if (isCompactOpen) closeCompact();
-          else openCompact();
-        }}
+        onClick={() => open()}
         className={cn(
           "ai-entry-button core-liquid-glass group relative flex w-full items-center justify-center",
           "text-foreground",
@@ -75,10 +68,7 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
       >
         <Plus
           data-icon="inline-start"
-          className={cn(
-            "shrink-0 size-4 transition-transform duration-200 ease-out",
-            expanded && "rotate-45",
-          )}
+          className="size-4 shrink-0"
           aria-hidden
         />
         {!collapsed ? (

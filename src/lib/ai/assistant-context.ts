@@ -12,6 +12,7 @@ export type AssistantAreaId =
   | "engines"
   | "sales"
   | "work_orders"
+  | "customers"
   | "documents"
   | "finance"
   | "earnings"
@@ -40,6 +41,8 @@ type ResolveAssistantContextInput = {
   collection?: InventoryCollectionId;
   brandName?: string | null;
   selectionLabel?: string | null;
+  /** When a caller pins an operating area that is not 1:1 with a route. */
+  areaOverride?: AssistantAreaId;
 };
 
 const collectionLabels: Record<InventoryCollectionId, string> = {
@@ -152,6 +155,11 @@ const areaSuggestions: Record<AssistantAreaId, string[]> = {
     "Which engines are available right now?",
   ],
   quotes: ["Open quotes", "Which engines are available right now?", "What work orders are open?"],
+  customers: [
+    "Search customers by name or phone",
+    "Create a customer for the next sale",
+    "What work orders are open?",
+  ],
   team: ["Open the team page", "What work orders are open?", "Open roles and permissions"],
   settings: ["Open company settings", "Open roles and permissions", "Open billing"],
   workspace: [
@@ -167,8 +175,12 @@ export function resolveAssistantContext({
   collection,
   brandName,
   selectionLabel,
+  areaOverride,
 }: ResolveAssistantContextInput): AssistantContext {
-  const { areaId, areaLabel } = areaDefinition(pathname);
+  const { areaId, areaLabel } =
+    areaOverride === "customers"
+      ? { areaId: "customers" as const, areaLabel: "Customers" }
+      : areaDefinition(pathname);
 
   const focus: string[] = [];
   if (collection && (areaId === "engines" || areaId === "sales" || areaId === "warehouse")) {

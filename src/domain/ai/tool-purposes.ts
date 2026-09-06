@@ -18,6 +18,7 @@ export const CORE_TOOL_PURPOSES = {
   transitionWorkOrderStatus: "Move a work order to the next status",
   ensureWorkOrderDocuments: "Generate documents for a work order",
   createClient: "Create a customer record",
+  searchClients: "Search customers and their last work order",
   searchEngines: "Search engines by brand, code or serial",
   createEngine: "Add an engine to inventory",
   sellEngine: "Mark an engine sold and record the sale",
@@ -25,4 +26,9 @@ export const CORE_TOOL_PURPOSES = {
   getFinanceSummary: "Income, expense and net for a period",
   createAccountingOperation: "Post an income or expense operation",
   navigateTo: "Open an AutoCore screen",
+  showGuide: "Start an interactive UI walkthrough",
+  getShiftBriefing: "Read this morning's company shift briefing",
+  recallCompanyKnowledge: "Recall learned kits, habits and client preferences",
+  rememberCompanyFact: "Store a company rule the owner wants Core to keep",
+  forgetCompanyFact: "Forget a stored company rule",
 } as const satisfies Record<CoreToolName, string>;

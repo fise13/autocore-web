@@ -45,12 +45,12 @@ export function ToolCardShell({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-2xl border border-border/70 bg-card",
-        "text-card-foreground shadow-none",
+        "w-full overflow-hidden rounded-[10px] border border-border/80 bg-card",
+        "text-card-foreground",
         className,
       )}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border/70 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border/80 px-3 py-2">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-none">
           {title}

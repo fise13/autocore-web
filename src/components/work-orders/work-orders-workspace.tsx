@@ -11,6 +11,7 @@ import { quickCreateClientUseCase } from "@/application/use-cases/work-orders/qu
 import { quickCreateVehicleUseCase } from "@/application/use-cases/work-orders/quick-create-vehicle";
 import { WorkOrderStatus } from "@/domain/work-order";
 import { emitKnowledgeEvent } from "@/lib/knowledge/knowledge-api.client";
+import { emitGuideSignal } from "@/lib/guides/signals";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { LastSavedHint } from "@/components/persistence/last-saved-hint";
@@ -686,6 +687,7 @@ export function WorkOrdersWorkspace() {
           void notifyWorkOrderAvailable(currentEditingId).catch(() => undefined);
           void ensureWorkOrderDocuments(currentEditingId);
           if (options.closeAfter) resetComposer();
+          emitGuideSignal("work-order-saved", { orderId: currentEditingId });
           return { ok: true as const, orderId: currentEditingId };
         }
 
@@ -719,6 +721,7 @@ export function WorkOrdersWorkspace() {
           },
         });
         if (options.closeAfter) resetComposer();
+        emitGuideSignal("work-order-saved", { orderId: order.id });
         return { ok: true as const, orderId: order.id };
       } catch (nextError) {
         const message =
@@ -988,6 +991,7 @@ export function WorkOrdersWorkspace() {
                           }))
                         }
                         onCancel={resetComposer}
+                        onSave={() => void saveDraft()}
                       />
                       {composerPersistenceKey ? (
                         <div className="border-t px-6 py-2">

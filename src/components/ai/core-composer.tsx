@@ -1,45 +1,52 @@
 "use client";
 
 import type { ChatStatus, FileUIPart } from "ai";
-import { ArrowUp, Camera, ImageIcon, Mic, Plus, Square, X } from "lucide-react";
+import { FileText, Mic, Plus, Square, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
   useRef,
   useState,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
 
+import { useAssistant } from "@/components/ai/ai-provider";
+import { CoreCommandList } from "@/components/ai/core-command-list";
+import { buildCoreCommands, type CoreCommandItem } from "@/components/ai/core-commands";
+import { useCoreSuggestions } from "@/components/ai/use-core-suggestions";
+import { coreComposerShortcutLabel } from "@/lib/ai/assistant-shortcut";
+import { subscribeCoreFocus } from "@/lib/ai/core-focus";
+import {
+  chatFileAcceptAttr,
+  rejectChatFile,
+  sniffChatFileType,
+  toChatFilePart,
+} from "@/lib/ai/prepare-chat-file";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
-
-const MAX_ATTACHMENTS = 4;
-const MAX_ATTACHMENT_BYTES = 1_500_000;
 
 type CoreComposerProps = {
   status: ChatStatus;
   busy: boolean;
   onAsk: (text: string, files?: FileUIPart[]) => void;
   onStop: () => void;
+  autoFocus?: boolean;
+  listPlacement?: "above" | "below";
+  commandsAlways?: boolean;
 };
 
-type LocalFile = FileUIPart & { id: string };
-
-async function blobUrlToDataUrl(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    if (blob.size > MAX_ATTACHMENT_BYTES) return null;
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(typeof reader.result === "string" ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
+type LocalFile = {
+  id: string;
+  file: File;
+  url: string;
+  mediaType: string;
+  filename: string;
+};
 
 type VoiceRec = {
   lang: string;
@@ -57,17 +64,79 @@ function SpeechCtor(): (new () => VoiceRec) | null {
   return Ctor ? (Ctor as unknown as new () => VoiceRec) : null;
 }
 
-export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps) {
+export function CoreComposer({
+  busy,
+  onAsk,
+  onStop,
+  autoFocus = false,
+  listPlacement = "above",
+  commandsAlways = false,
+}: CoreComposerProps) {
+  const { context, sessions } = useAssistant();
+  const { suggestions } = useCoreSuggestions(
+    { pathname: context.path },
+    context.suggestions,
+    true,
+  );
   const [text, setText] = useState("");
   const [files, setFiles] = useState<LocalFile[]>([]);
-  const [attachOpen, setAttachOpen] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const photosRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<VoiceRec | null>(null);
   const canSend = Boolean(text.trim() || files.length) && !busy;
-  const streaming = status === "streaming" || status === "submitted";
+  const shortcut = coreComposerShortcutLabel();
+
+  const commands = useMemo(
+    () =>
+      buildCoreCommands({
+        sessions,
+        suggestions,
+        context,
+        query: text,
+      }),
+    [context, sessions, suggestions, text],
+  );
+
+  const listOpen = (focused || commandsAlways) && !busy && commands.length > 0;
+  const clampedIndex = commands.length === 0 ? 0 : Math.min(activeIndex, commands.length - 1);
+
+  useEffect(() => {
+    return subscribeCoreFocus(() => {
+      inputRef.current?.focus();
+      setFocused(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const field = inputRef.current;
+    if (!field) return undefined;
+    const onFocus = () => setFocused(true);
+    const onBlur = () => {
+      window.setTimeout(() => {
+        const root = field.closest("[data-core-composer]");
+        if (root?.contains(document.activeElement)) return;
+        setFocused(false);
+      }, 0);
+    };
+    field.addEventListener("focus", onFocus);
+    field.addEventListener("blur", onBlur);
+    if (document.activeElement === field) onFocus();
+    return () => {
+      field.removeEventListener("focus", onFocus);
+      field.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = window.setTimeout(() => inputRef.current?.focus(), 40);
+    return () => window.clearTimeout(id);
+  }, [autoFocus]);
 
   const resetFieldHeight = () => {
     const field = inputRef.current;
@@ -75,58 +144,110 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
     field.style.height = "auto";
   };
 
-  const clearFiles = () => {
-    for (const file of files) {
-      if (file.url.startsWith("blob:")) URL.revokeObjectURL(file.url);
-    }
-    setFiles([]);
-  };
+  const send = useCallback(
+    async (prompt: string) => {
+      if (busy) return;
+      if (!prompt.trim() && !files.length) return;
+      const outgoing = (
+        await Promise.all(files.map((item) => toChatFilePart(item.file)))
+      ).filter((part): part is FileUIPart => part !== null);
+      if (files.length > 0 && outgoing.length === 0) {
+        setAttachError(userCopy.ai.attachErrorSize);
+        return;
+      }
+      onAsk(prompt, outgoing.length ? outgoing : undefined);
+      setText("");
+      setAttachError(null);
+      for (const file of files) URL.revokeObjectURL(file.url);
+      setFiles([]);
+      resetFieldHeight();
+      inputRef.current?.focus();
+    },
+    [busy, files, onAsk],
+  );
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (!canSend) return;
-    const outgoing = await Promise.all(
-      files.map(async ({ id: _id, ...file }) => {
-        if (!file.url.startsWith("blob:")) return file;
-        const dataUrl = await blobUrlToDataUrl(file.url);
-        return dataUrl ? { ...file, url: dataUrl } : null;
-      }),
-    );
-    onAsk(
-      text,
-      outgoing.filter((file): file is FileUIPart => file !== null),
-    );
-    setText("");
-    clearFiles();
-    setAttachOpen(false);
-    resetFieldHeight();
-    inputRef.current?.focus();
+    await send(text);
+  };
+
+  const selectCommand = (item: CoreCommandItem) => {
+    void send(item.prompt);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
+      if (listOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        inputRef.current?.blur();
+        return;
+      }
+      return;
+    }
+
+    if (listOpen && commands.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((current) => (current + 1) % commands.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((current) => (current - 1 + commands.length) % commands.length);
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+        const item = commands[clampedIndex];
+        if (item && !text.trim()) {
+          event.preventDefault();
+          selectCommand(item);
+          return;
+        }
+        if (item && text.trim()) {
+          const needle = text.trim().toLowerCase();
+          const matches =
+            item.title.toLowerCase().includes(needle) || item.prompt.toLowerCase().includes(needle);
+          if (matches && item.title.toLowerCase() !== needle && item.prompt.toLowerCase() !== needle) {
+            event.preventDefault();
+            selectCommand(item);
+            return;
+          }
+        }
+      }
+    }
+
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
     event.preventDefault();
     void submit();
   };
 
-  const addFiles = (list: FileList | null) => {
+  const addFiles = useCallback((list: FileList | File[] | null) => {
     if (!list?.length) return;
-    const room = MAX_ATTACHMENTS - files.length;
-    const next = Array.from(list)
-      .filter((file) => file.type.startsWith("image/") && file.size <= MAX_ATTACHMENT_BYTES)
-      .slice(0, room)
-      .map((file) => ({
-        id: nanoid(),
-        type: "file" as const,
-        url: URL.createObjectURL(file),
-        mediaType: file.type,
-        filename: file.name,
-      }));
-    if (next.length) setFiles((current) => [...current, ...next]);
-    setAttachOpen(false);
+    const incoming = Array.from(list);
+    setFiles((current) => {
+      const next = [...current];
+      let reason: ReturnType<typeof rejectChatFile> = null;
+      for (const file of incoming) {
+        reason = rejectChatFile(file, next.length);
+        if (reason) break;
+        next.push({
+          id: nanoid(),
+          file,
+          url: URL.createObjectURL(file),
+          mediaType: sniffChatFileType(file),
+          filename: file.name,
+        });
+      }
+      if (reason === "limit") setAttachError(userCopy.ai.attachErrorLimit);
+      else if (reason === "size") setAttachError(userCopy.ai.attachErrorSize);
+      else if (reason === "type") setAttachError(userCopy.ai.attachErrorType);
+      else setAttachError(null);
+      return next;
+    });
     if (photosRef.current) photosRef.current.value = "";
-    if (cameraRef.current) cameraRef.current.value = "";
-  };
+  }, []);
 
   const toggleVoice = () => {
     const Ctor = SpeechCtor();
@@ -159,80 +280,131 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
     recognition.start();
   };
 
+  const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboard = event.clipboardData;
+    if (!clipboard) return;
+    const fromFiles = clipboard.files?.length ? Array.from(clipboard.files) : [];
+    const fromItems = Array.from(clipboard.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null);
+    const incoming = fromFiles.length ? fromFiles : fromItems;
+    if (!incoming.length) return;
+    event.preventDefault();
+    addFiles(incoming);
+  };
+
+  const onDrop = (event: DragEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    addFiles(event.dataTransfer.files);
+  };
+
+  useEffect(() => {
+    return () => {
+      for (const file of files) URL.revokeObjectURL(file.url);
+    };
+    // Revoke leftover object URLs if the composer unmounts mid-draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const list = listOpen ? (
+    <CoreCommandList
+      items={commands}
+      activeIndex={clampedIndex}
+      onActiveIndexChange={setActiveIndex}
+      onSelect={selectCommand}
+    />
+  ) : null;
+
   return (
-    <form onSubmit={(event) => void submit(event)} className="mx-auto w-full max-w-[40rem]">
+    <form
+      data-core-composer
+      onSubmit={(event) => void submit(event)}
+      className="core-composer mx-auto w-full max-w-[40rem]"
+      onDragEnter={(event) => {
+        event.preventDefault();
+        if (event.dataTransfer.types.includes("Files")) setDragging(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        setDragging(false);
+      }}
+      onDrop={onDrop}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        const root = event.currentTarget;
+        const next = event.relatedTarget as Node | null;
+        if (next && root.contains(next)) return;
+        window.setTimeout(() => {
+          if (root.contains(document.activeElement)) return;
+          setFocused(false);
+        }, 0);
+      }}
+    >
       <input
         ref={photosRef}
         type="file"
-        accept="image/*"
+        accept={chatFileAcceptAttr()}
         multiple
-        className="hidden"
-        onChange={(event) => addFiles(event.currentTarget.files)}
-      />
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
+        tabIndex={-1}
+        data-core-file-input
+        aria-label={userCopy.ai.addFiles}
+        className="sr-only"
         onChange={(event) => addFiles(event.currentTarget.files)}
       />
 
-      {attachOpen ? (
-        <div className="core-liquid-glass mb-2 overflow-hidden rounded-2xl">
-          <button
-            type="button"
-            onClick={() => photosRef.current?.click()}
-            className="flex h-12 w-full items-center gap-3 px-4 text-[15px] transition-opacity hover:opacity-80"
-          >
-            <ImageIcon className="size-5" />
-            {userCopy.ai.photos}
-          </button>
-          <button
-            type="button"
-            onClick={() => cameraRef.current?.click()}
-            className="flex h-12 w-full items-center gap-3 px-4 text-[15px] transition-opacity hover:opacity-80"
-          >
-            <Camera className="size-5" />
-            {userCopy.ai.camera}
-          </button>
-        </div>
-      ) : null}
+      {listPlacement === "above" ? list : null}
 
-      {files.length > 0 ? (
-        <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
-          {files.map((file) => (
-            <div key={file.id} className="relative size-14 shrink-0">
-              <img
-                src={file.url}
-                alt={file.filename ?? userCopy.ai.attachedFiles}
-                className="size-14 rounded-xl object-cover"
-              />
-              <button
-                type="button"
-                aria-label={userCopy.ai.removeAttachment}
-                onClick={() => {
-                  if (file.url.startsWith("blob:")) URL.revokeObjectURL(file.url);
-                  setFiles((current) => current.filter((item) => item.id !== file.id));
-                }}
-                className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-background"
-              >
-                <X className="size-2.5" strokeWidth={2.4} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="core-liquid-glass core-composer-pill flex items-end pl-1.5 pr-1.5">
-        <button
-          type="button"
-          aria-label={attachOpen ? userCopy.ai.close : userCopy.ai.addFiles}
-          onClick={() => setAttachOpen((open) => !open)}
-          className="core-liquid-glass-btn mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full text-foreground transition-opacity hover:opacity-70"
-        >
-          {attachOpen ? <X className="size-5" /> : <Plus className="size-5" strokeWidth={1.8} />}
-        </button>
+      <div
+        className={cn(
+          "core-composer-dock flex flex-col rounded-xl border border-border bg-card",
+          focused && "is-focused",
+          listening && "is-listening",
+          dragging && "is-dropping",
+        )}
+      >
+        {files.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto px-2.5 pt-2.5">
+            {files.map((file) => (
+              <div key={file.id} className="relative size-12 shrink-0">
+                {file.mediaType.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={file.url}
+                    alt={file.filename}
+                    className="size-12 rounded-md object-cover"
+                  />
+                ) : (
+                  <span className="core-attach-chip flex size-12 flex-col items-center justify-center gap-0.5 rounded-md border border-border px-1">
+                    <FileText className="size-3.5 text-muted-foreground" aria-hidden />
+                    <span className="w-full truncate text-center text-[9px] leading-none text-muted-foreground">
+                      {file.filename}
+                    </span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  aria-label={userCopy.ai.removeAttachment}
+                  onClick={() => {
+                    URL.revokeObjectURL(file.url);
+                    setFiles((current) => current.filter((item) => item.id !== file.id));
+                  }}
+                  className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-foreground text-background"
+                >
+                  <X className="size-2.5" strokeWidth={2.4} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {attachError ? (
+          <p className="px-3 pt-2 text-[11px] text-destructive">{attachError}</p>
+        ) : null}
         <textarea
           ref={inputRef}
           name="message"
@@ -240,40 +412,57 @@ export function CoreComposer({ status, busy, onAsk, onStop }: CoreComposerProps)
           value={text}
           onChange={(event) => {
             setText(event.target.value);
+            setActiveIndex(0);
             event.currentTarget.style.height = "auto";
-            event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 128)}px`;
+            event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 120)}px`;
           }}
           onKeyDown={onKeyDown}
-          placeholder={userCopy.ai.composerPlaceholder}
+          onPaste={onPaste}
+          onFocus={() => setFocused(true)}
+          placeholder={listening ? userCopy.ai.voiceListening : userCopy.ai.composerPlaceholder}
           disabled={busy}
-          className={cn(
-            "max-h-32 min-h-11 flex-1 resize-none bg-transparent py-3 text-[17px] leading-[22px]",
-            "text-foreground placeholder:text-muted-foreground outline-none",
-          )}
+          className="core-composer-field min-h-9 w-full resize-none bg-transparent px-3 py-2 text-[15px] leading-snug text-foreground outline-none placeholder:text-muted-foreground"
         />
-        {canSend || streaming ? (
+        <div className="core-composer-toolbar flex items-center gap-0.5 border-t border-border/80 px-1.5 py-1.5">
           <button
-            type={busy ? "button" : "submit"}
-            aria-label={busy ? userCopy.ai.stopped : userCopy.ai.send}
-            onClick={busy ? onStop : undefined}
-            className="mb-2 flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background"
+            type="button"
+            aria-label={userCopy.ai.addFiles}
+            onClick={() => photosRef.current?.click()}
+            className="core-icon-btn inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
           >
-            {busy ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" strokeWidth={2.6} />}
+            <Plus className="size-4" strokeWidth={1.8} />
           </button>
-        ) : (
           <button
             type="button"
             aria-label={userCopy.ai.voiceAria}
             aria-pressed={listening}
             onClick={toggleVoice}
             className={cn(
-              "core-liquid-glass-btn mb-1.5 flex size-10 shrink-0 items-center justify-center rounded-full",
-              listening ? "text-ai" : "text-foreground",
+              "core-icon-btn inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+              listening && "text-foreground",
             )}
           >
-            <Mic className="size-5" strokeWidth={1.8} />
+            <Mic className="size-4" strokeWidth={1.8} />
           </button>
-        )}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="core-composer-hint hidden text-[10px] text-muted-foreground sm:inline">
+              {userCopy.ai.composerHint}
+              {" · "}
+              {shortcut}
+            </span>
+            <button
+              type={busy ? "button" : "submit"}
+              aria-label={busy ? userCopy.ai.stop : userCopy.ai.send}
+              disabled={!busy && !canSend}
+              onClick={busy ? onStop : undefined}
+              className="core-run inline-flex h-7 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12px] font-medium text-background disabled:opacity-30"
+            >
+            {busy ? <Square className="size-3 fill-current" /> : null}
+            <span>{busy ? userCopy.ai.stop : userCopy.ai.send}</span>
+          </button>
+          </div>
+        </div>
+        {listPlacement === "below" ? list : null}
       </div>
     </form>
   );

@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
+import { CoreLockup, CoreSurface } from "@/components/ai/core-surface";
+import { coreAttentionLine, coreBriefingAge } from "@/components/ai/core-shift-sheet";
 import {
   ToolCardLines,
   ToolCardRow,
@@ -18,14 +20,19 @@ import type {
   CreateWorkOrderOutput,
   EnsureWorkOrderDocumentsOutput,
   FindStockLocationOutput,
+  ForgetCompanyFactOutput,
   GetFinanceSummaryOutput,
+  GetShiftBriefingOutput,
   GetWarehouseLocationOutput,
   GetWorkOrderOutput,
   ListCapabilitiesOutput,
   ListWorkOrdersOutput,
   NavigateToOutput,
+  RecallCompanyKnowledgeOutput,
   ReceiveStockOutput,
   RelocateStockOutput,
+  RememberCompanyFactOutput,
+  SearchClientsOutput,
   SearchEnginesOutput,
   SearchInventoryOutput,
   SellEngineOutput,
@@ -80,9 +87,28 @@ function formatQuantity(value: number, unit?: string): string {
   return unit ? `${rounded} ${unit}` : String(rounded);
 }
 
+function CoreMetrics({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="core-metrics" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+      {items.map((item) => (
+        <span key={item.label} className="min-w-0">
+          <span className="core-metric__label">{item.label}</span>
+          <span className="core-metric__value">{item.value}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ inventory */
 
 export function StockCard({ data }: { data: Ok<SearchInventoryOutput> }) {
+  const low = data.items.filter((item) => item.lowStock).length;
   return (
     <ToolCardShell
       icon={TOOL_ICONS.searchInventory}
@@ -92,6 +118,14 @@ export function StockCard({ data }: { data: Ok<SearchInventoryOutput> }) {
       notice={data.truncated ? copy.partialWindow : undefined}
       empty={data.items.length === 0}
     >
+      {data.items.length > 0 ? (
+        <CoreMetrics
+          items={[
+            { label: userCopy.ai.metricItems, value: String(data.totalMatched) },
+            { label: userCopy.ai.metricLowStock, value: String(low) },
+          ]}
+        />
+      ) : null}
       {data.items.map((item) => (
         <ToolCardRow key={item.id} href={item.href}>
           <ToolCardLines
@@ -225,6 +259,10 @@ function Field({ label, value }: { label: string; value?: string }) {
 /* -------------------------------------------------------------------- engines */
 
 export function EngineCard({ data }: { data: Ok<SearchEnginesOutput> }) {
+  const locations = new Set(
+    data.engines.map((engine) => engine.locationCode).filter((code): code is string => Boolean(code)),
+  ).size;
+  const onHand = data.engines.reduce((sum, engine) => sum + engine.quantity, 0);
   return (
     <ToolCardShell
       icon={TOOL_ICONS.searchEngines}
@@ -234,6 +272,15 @@ export function EngineCard({ data }: { data: Ok<SearchEnginesOutput> }) {
       notice={data.truncated ? copy.partialWindow : undefined}
       empty={data.engines.length === 0}
     >
+      {data.engines.length > 0 ? (
+        <CoreMetrics
+          items={[
+            { label: userCopy.ai.metricEngines, value: String(data.totalMatched) },
+            { label: userCopy.ai.metricLocations, value: String(locations) },
+            { label: userCopy.ai.metricInStock, value: String(onHand) },
+          ]}
+        />
+      ) : null}
       {data.engines.map((engine) => (
         <ToolCardRow key={engine.id} href={engine.href}>
           <ToolCardLines
@@ -374,6 +421,29 @@ export function CreateClientCard({ data }: { data: Ok<CreateClientOutput> }) {
   );
 }
 
+export function ClientsCard({ data }: { data: Ok<SearchClientsOutput> }) {
+  return (
+    <ToolCardShell
+      icon={TOOL_ICONS.searchClients}
+      title={copy.searchClients}
+      meta={data.totalMatched > 0 ? `${data.totalMatched}` : undefined}
+      href={data.href}
+      empty={data.clients.length === 0}
+    >
+      {data.clients.map((client) => (
+        <ToolCardRow key={client.id} href={client.href}>
+          <ToolCardLines
+            title={client.fullName}
+            subtitle={[client.phone, client.lastWorkOrderNumber ? `#${client.lastWorkOrderNumber}` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          />
+        </ToolCardRow>
+      ))}
+    </ToolCardShell>
+  );
+}
+
 export function IntakeJobCard({ data }: { data: Ok<CreateEngineIntakeJobOutput> }) {
   return (
     <ActionCard
@@ -399,31 +469,26 @@ export function AccountingOperationCard({ data }: { data: Ok<CreateAccountingOpe
 /* -------------------------------------------------------------------- finance */
 
 export function FinanceCard({ data }: { data: Ok<GetFinanceSummaryOutput> }) {
-  const positive = data.net >= 0;
-  const Trend = positive ? TrendingUp : TrendingDown;
   const peak = Math.max(...data.series.map((point) => Math.abs(point.value)), 1);
 
   return (
     <ToolCardShell
       icon={TOOL_ICONS.getFinanceSummary}
-      title={`${copy.getFinanceSummary} · ${data.periodDays}d`}
+      title={`${copy.financeTitle} · ${data.periodDays}d`}
       meta={`${data.operationCount}`}
       href={data.href}
       notice={data.truncated ? copy.partialWindow : undefined}
     >
-      <div className="grid grid-cols-3 gap-2 px-3 py-2.5">
-        <Metric label="Income" value={formatMoney(data.income, data.currency)} />
-        <Metric label="Expense" value={formatMoney(data.expense, data.currency)} />
-        <Metric
-          label="Net"
-          value={formatMoney(data.net, data.currency)}
-          icon={<Trend className="size-3 shrink-0 opacity-70" aria-hidden />}
-        />
-      </div>
+      <CoreMetrics
+        items={[
+          { label: userCopy.ai.metricIncome, value: formatMoney(data.income, data.currency) },
+          { label: userCopy.ai.metricExpense, value: formatMoney(data.expense, data.currency) },
+          { label: userCopy.ai.metricNet, value: formatMoney(data.net, data.currency) },
+        ]}
+      />
 
-      {/* Sparkline: pure flexbox bars, so there is no chart runtime in the chat bundle. */}
       <div
-        className="flex h-10 items-end gap-px px-3 pb-2.5"
+        className="flex h-16 items-end gap-px px-3 pb-3"
         role="img"
         aria-label={`Daily net over ${data.periodDays} days`}
       >
@@ -443,28 +508,6 @@ export function FinanceCard({ data }: { data: Ok<GetFinanceSummaryOutput> }) {
   );
 }
 
-function Metric({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <span className="min-w-0">
-      <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </span>
-      <span className="flex items-center gap-1 text-[15px] font-semibold leading-tight tabular-nums">
-        <span className="truncate">{value}</span>
-        {icon}
-      </span>
-    </span>
-  );
-}
-
 /* ------------------------------------------------------------------- location */
 
 export function LocationCard({ data }: { data: Ok<GetWarehouseLocationOutput> }) {
@@ -479,9 +522,9 @@ export function LocationCard({ data }: { data: Ok<GetWarehouseLocationOutput> })
       empty={data.items.length === 0}
     >
       <div className="grid grid-cols-3 gap-2 border-b border-border/70 px-3 py-2">
-        <Metric label="On hand" value={String(occupancy.totalOnHand)} />
-        <Metric label="Available" value={String(occupancy.totalAvailable)} />
-        <Metric label="Engines" value={String(occupancy.engineCount)} />
+        <Field label="On hand" value={String(occupancy.totalOnHand)} />
+        <Field label="Available" value={String(occupancy.totalAvailable)} />
+        <Field label="Engines" value={String(occupancy.engineCount)} />
       </div>
       {data.items.map((item) => (
         <ToolCardRow key={`${item.kind}-${item.id}`}>
@@ -517,5 +560,61 @@ export function NavigateCard({ data }: { data: Ok<NavigateToOutput> }) {
       ) : null}
       <ArrowRight className="size-3.5 shrink-0 opacity-60" aria-hidden />
     </Link>
+  );
+}
+
+export function ShiftBriefingCard({ data }: { data: Ok<GetShiftBriefingOutput> }) {
+  const briefing = userCopy.overview.coreBriefing;
+  const lead = data.attention[0];
+  return (
+    <ActionCard
+      tool="getShiftBriefing"
+      title={lead ? coreAttentionLine(lead) : briefing.quiet}
+      subtitle={`${data.companyName} · ${coreBriefingAge(data.compiledAt)}`}
+      href={data.href}
+    />
+  );
+}
+
+export function RecallKnowledgeCard({ data }: { data: Ok<RecallCompanyKnowledgeOutput> }) {
+  return (
+    <CoreSurface className="w-full" compact>
+      <CoreLockup status={copy.recallTitle} orbSize={20} />
+      {data.suggestions.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">{copy.empty}</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {data.suggestions.map((item, index) => (
+            <li
+              key={`${item.kind}-${index}`}
+              className="border-l-2 border-ai bg-background/50 py-2 pl-3 pr-2"
+            >
+              <p className="text-sm leading-snug">{item.title}</p>
+              <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                {item.explanation} · {Math.round(item.confidence * 100)}%
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CoreSurface>
+  );
+}
+
+export function RememberFactCard({ data }: { data: Ok<RememberCompanyFactOutput> }) {
+  return (
+    <CoreSurface className="w-full" compact>
+      <CoreLockup status={copy.factRemembered} orbSize={20} />
+      <p className="mt-3 border-l-2 border-ai pl-3 text-[15px] leading-snug">{data.text}</p>
+    </CoreSurface>
+  );
+}
+
+export function ForgetFactCard({ data }: { data: Ok<ForgetCompanyFactOutput> }) {
+  void data;
+  return (
+    <CoreSurface className="w-full" compact>
+      <CoreLockup status={copy.factForgotten} orbSize={20} />
+    </CoreSurface>
   );
 }

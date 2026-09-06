@@ -182,6 +182,7 @@ function NavCollapsibleItem({
           tooltip={item.title}
           size={collapsed ? "default" : "default"}
           className={cn(collapsed && "size-8! justify-center p-2!")}
+          data-guide={item.navId ? `nav-${item.navId}` : undefined}
           render={
             isEditing ? undefined : (collapsed ? collapsedHref : item.path) ? (
               <Link
@@ -218,7 +219,13 @@ function NavCollapsibleItem({
       {isEditing && item.navId ? <EditRemoveButton onClick={handleHide} /> : null}
       <CollapsibleTrigger
         className="group w-full"
-        render={<SidebarMenuButton isActive={item.isActive} tooltip={item.title} />}
+        render={
+          <SidebarMenuButton
+            isActive={item.isActive}
+            tooltip={item.title}
+            data-guide={item.navId ? `nav-${item.navId}` : undefined}
+          />
+        }
       >
         {item.icon}
         <span data-sidebar-hide-collapsed className="min-w-0 flex-1 truncate">

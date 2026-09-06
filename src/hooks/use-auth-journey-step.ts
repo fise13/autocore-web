@@ -8,6 +8,7 @@ import { useCompanyAppConfig } from "@/hooks/use-company-app-config";
 import { getAccountProviderInfo } from "@/lib/auth/account-info";
 import { can } from "@/lib/auth/permissions";
 import { isDemoSession } from "@/lib/demo/demo-config";
+import { isAiGuideSession } from "@/lib/playground/ai-guide/config";
 import {
   hasEmailVerificationComplete,
   hasWizardCompleted,
@@ -65,6 +66,10 @@ export function useAuthJourneyStep(
 
     if (
       isDemoSession({
+        email: firebaseUser.email,
+        companyId: profile.companyId ?? null,
+      }) ||
+      isAiGuideSession({
         email: firebaseUser.email,
         companyId: profile.companyId ?? null,
       })

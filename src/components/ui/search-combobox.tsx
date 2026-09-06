@@ -208,7 +208,7 @@ export function SearchCombobox({
 
       {open ? (
         <Combobox.Portal>
-          <Combobox.Positioner sideOffset={4} className="z-50">
+          <Combobox.Positioner sideOffset={4} className="z-50 [[data-guide-active]_&]:z-[75]">
             <Combobox.Popup className="max-h-72 w-[var(--anchor-width)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
               <Combobox.Empty className="px-3 py-4 text-sm text-muted-foreground">
                 {emptyMessage}

@@ -125,7 +125,11 @@ function TeamWorkspaceContent() {
       }
       action={
         canManage ? (
-          <Button type="button" onClick={() => router.push(deepActionRoutes.invite())}>
+          <Button
+            type="button"
+            data-guide="team-invite"
+            onClick={() => router.push(deepActionRoutes.invite())}
+          >
             <UserPlusIcon data-icon="inline-start" />
             {userCopy.team.invite}
           </Button>

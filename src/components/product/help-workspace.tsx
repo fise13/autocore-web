@@ -27,6 +27,7 @@ import { EnterpriseAnimatedPanel } from "@/components/layout/enterprise-animated
 import { EnterprisePanelCard } from "@/components/layout/enterprise-panel-card";
 import { EnterpriseWorkspaceShell } from "@/components/layout/enterprise-workspace-shell";
 import { HelpFeedbackForm } from "@/components/product/help-feedback-form";
+import { HelpGuidesPanel } from "@/components/guides/help-guides-panel";
 import {
   Accordion,
   AccordionContent,
@@ -282,6 +283,7 @@ export function HelpWorkspace() {
         </aside>
 
         <div className="flex min-w-0 flex-col gap-6">
+          <HelpGuidesPanel />
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

@@ -5,7 +5,9 @@ import { z } from "zod";
 import { coreToolTypes } from "@/domain/ai/tool-schemas";
 import { coreLanguageModel, isCoreConfigured } from "@/infrastructure/openrouter/core-model.server";
 import { resolveAssistantContext } from "@/lib/ai/assistant-context";
-import { buildCoreSystemPrompt } from "@/lib/ai/core-system-prompt";
+import { loadOrCompileCompanyBrain } from "@/lib/ai/company-brain.server";
+import { renderBrainForPrompt, buildCoreSystemPrompt } from "@/lib/ai/core-system-prompt";
+import { inlineChatFileParts } from "@/lib/ai/inline-chat-files";
 import { streamErrorMessage } from "@/lib/ai/stream-error-message";
 import { buildCoreTools } from "@/lib/ai/tools";
 import {
@@ -101,17 +103,29 @@ export async function POST(request: NextRequest) {
   }
 
   const context = resolveAssistantContext(parsed.data.context);
+  const toolContext = {
+    uid: access.uid,
+    companyId: access.companyId,
+    profile: access.profile,
+    scopes: access.scopes,
+  };
+
+  let brainMarkdown: string | null = null;
+  try {
+    const brain = await loadOrCompileCompanyBrain(access.companyId);
+    brainMarkdown = renderBrainForPrompt(brain, {
+      role: access.profile.role,
+      scopes: access.scopes,
+    });
+  } catch (error) {
+    console.error("[assistant:brain]", error);
+  }
 
   const result = streamText({
     model: coreLanguageModel().model,
-    system: buildCoreSystemPrompt(context),
-    messages: await convertToModelMessages(messages),
-    tools: buildCoreTools({
-      uid: access.uid,
-      companyId: access.companyId,
-      profile: access.profile,
-      scopes: access.scopes,
-    }),
+    system: buildCoreSystemPrompt(context, brainMarkdown ? { markdown: brainMarkdown } : null),
+    messages: await inlineChatFileParts(await convertToModelMessages(messages)),
+    tools: buildCoreTools(toolContext),
     stopWhen: stepCountIs(MAX_STEPS),
     // Brief upstream 502 / capacity blips should not abort a whole agent turn.
     maxRetries: 2,

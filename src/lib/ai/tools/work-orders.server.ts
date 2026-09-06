@@ -3,15 +3,23 @@ import "server-only";
 import { hasPermission, isAssignedToWorkOrder } from "@autocore/rbac";
 
 import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
-import type { WorkOrder, WorkOrderStatus } from "@/domain/work-order";
+import {
+  calculateWorkOrderPricing,
+  type WorkOrder,
+  type WorkOrderLaborLine,
+  type WorkOrderPartLine,
+  type WorkOrderStatus,
+} from "@/domain/work-order";
 import {
   adminCreateClient,
   adminCreateVehicle,
   adminCreateWorkOrder,
 } from "@/infrastructure/firestore/admin/core-ops-admin";
+import { fetchWorkOrder } from "@/infrastructure/firestore/admin/work-order-effects-admin";
 import { toolFailure, type CoreToolContext } from "@/lib/ai/tools/context";
 import {
   WorkOrderAccessError,
+  assertWorkOrderAccess,
   getMobileWorkOrderDetail,
   listMobileWorkOrders,
   transitionMobileWorkOrder,
@@ -28,7 +36,9 @@ function toSummaryPart(order: MobileWorkOrderSummary) {
     number: order.number,
     status: order.status,
     statusLabel: order.statusLabel,
+    clientId: order.clientId,
     clientName: order.clientName,
+    clientPhone: order.clientPhone,
     vehicleLabel: order.vehicleLabel,
     licensePlate: order.licensePlate,
     partLineCount: order.partLineCount,
@@ -46,7 +56,9 @@ function toSummaryFromWorkOrder(order: WorkOrder, uid: string) {
     number: order.number,
     status: order.status,
     statusLabel: STATUS_LABELS[order.status] ?? order.status,
+    clientId: order.clientId,
     clientName: order.clientName,
+    clientPhone: order.clientPhone,
     vehicleLabel: order.vehicleLabel,
     licensePlate: order.licensePlate,
     partLineCount: order.partLines.length,
@@ -60,7 +72,7 @@ function toSummaryFromWorkOrder(order: WorkOrder, uid: string) {
 
 export async function listWorkOrders(
   ctx: CoreToolContext,
-  input: { status?: string; mineOnly?: boolean; limit: number },
+  input: { status?: string; mineOnly?: boolean; includeClosed?: boolean; limit: number },
 ) {
   const scope = ctx.scopes.workOrders;
   if (scope === "none") {
@@ -72,14 +84,15 @@ export async function listWorkOrders(
   // narrow query is forced regardless of what the model asked for.
   const scopeLimited = scope === "assigned_work_orders";
   const mineOnly = scopeLimited || input.mineOnly === true;
+  const wanted = input.status?.trim().toLowerCase();
 
   const orders = await listMobileWorkOrders({
     companyId: ctx.companyId,
     uid: ctx.uid,
     mineOnly,
+    includeClosed: input.includeClosed === true || Boolean(wanted),
   });
 
-  const wanted = input.status?.trim().toLowerCase();
   const matched = wanted ? orders.filter((order) => order.status.toLowerCase() === wanted) : orders;
 
   return {
@@ -176,8 +189,9 @@ export async function transitionWorkOrderStatus(
 export async function createWorkOrder(
   ctx: CoreToolContext,
   input: {
-    clientName: string;
-    clientPhone: string;
+    clientName?: string;
+    clientPhone?: string;
+    sourceWorkOrderId?: string;
     licensePlate?: string;
     vin?: string;
     vehicleMake?: string;
@@ -191,63 +205,129 @@ export async function createWorkOrder(
     return toolFailure("Your role cannot create work orders.");
   }
 
-  const client = await adminCreateClient({
-    companyId: ctx.companyId,
-    fullName: input.clientName.trim(),
-    phone: input.clientPhone.trim(),
-    createdByUserId: ctx.uid,
-  });
+  const sourceId = input.sourceWorkOrderId?.trim();
+  let source: WorkOrder | null = null;
+  if (sourceId) {
+    source = await fetchWorkOrder(ctx.companyId, sourceId);
+    if (!source) {
+      return toolFailure(`Work order "${sourceId}" was not found.`);
+    }
+    try {
+      assertWorkOrderAccess(source, ctx.uid, ctx.scopes.workOrders);
+    } catch (error) {
+      if (error instanceof WorkOrderAccessError) {
+        return toolFailure("That work order is not assigned to you.");
+      }
+      throw error;
+    }
+  }
+
+  const clientName = (input.clientName?.trim() || source?.clientName || "").trim();
+  const clientPhone = (input.clientPhone?.trim() || source?.clientPhone || "").trim();
+  if (!source && (clientName.length < 2 || clientPhone.length < 3)) {
+    return toolFailure("Provide a client name and phone, or sourceWorkOrderId from the last job.");
+  }
+
+  let clientId = source?.clientId ?? "";
+  let resolvedName = clientName || source?.clientName || "Client";
+  let resolvedPhone = clientPhone || source?.clientPhone || "n/a";
+
+  if (!clientId) {
+    const client = await adminCreateClient({
+      companyId: ctx.companyId,
+      fullName: resolvedName,
+      phone: resolvedPhone === "n/a" ? "n/a" : resolvedPhone,
+      createdByUserId: ctx.uid,
+    });
+    clientId = client.id;
+    resolvedName = client.fullName;
+    resolvedPhone = client.phone;
+  }
 
   const make = input.vehicleMake?.trim() || "";
   const model = input.vehicleModel?.trim() || "";
-  const licensePlate = input.licensePlate?.trim() || "";
-  const vin = input.vin?.trim() || "";
-  const mileage = input.mileage ?? 0;
+  const licensePlate = input.licensePlate?.trim() || source?.licensePlate || "";
+  const vin = input.vin?.trim() || source?.vin || "";
+  const mileage = input.mileage ?? source?.mileage ?? 0;
+  let vehicleId = source?.vehicleId ?? "";
+  let vehicleLabel =
+    source?.vehicleLabel || [make, model, licensePlate].filter(Boolean).join(" ");
 
-  const vehicle = await adminCreateVehicle({
-    companyId: ctx.companyId,
-    clientId: client.id,
-    make,
-    model,
-    vin,
-    licensePlate,
-    currentMileage: mileage,
-    createdByUserId: ctx.uid,
-  });
+  if (!vehicleId) {
+    const vehicle = await adminCreateVehicle({
+      companyId: ctx.companyId,
+      clientId,
+      make,
+      model,
+      vin,
+      licensePlate,
+      currentMileage: mileage,
+      createdByUserId: ctx.uid,
+    });
+    vehicleId = vehicle.id;
+    vehicleLabel = [make, model, licensePlate].filter(Boolean).join(" ");
+  }
 
-  const laborLines = input.laborTitle?.trim()
-    ? [
-        {
-          id: `labor-${Date.now()}`,
-          title: input.laborTitle.trim(),
-          hours: 0,
-          unitPrice: 0,
-          assigneeIds: [] as string[],
-          assigneeRole: "mechanic" as const,
-        },
-      ]
+  const laborLines: WorkOrderLaborLine[] = source
+    ? source.laborLines
+        .filter((line) => line.title.trim())
+        .map((line) => ({
+          ...line,
+          id: `labor-${crypto.randomUUID()}`,
+          assigneeIds: [],
+        }))
+    : input.laborTitle?.trim()
+      ? [
+          {
+            id: `labor-${crypto.randomUUID()}`,
+            title: input.laborTitle.trim(),
+            hours: 0,
+            unitPrice: 0,
+            assigneeIds: [] as string[],
+            assigneeRole: "mechanic" as const,
+          },
+        ]
+      : [];
+
+  const partLines: WorkOrderPartLine[] = source
+    ? source.partLines
+        .filter((line) => line.name.trim() && line.quantity > 0)
+        .map((line) => ({
+          id: `part-${crypto.randomUUID()}`,
+          source: "adhoc" as const,
+          sku: line.sku,
+          name: line.name,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          unitCost: line.unitCost,
+          specificCategoryId: line.specificCategoryId,
+          specificCategoryName: line.specificCategoryName,
+          warrantyTemplateId: line.warrantyTemplateId,
+        }))
     : [];
+
+  const pricing = calculateWorkOrderPricing(laborLines, partLines, []);
 
   const order = await adminCreateWorkOrder({
     companyId: ctx.companyId,
-    clientId: client.id,
-    clientName: client.fullName,
-    clientPhone: client.phone,
-    vehicleId: vehicle.id,
-    vehicleLabel: [make, model, licensePlate].filter(Boolean).join(" "),
+    clientId,
+    clientName: resolvedName,
+    clientPhone: resolvedPhone,
+    vehicleId,
+    vehicleLabel,
     vin,
     licensePlate,
     mileage,
-    comment: input.comment?.trim(),
+    comment:
+      input.comment?.trim() ||
+      (source ? `Copied from work order #${source.number}` : undefined),
     laborLines,
-    partLines: [],
+    partLines,
     motorLines: [],
     pricing: {
-      laborTotal: 0,
-      partsTotal: 0,
+      ...pricing,
       motorsTotal: 0,
-      discount: 0,
-      grandTotal: 0,
+      grandTotal: Math.max(0, pricing.laborTotal + pricing.partsTotal - pricing.discount),
     },
     paymentAccount: "cashbox",
     paymentMethod: "cash",
@@ -257,7 +337,7 @@ export async function createWorkOrder(
   return {
     ok: true as const,
     order: toSummaryFromWorkOrder(order, ctx.uid),
-    clientId: client.id,
-    vehicleId: vehicle.id,
+    clientId,
+    vehicleId,
   };
 }

@@ -93,7 +93,9 @@ export const workOrderSummarySchema = z.object({
   number: z.string(),
   status: z.string(),
   statusLabel: z.string(),
+  clientId: z.string().optional(),
   clientName: z.string().optional(),
+  clientPhone: z.string().optional(),
   vehicleLabel: z.string().optional(),
   licensePlate: z.string(),
   partLineCount: z.number(),
@@ -107,6 +109,10 @@ export const workOrderSummarySchema = z.object({
 export const listWorkOrdersInput = z.object({
   status: z.string().trim().max(40).optional().describe("Filter by work-order status"),
   mineOnly: z.boolean().optional().describe("Only orders assigned to the current user"),
+  includeClosed: z
+    .boolean()
+    .optional()
+    .describe("Include completed and delivered jobs. Use for last client / last purchase."),
   limit,
 });
 
@@ -344,8 +350,29 @@ export const transitionWorkOrderStatusOutput = result(
 );
 
 export const createWorkOrderInput = z.object({
-  clientName: z.string().trim().min(2).max(120),
-  clientPhone: z.string().trim().min(3).max(40),
+  clientName: z
+    .string()
+    .trim()
+    .min(2)
+    .max(120)
+    .optional()
+    .describe("Required unless sourceWorkOrderId is set"),
+  clientPhone: z
+    .string()
+    .trim()
+    .min(3)
+    .max(40)
+    .optional()
+    .describe("Required unless sourceWorkOrderId is set"),
+  sourceWorkOrderId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .optional()
+    .describe(
+      "Clone client, vehicle, parts and labor from this work order. Use for last client / same as last job.",
+    ),
   licensePlate: z.string().trim().max(40).optional().default(""),
   vin: z.string().trim().max(40).optional().default(""),
   vehicleMake: z.string().trim().max(60).optional().default(""),
@@ -375,6 +402,33 @@ export const createClientOutput = result(
     clientId: z.string(),
     fullName: z.string(),
     phone: z.string(),
+    href: internalHref,
+  }),
+);
+
+export const searchClientsInput = z.object({
+  query: z
+    .string()
+    .trim()
+    .max(80)
+    .optional()
+    .describe("Name or phone. Empty returns the most recent customers."),
+  limit,
+});
+
+export const searchClientsOutput = result(
+  z.object({
+    clients: z.array(
+      z.object({
+        id: z.string(),
+        fullName: z.string(),
+        phone: z.string(),
+        lastWorkOrderId: z.string().optional(),
+        lastWorkOrderNumber: z.string().optional(),
+        href: internalHref,
+      }),
+    ),
+    totalMatched: z.number(),
     href: internalHref,
   }),
 );
@@ -476,6 +530,101 @@ export const navigateToOutput = result(
   }),
 );
 
+/* -------------------------------------------------------------------- guides */
+
+export const showGuideInput = z.object({
+  guideId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .describe("Interactive walkthrough id, e.g. create-work-order or invite-team-member"),
+});
+
+export const showGuideOutput = result(
+  z.object({
+    guideId: z.string(),
+    title: z.string(),
+    summary: z.string(),
+  }),
+);
+
+const briefingMetric = z.object({
+  id: z.enum(["lowStock", "openWorkOrders", "enginesAvailable", "financeNet7d"]),
+  value: z.string(),
+  tone: z.enum(["default", "attention"]),
+});
+
+const briefingAttention = z.object({
+  id: z.enum(["lowStock", "openWorkOrders", "negativeNet", "noEngines"]),
+  count: z.number().optional(),
+});
+
+export const getShiftBriefingInput = z.object({}).describe("No arguments");
+
+export const getShiftBriefingOutput = result(
+  z.object({
+    companyName: z.string(),
+    compiledAt: z.string(),
+    stale: z.boolean(),
+    attention: z.array(briefingAttention),
+    pulse: z.array(briefingMetric),
+    askPrompt: z.string(),
+    href: internalHref,
+  }),
+);
+
+export const recallCompanyKnowledgeInput = z.object({
+  engineCode: z.string().trim().max(80).optional().describe("Engine code, e.g. EJ251"),
+  brandName: z.string().trim().max(80).optional(),
+  clientId: z.string().trim().max(120).optional(),
+  mechanicId: z.string().trim().max(120).optional(),
+  query: z.string().trim().max(120).optional().describe("Part, SKU or free-text habit lookup"),
+  skus: z.array(z.string().trim().min(1).max(80)).max(12).optional(),
+  limit: z.number().int().min(1).max(20).default(8),
+});
+
+export const recallCompanyKnowledgeOutput = result(
+  z.object({
+    suggestions: z.array(
+      z.object({
+        title: z.string(),
+        explanation: z.string(),
+        kind: z.string(),
+        confidence: z.number(),
+        support: z.number(),
+      }),
+    ),
+  }),
+);
+
+export const rememberCompanyFactInput = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2000)
+    .describe("A company rule or fact to remember, in the owner's words"),
+  tags: z.array(z.string().trim().min(1).max(40)).max(8).optional(),
+});
+
+export const rememberCompanyFactOutput = result(
+  z.object({
+    memoryId: z.string(),
+    text: z.string(),
+  }),
+);
+
+export const forgetCompanyFactInput = z.object({
+  memoryId: z.string().trim().min(1).max(120),
+});
+
+export const forgetCompanyFactOutput = result(
+  z.object({
+    memoryId: z.string(),
+  }),
+);
+
 /* ------------------------------------------------------------------- registry */
 
 /**
@@ -512,6 +661,7 @@ export const coreToolTypes = {
     outputSchema: ensureWorkOrderDocumentsOutput,
   },
   createClient: { inputSchema: createClientInput, outputSchema: createClientOutput },
+  searchClients: { inputSchema: searchClientsInput, outputSchema: searchClientsOutput },
   searchEngines: { inputSchema: searchEnginesInput, outputSchema: searchEnginesOutput },
   createEngine: { inputSchema: createEngineInput, outputSchema: createEngineOutput },
   sellEngine: { inputSchema: sellEngineInput, outputSchema: sellEngineOutput },
@@ -525,6 +675,17 @@ export const coreToolTypes = {
     outputSchema: createAccountingOperationOutput,
   },
   navigateTo: { inputSchema: navigateToInput, outputSchema: navigateToOutput },
+  showGuide: { inputSchema: showGuideInput, outputSchema: showGuideOutput },
+  getShiftBriefing: { inputSchema: getShiftBriefingInput, outputSchema: getShiftBriefingOutput },
+  recallCompanyKnowledge: {
+    inputSchema: recallCompanyKnowledgeInput,
+    outputSchema: recallCompanyKnowledgeOutput,
+  },
+  rememberCompanyFact: {
+    inputSchema: rememberCompanyFactInput,
+    outputSchema: rememberCompanyFactOutput,
+  },
+  forgetCompanyFact: { inputSchema: forgetCompanyFactInput, outputSchema: forgetCompanyFactOutput },
 } as const;
 
 export type CoreToolName = keyof typeof coreToolTypes;
@@ -543,6 +704,7 @@ export type CreateEngineOutput = z.infer<typeof createEngineOutput>;
 export type GetFinanceSummaryOutput = z.infer<typeof getFinanceSummaryOutput>;
 export type GetWarehouseLocationOutput = z.infer<typeof getWarehouseLocationOutput>;
 export type NavigateToOutput = z.infer<typeof navigateToOutput>;
+export type ShowGuideOutput = z.infer<typeof showGuideOutput>;
 export type ListCapabilitiesOutput = z.infer<typeof listCapabilitiesOutput>;
 export type CreateInventoryItemOutput = z.infer<typeof createInventoryItemOutput>;
 export type ReceiveStockOutput = z.infer<typeof receiveStockOutput>;
@@ -550,7 +712,12 @@ export type RelocateStockOutput = z.infer<typeof relocateStockOutput>;
 export type TransitionWorkOrderStatusOutput = z.infer<typeof transitionWorkOrderStatusOutput>;
 export type CreateWorkOrderOutput = z.infer<typeof createWorkOrderOutput>;
 export type CreateClientOutput = z.infer<typeof createClientOutput>;
+export type SearchClientsOutput = z.infer<typeof searchClientsOutput>;
 export type EnsureWorkOrderDocumentsOutput = z.infer<typeof ensureWorkOrderDocumentsOutput>;
 export type SellEngineOutput = z.infer<typeof sellEngineOutput>;
 export type CreateEngineIntakeJobOutput = z.infer<typeof createEngineIntakeJobOutput>;
 export type CreateAccountingOperationOutput = z.infer<typeof createAccountingOperationOutput>;
+export type GetShiftBriefingOutput = z.infer<typeof getShiftBriefingOutput>;
+export type RecallCompanyKnowledgeOutput = z.infer<typeof recallCompanyKnowledgeOutput>;
+export type RememberCompanyFactOutput = z.infer<typeof rememberCompanyFactOutput>;
+export type ForgetCompanyFactOutput = z.infer<typeof forgetCompanyFactOutput>;

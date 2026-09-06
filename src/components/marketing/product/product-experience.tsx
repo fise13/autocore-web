@@ -62,13 +62,13 @@ export function ProductExperience() {
         </div>
 
         <motion.div
-          className="product-walk-hero-app"
+          className="product-walk-hero-app is-playground"
           initial={reduced ? false : { opacity: 0, y: 32 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.05, delay: 0.32, ease: EASE }}
         >
           <ScaledDesktopStage>
-            <ProductAppSurface compact className="product-walk-app-surface" />
+            <ProductAppSurface compact playground className="product-walk-app-surface" />
           </ScaledDesktopStage>
         </motion.div>
       </section>

@@ -25,6 +25,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   type ChartConfig,
   ChartContainer,
   ChartLegend,
@@ -41,11 +56,16 @@ import {
   landingDemoWorkOrders,
 } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
+import { AlertTriangle } from "lucide-react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const mc = landingDemoOverview;
 
 const REVENUE_VALUES = [84000, 62000, 98000, 74000, 126000, 41000, 28000] as const;
+const REVENUE_VALUES_30 = [
+  54000, 61000, 48000, 72000, 88000, 41000, 29000, 84000, 62000, 98000, 74000, 126000, 41000, 28000, 91000,
+  67000, 104000, 80000, 118000, 52000, 33000, 76000, 59000, 89000, 71000, 132000, 44000, 31000, 86000, 64000,
+] as const;
 const OPS_VALUES = [
   { income: 84000, expense: 22000 },
   { income: 62000, expense: 18500 },
@@ -60,10 +80,14 @@ const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 type OverviewSurfaceProps = {
   className?: string;
+  /** Full playground grid: attention, team, recent ops, period toggle. */
+  full?: boolean;
 };
 
+type RevenuePeriod = 7 | 30;
+
 /** Real AutoCore Overview grid — charts rise on enter, no device chrome. */
-export function OverviewSurface({ className }: OverviewSurfaceProps) {
+export function OverviewSurface({ className, full = false }: OverviewSurfaceProps) {
   const t = useTranslations("marketing.landing.productChrome");
   const { motorsSnapshot } = useDemoChrome();
   const chartUid = useId().replace(/:/g, "");
@@ -79,16 +103,22 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
   const reduced = useReducedMotion();
   const inView = useInView(rootRef, { once: true, amount: 0.28 });
   const play = Boolean(reduced || inView);
+  const [periodDays, setPeriodDays] = useState<RevenuePeriod>(7);
 
   const weekdays = useMemo(
     () => WEEKDAY_KEYS.map((key) => t(`weekdays.${key}`)),
     [t],
   );
 
-  const revenueFull = useMemo(
-    () => weekdays.map((label, index) => ({ label, revenue: REVENUE_VALUES[index] })),
-    [weekdays],
-  );
+  const revenueFull = useMemo(() => {
+    if (periodDays === 7) {
+      return weekdays.map((label, index) => ({ label, revenue: REVENUE_VALUES[index] ?? 0 }));
+    }
+    return REVENUE_VALUES_30.map((revenue, index) => ({
+      label: String(index + 1),
+      revenue,
+    }));
+  }, [periodDays, weekdays]);
   const opsFull = useMemo(
     () =>
       weekdays.map((day, index) => ({
@@ -215,7 +245,9 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
   ]);
 
   const revenueGrowth =
-    ((REVENUE_VALUES[REVENUE_VALUES.length - 1] - REVENUE_VALUES[0]) / REVENUE_VALUES[0]) * 100;
+    ((revenueFull[revenueFull.length - 1]?.revenue ?? 0) - (revenueFull[0]?.revenue ?? 0)) /
+    Math.max(1, revenueFull[0]?.revenue ?? 1) *
+    100;
   const woGrowth =
     ((WORK_ORDER_VALUES[WORK_ORDER_VALUES.length - 1] - WORK_ORDER_VALUES[0]) /
       Math.max(1, WORK_ORDER_VALUES[0])) *
@@ -258,8 +290,22 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
     },
   ];
 
+  const team = full
+    ? (t.raw("team.people") as Array<{ name: string; role: string; status: string; jobs: string }>)
+    : [];
+  const recentOps = full
+    ? (t.raw("recentOps.rows") as Array<{ type: string; date: string; amount: string; status: string }>)
+    : [];
+  const attentionItems = full
+    ? (t.raw("attention.items") as Array<{ count: string; text: string }>)
+    : [];
+
   return (
-    <div ref={rootRef} className={cn("exp-outcome-mc", className)} aria-label="Overview">
+    <div
+      ref={rootRef}
+      className={cn("exp-outcome-mc", full && "is-playground", className)}
+      aria-label="Overview"
+    >
       <div className="exp-outcome-mc-top">
         <p className="exp-outcome-mc-title">Overview</p>
         <Badge variant="outline" className="font-normal text-xs">
@@ -268,6 +314,26 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
       </div>
 
       <div className="exp-outcome-mc-grid">
+        {full && attentionItems.length > 0 ? (
+          <div className="exp-outcome-mc-span-full rounded-xl border bg-card/60 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="size-4 text-amber-500" aria-hidden />
+              {t("attention.title")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {attentionItems.map((item) => (
+                <span
+                  key={item.text}
+                  className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+                >
+                  <span className="font-semibold tabular-nums">{item.count}</span>
+                  <span>{item.text}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {stats.map((stat, index) => (
           <Card key={stat.key} className="shadow-none dark:ring-0">
             <CardHeader>
@@ -304,12 +370,30 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
         <McPanel className="exp-outcome-mc-span-3 shadow-none dark:ring-0">
           <McPanelHeader
             title={t("charts.revenue")}
-            description={t("charts.revenueDesc")}
+            description={periodDays === 30 ? t("charts.revenueDesc30") : t("charts.revenueDesc")}
             badge={
               <Delta value={revenueGrowth} variant="badge">
                 <DeltaIcon variant="trend" />
                 <DeltaValue />
               </Delta>
+            }
+            action={
+              full ? (
+                <Select
+                  value={String(periodDays)}
+                  onValueChange={(value) => {
+                    if (value === "7" || value === "30") setPeriodDays(Number(value) as RevenuePeriod);
+                  }}
+                >
+                  <SelectTrigger aria-label={t("charts.periodAria")} className="w-full min-w-28 sm:w-fit" size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="7">{t("charts.period7")}</SelectItem>
+                    <SelectItem value="30">{t("charts.period30")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null
             }
           />
           <McPanelBody>
@@ -330,7 +414,8 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
                 <XAxis
                   axisLine={false}
                   dataKey="label"
-                  interval={0}
+                  interval={periodDays <= 7 ? 0 : "preserveStartEnd"}
+                  minTickGap={periodDays >= 30 ? 28 : undefined}
                   tickLine={false}
                   tickMargin={8}
                 />
@@ -520,7 +605,11 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
         </McPanel>
 
         <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
-          <McPanelHeader title={t("activity")} bordered />
+          <McPanelHeader
+            title={t("activity")}
+            description={full ? t("activityDesc") : undefined}
+            bordered
+          />
           <McPanelBody className="pt-2">
             <ul className="exp-outcome-mc-list">
               {activityFeed.map((row, index) => (
@@ -543,6 +632,80 @@ export function OverviewSurface({ className }: OverviewSurfaceProps) {
             </ul>
           </McPanelBody>
         </McPanel>
+
+        {full ? (
+          <McPanel className="exp-outcome-mc-span-2 shadow-none dark:ring-0">
+            <McPanelHeader title={t("team.title")} description={t("team.description")} bordered />
+            <McPanelBody className="p-0">
+              <ul className="exp-outcome-mc-list">
+                {team.map((person, index) => (
+                  <motion.li
+                    key={person.name}
+                    className="exp-outcome-mc-row"
+                    initial={reduced ? false : { opacity: 0, y: 8 }}
+                    animate={play ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+                    transition={{ duration: 0.4, delay: play ? 0.48 + index * 0.06 : 0, ease: EASE }}
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          person.status === "online" ? "bg-emerald-400" : "bg-muted-foreground/50",
+                        )}
+                        aria-hidden
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-sm">{person.name}</p>
+                        <p className="truncate text-muted-foreground text-xs">{person.role}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-muted-foreground text-xs">
+                      {person.jobs || t(`team.${person.status}`)}
+                    </span>
+                  </motion.li>
+                ))}
+              </ul>
+            </McPanelBody>
+          </McPanel>
+        ) : null}
+
+        {full ? (
+          <McPanel className="exp-outcome-mc-span-2 gap-0 shadow-none dark:ring-0">
+            <McPanelHeader
+              title={t("recentOps.title")}
+              description={t("recentOps.description")}
+              bordered
+            />
+            <McPanelBody className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-6">{t("recentOps.type")}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{t("recentOps.date")}</TableHead>
+                    <TableHead className="text-right">{t("recentOps.amount")}</TableHead>
+                    <TableHead className="pr-6 text-right">{t("recentOps.status")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentOps.map((row) => (
+                    <TableRow className="h-14 hover:bg-transparent" key={`${row.type}-${row.date}-${row.amount}`}>
+                      <TableCell className="max-w-36 truncate pl-6 font-medium">{row.type}</TableCell>
+                      <TableCell className="hidden text-muted-foreground text-sm tabular-nums sm:table-cell">
+                        {row.date}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{row.amount}</TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <Badge variant="outline" className="font-normal">
+                          {row.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </McPanelBody>
+          </McPanel>
+        ) : null}
       </div>
     </div>
   );

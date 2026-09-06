@@ -4,9 +4,11 @@ import { getToolName, isToolUIPart } from "ai";
 import type { ReactNode } from "react";
 
 import { ToolActivity, ToolError } from "@/components/ai/tools/tool-activity";
+import { ShowGuideCard } from "@/components/guides/show-guide-card";
 import {
   AccountingOperationCard,
   CapabilitiesCard,
+  ClientsCard,
   CreateClientCard,
   CreateEngineCard,
   CreateInventoryItemCard,
@@ -14,12 +16,16 @@ import {
   EngineCard,
   EnsureDocumentsCard,
   FinanceCard,
+  ForgetFactCard,
   IntakeJobCard,
   LocationCard,
   NavigateCard,
+  RecallKnowledgeCard,
   ReceiveStockCard,
   RelocateStockCard,
+  RememberFactCard,
   SellEngineCard,
+  ShiftBriefingCard,
   StockCard,
   StockLocationCard,
   TransitionWorkOrderCard,
@@ -48,7 +54,9 @@ function activityDetail(input: unknown): string | undefined {
     "sku",
     "locationId",
     "workOrderId",
+    "sourceWorkOrderId",
     "label",
+    "guideId",
     "status",
     "serialCode",
     "engineCode",
@@ -59,6 +67,8 @@ function activityDetail(input: unknown): string | undefined {
     "fullName",
     "itemId",
     "motorId",
+    "memoryId",
+    "engineCode",
     "toLocationCode",
     "type",
   ]) {
@@ -74,13 +84,14 @@ function activityDetail(input: unknown): string | undefined {
 /**
  * Render one `tool-*` message part.
  */
-export function ToolPartRenderer({ part }: { part: CoreUIPart }) {
+export function ToolPartRenderer({ part, live = true }: { part: CoreUIPart; live?: boolean }) {
   if (!isToolUIPart(part)) return null;
 
   const name = getToolName(part);
   const toolName: CoreToolName | "generic" = isCoreToolName(name) ? name : "generic";
 
   if (part.state === "input-streaming" || part.state === "input-available") {
+    if (!live) return null;
     return <ToolActivity tool={toolName} detail={activityDetail(part.input)} />;
   }
 
@@ -115,6 +126,8 @@ export function ToolPartRenderer({ part }: { part: CoreUIPart }) {
       return renderOk(part.output, (data) => <EnsureDocumentsCard data={data} />);
     case "tool-createClient":
       return renderOk(part.output, (data) => <CreateClientCard data={data} />);
+    case "tool-searchClients":
+      return renderOk(part.output, (data) => <ClientsCard data={data} />);
     case "tool-searchEngines":
       return renderOk(part.output, (data) => <EngineCard data={data} />);
     case "tool-createEngine":
@@ -131,6 +144,16 @@ export function ToolPartRenderer({ part }: { part: CoreUIPart }) {
       return renderOk(part.output, (data) => <LocationCard data={data} />);
     case "tool-navigateTo":
       return renderOk(part.output, (data) => <NavigateCard data={data} />);
+    case "tool-showGuide":
+      return renderOk(part.output, (data) => <ShowGuideCard data={data} />);
+    case "tool-getShiftBriefing":
+      return renderOk(part.output, (data) => <ShiftBriefingCard data={data} />);
+    case "tool-recallCompanyKnowledge":
+      return renderOk(part.output, (data) => <RecallKnowledgeCard data={data} />);
+    case "tool-rememberCompanyFact":
+      return renderOk(part.output, (data) => <RememberFactCard data={data} />);
+    case "tool-forgetCompanyFact":
+      return renderOk(part.output, (data) => <ForgetFactCard data={data} />);
     default:
       return <ToolActivity tool="generic" />;
   }

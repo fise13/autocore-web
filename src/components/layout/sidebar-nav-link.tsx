@@ -28,6 +28,7 @@ export type SidebarNavLinkProps = {
   activeLayoutId?: string;
   animationIndex?: number;
   animateEnter?: boolean;
+  guideId?: string;
 };
 
 export const SidebarNavLink = memo(function SidebarNavLink({
@@ -42,6 +43,7 @@ export const SidebarNavLink = memo(function SidebarNavLink({
   activeLayoutId = APP_SIDEBAR_ACTIVE_LAYOUT_ID,
   animationIndex = 0,
   animateEnter = true,
+  guideId,
 }: SidebarNavLinkProps) {
   const router = useRouter();
   const { tier } = usePerformanceTier();
@@ -67,6 +69,7 @@ export const SidebarNavLink = memo(function SidebarNavLink({
       onClick={navigate}
       onMouseEnter={prefetch}
       onFocus={prefetch}
+      data-guide={guideId}
       className={cn(
         "relative cursor-pointer",
         motionEnabled && active && "bg-transparent data-active:bg-transparent",

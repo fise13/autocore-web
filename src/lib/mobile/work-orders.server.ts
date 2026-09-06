@@ -75,7 +75,9 @@ export type MobileWorkOrderSummary = {
   number: string;
   status: WorkOrderStatus;
   statusLabel: string;
+  clientId?: string;
   clientName?: string;
+  clientPhone?: string;
   vehicleLabel?: string;
   licensePlate: string;
   comment?: string;
@@ -159,7 +161,9 @@ function toSummary(order: WorkOrder, uid: string): MobileWorkOrderSummary {
     number: order.number,
     status: order.status,
     statusLabel: STATUS_LABELS[order.status],
+    clientId: order.clientId,
     clientName: order.clientName,
+    clientPhone: order.clientPhone,
     vehicleLabel: order.vehicleLabel,
     licensePlate: order.licensePlate,
     comment: order.comment,
@@ -207,11 +211,18 @@ export async function listMobileWorkOrders(params: {
   companyId: string;
   uid: string;
   mineOnly: boolean;
+  /** When true, include draft / completed / delivered. Cancelled stays excluded. */
+  includeClosed?: boolean;
 }): Promise<MobileWorkOrderSummary[]> {
   const orders = await listWorkOrders(params.companyId);
+  const includeClosed = params.includeClosed === true;
 
   return orders
-    .filter((order) => MOBILE_OPEN_STATUSES.has(order.status))
+    .filter((order) => {
+      if (order.status === "cancelled") return false;
+      if (includeClosed) return true;
+      return MOBILE_OPEN_STATUSES.has(order.status);
+    })
     .filter((order) => (params.mineOnly ? isAssignedToWorkOrder(order, params.uid) : true))
     .map((order) => toSummary(order, params.uid));
 }
