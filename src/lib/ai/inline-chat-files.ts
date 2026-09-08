@@ -21,7 +21,7 @@ function dataUrlFromFilePart(part: FilePart): string | null {
 }
 
 function decodeDataUrl(url: string): { mediaType: string; bytes: Uint8Array } | null {
-  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(url);
+  const match = /^data:([^;,]+)?(;base64)?,([\s\S]*)$/.exec(url);
   if (!match) return null;
   const mediaType = match[1]?.trim() || "application/octet-stream";
   const payload = match[3] ?? "";
