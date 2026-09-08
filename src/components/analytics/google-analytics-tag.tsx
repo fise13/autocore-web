@@ -10,41 +10,62 @@ import {
   resolveGoogleAdsId,
   resolveMeasurementId,
 } from "@/lib/analytics/ga-config";
+import { gtagConsentUpdatePayload } from "@/lib/analytics/gtag-bootstrap";
+
+type GtagFn = (command: string, ...args: unknown[]) => void;
+
+function applyGtagConsentUpdate(consent: "granted" | "denied"): boolean {
+  const gtag = (window as Window & { gtag?: GtagFn }).gtag;
+  if (typeof gtag !== "function") return false;
+  gtag("consent", "update", gtagConsentUpdatePayload(consent));
+  return true;
+}
+
+type GoogleAnalyticsTagProps = {
+  /** True when `GoogleTagHead` already put gtag.js in the document. */
+  embedded?: boolean;
+};
 
 /**
- * Loads the Google tag for whichever host the page is being served from.
+ * Either loads the Google tag after consent (local / preview) or, when the
+ * tag is already in `<head>`, only pushes Consent Mode updates.
  *
- * The host is read on the client, after mount, on purpose. Marketing and the
- * product are one Next app on two domains, so the id can differ per request —
- * but resolving that server-side means `headers()` in the root layout, which
- * would turn every statically rendered marketing page dynamic. Those pages are
- * the ones competing for search position, so a few milliseconds of delay before
- * the tag loads is the cheaper trade.
- *
- * Rendering nothing on the server and the tag on the client is also what keeps
- * this free of hydration mismatches.
- *
- * Nothing loads before consent is granted. That is what makes the banner a
- * gate rather than a notice: no script, no cookie, no request to Google until
- * someone has said yes.
- *
- * GA4 (`G-…`) and Google Ads (`AW-…`) share one gtag bootstrap. The Ads
- * `config` line is the conversion-linker Google's snippet asks for when the
- * Analytics tag is already on the site.
+ * Production embeds the snippet in HTML so Google Ads can detect
+ * `G-QEVTMP0BYB` and `AW-18344172044`. Cookies and ads storage stay denied
+ * until this component sees `granted`.
  */
-export function GoogleAnalyticsTag() {
+export function GoogleAnalyticsTag({ embedded = false }: GoogleAnalyticsTagProps) {
   const consent = useSyncExternalStore(subscribeConsent, getConsent, getServerConsent);
   const [ids, setIds] = useState<{ ga: string; ads: string } | null>(null);
 
   useEffect(() => {
+    if (embedded) return;
     if (!isAnalyticsEnabled()) return;
     const host = window.location.hostname;
     setIds({
       ga: resolveMeasurementId(host),
       ads: resolveGoogleAdsId(host),
     });
-  }, []);
+  }, [embedded]);
 
+  useEffect(() => {
+    if (!embedded) return;
+    if (consent !== "granted" && consent !== "denied") return;
+
+    const apply = (): boolean => applyGtagConsentUpdate(consent);
+    if (apply()) return;
+
+    const interval = window.setInterval(() => {
+      if (apply()) window.clearInterval(interval);
+    }, 50);
+    const timeout = window.setTimeout(() => window.clearInterval(interval), 8_000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [consent, embedded]);
+
+  if (embedded) return null;
   if (consent !== "granted") return null;
   if (!ids) return null;
 

@@ -2266,7 +2266,7 @@
           "id": "cookies",
           "title": "8. Cookies and analytics",
           "paragraphs": [
-            "The marketing site and the AutoCore app use Google Analytics 4 and the Google Ads conversion tag to understand how visitors find us and where people get stuck, and to measure advertising campaigns. They set cookies and record events such as page views, sign-up, workspace creation, trial start, and subscription purchase.",
+            "The marketing site and the AutoCore app load the Google tag (Google Analytics 4 and Google Ads) so we can understand how visitors find us and measure advertising campaigns, including subscription conversions. Measurement cookies are set only after you accept analytics in the cookie banner; until then the tag runs in Consent Mode with storage denied. After consent, events such as page views, sign-up, workspace creation, trial start, and subscription purchase may be recorded.",
             "We do not send your name, email address, company name, or any content you store in AutoCore to Google Analytics. Events carry only which step occurred and, for a purchase, which billing interval was chosen.",
             "Within the AutoCore app, cookies are also used to maintain your sign-in session; these are technical and cannot be switched off without breaking sign-in.",
             "You can opt out of Google Analytics on any site by installing the Google Analytics Opt-out Browser Add-on, or by blocking analytics cookies in your browser. Doing so does not affect your use of AutoCore."

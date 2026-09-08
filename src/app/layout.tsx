@@ -5,8 +5,10 @@ import { Analytics } from "@vercel/analytics/react";
 import { CookieConsentBanner } from "@/components/analytics/cookie-consent-banner";
 import { GoogleAdsSubscriptionConversion } from "@/components/analytics/google-ads-subscription-conversion";
 import { GoogleAnalyticsTag } from "@/components/analytics/google-analytics-tag";
+import { GoogleTagHead } from "@/components/analytics/google-tag-head";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
+import { embeddedGoogleTagIds } from "@/lib/analytics/gtag-bootstrap";
 import { getAppUrl } from "@/lib/site-urls";
 
 const geistSans = Geist({
@@ -38,22 +40,27 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const googleTagEmbedded = embeddedGoogleTagIds().length > 0;
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <GoogleTagHead />
+      </head>
       <body className="min-h-full flex flex-col">
         <AppProviders>{children}</AppProviders>
         <Analytics />
         {/*
-          Production hosts load GA4 (G-QEVTMP0BYB) plus Google Ads (AW-18344172044).
-          Local and preview builds stay silent unless an env id is set, so they
-          never write into the property the ads account is judged on.
-          See `lib/analytics/ga-config.ts`.
+          Production HTML embeds GA4 (G-QEVTMP0BYB) plus Google Ads
+          (AW-18344172044) in <head> with Consent Mode denied until the banner
+          is answered. Local and preview stay silent unless an env id is set.
+          See `lib/analytics/gtag-bootstrap.ts`.
         */}
-        <GoogleAnalyticsTag />
+        <GoogleAnalyticsTag embedded={googleTagEmbedded} />
         <Suspense fallback={null}>
           <GoogleAdsSubscriptionConversion />
         </Suspense>

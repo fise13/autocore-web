@@ -23,6 +23,9 @@ import { cn } from "@/lib/utils";
  * consent prompt without choosing is not consent, and offering it would only
  * produce visitors in an ambiguous state forever.
  *
+ * On production the Google tag is already in the page (Consent Mode, storage
+ * denied). Accepting here is what grants cookies; declining leaves them denied.
+ *
  * The copy names the *purpose* — analytics — rather than the vendor. That is
  * the level of detail a banner is for; which provider does the measuring is in
  * the privacy policy this links to, where there is room to be exact.

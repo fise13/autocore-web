@@ -21,11 +21,11 @@ import { getHostKind } from "@/lib/site-urls";
  * The second shape is supported because reporting per surface is a legitimate
  * thing to want. It is just the wrong default when the goal is Google Ads.
  *
- * Production hosts load `PRODUCTION_GA_MEASUREMENT_ID` even when the env var is
- * unset, so a Google Ads conversion tag cannot silently go missing after a
+ * Production HTML embeds `PRODUCTION_GA_MEASUREMENT_ID` even when the env var
+ * is unset, so a Google Ads conversion tag cannot silently go missing after a
  * deploy. Localhost and Vercel previews stay silent unless an id is set
  * explicitly — those sessions must not land in the property the ads account
- * is judged on.
+ * is judged on. See `gtag-bootstrap.ts` for the document snippet.
  */
 
 /**

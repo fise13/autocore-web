@@ -59,7 +59,7 @@ export type AnalyticsParams = {
 };
 
 type GtagWindow = Window & {
-  gtag?: (command: "event" | "config" | "js", ...args: unknown[]) => void;
+  gtag?: (command: "event" | "config" | "js" | "consent" | "set", ...args: unknown[]) => void;
 };
 
 const ADS_SUBSCRIPTION_CONVERSION_LOCK = "autocore-aw-subscription-conversion";

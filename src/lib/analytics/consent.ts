@@ -1,15 +1,15 @@
 "use client";
 
 import { getUrlHost, getMarketingUrl } from "@/lib/site-urls";
+import { CONSENT_COOKIE_NAME } from "@/lib/analytics/gtag-bootstrap";
 
 /**
  * Cookie consent for analytics.
  *
- * A banner that does not actually gate anything is decoration, so this is the
- * switch the Google tag reads: nothing loads and no cookie is written until
- * someone chooses. That is the strict reading of consent — a visitor who
- * ignores the banner is not measured — which costs some data in exchange for
- * the banner meaning what it says.
+ * Production pages embed the Google tag in HTML (Consent Mode v2) so Google
+ * Ads can detect it. Storage and ads cookies stay denied until this cookie is
+ * `granted` — a visitor who ignores the banner is not measured. That costs
+ * some data in exchange for the banner meaning what it says.
  *
  * **Stored in a cookie on the shared parent domain, not `localStorage`.**
  * Marketing and the product are separate origins, so a `localStorage` answer on
@@ -19,8 +19,6 @@ import { getUrlHost, getMarketingUrl } from "@/lib/site-urls";
  * also the normal thing to do: a consent record is strictly necessary, so it
  * needs no consent of its own.
  */
-
-const COOKIE_NAME = "autocore_cookie_consent";
 
 /** A year: long enough not to nag, short enough that consent is periodically refreshed. */
 const MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
@@ -38,7 +36,7 @@ let cached: ConsentState | null = null;
 function parseCookie(source: string): ConsentState {
   for (const part of source.split(";")) {
     const [rawName, ...rest] = part.split("=");
-    if (rawName.trim() !== COOKIE_NAME) continue;
+    if (rawName.trim() !== CONSENT_COOKIE_NAME) continue;
     const value = rest.join("=").trim();
     if (value === "granted" || value === "denied") return value;
   }
@@ -69,7 +67,7 @@ export function buildConsentCookie(
 ): string {
   const domain = consentCookieDomain(hostname, sharedHost);
   return [
-    `${COOKIE_NAME}=${value}`,
+    `${CONSENT_COOKIE_NAME}=${value}`,
     "path=/",
     `max-age=${MAX_AGE_SECONDS}`,
     // Lax, not Strict: the answer must survive arriving from an ad click.
