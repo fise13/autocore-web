@@ -23,6 +23,7 @@ import { usePaywallEnter } from './animation/use-paywall-enter';
 import { PaywallChrome } from './components/paywall-chrome';
 import { PaywallFooter } from './components/paywall-footer';
 import { PaywallHero } from './components/paywall-hero';
+import { PaywallIncludes } from './components/paywall-includes';
 import { PlanCard, PlanPicker } from './components/plan-card';
 import { PurchaseCta } from './components/purchase-cta';
 import { PurchaseStatusBanner } from './components/purchase-status-banner';
@@ -230,20 +231,18 @@ export function PaywallScreen({
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: tokens.space.screenX,
-          paddingTop: tokens.space.stack,
+          paddingTop: tokens.space.inline,
           paddingBottom: tokens.space.stack,
           gap: tokens.space.stack,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* The engine and the headline own the free space; the plan list sits
-            directly above the dock rather than floating in the middle. */}
-        <View style={{ flex: 1, justifyContent: 'center', paddingVertical: tokens.space.stack }}>
-          <PaywallHero headline={headline} subhead={subhead} />
-        </View>
+        <PaywallHero headline={headline} subhead={subhead} showProductName compact />
 
-        <View style={{ gap: tokens.space.inline }}>
+        <PaywallIncludes />
+
+        <View style={{ flexGrow: 1, justifyContent: 'flex-end', gap: tokens.space.inline }}>
           <OfflineNotice />
 
           {productsError ? (

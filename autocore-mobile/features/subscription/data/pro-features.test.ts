@@ -22,10 +22,12 @@ import { describe, it } from 'node:test';
  * without Pro. Adding a row here means adding the enforcement first.
  */
 
-const SOURCE = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'pro-features.ts'),
-  'utf8',
-);
+const DIR = dirname(fileURLToPath(import.meta.url));
+const SOURCE = readFileSync(join(DIR, 'pro-features.ts'), 'utf8');
+const PAYWALL_SCREEN = readFileSync(join(DIR, '../paywall-screen.tsx'), 'utf8');
+const PAYWALL_INCLUDES = readFileSync(join(DIR, '../components/paywall-includes.tsx'), 'utf8');
+const PAYWALL_HERO = readFileSync(join(DIR, '../components/paywall-hero.tsx'), 'utf8');
+const MANAGE_SCREEN = readFileSync(join(DIR, '../manage-subscription-screen.tsx'), 'utf8');
 
 /**
  * Gates that are enforced today, each with the code that does the refusing.
@@ -95,5 +97,55 @@ describe('paywall advertises only what Pro actually gates', () => {
       rowCount,
       'a row without a `feature` key is a claim with nothing behind it',
     );
+  });
+});
+
+/**
+ * Guideline 3.1.2(c): the purchase screen must describe what the user receives
+ * for the price. The list lived in this file and on the Settings screen, and
+ * App Review still rejected the binary because the paywall itself only showed
+ * a headline and a price.
+ */
+describe('purchase screen describes what Pro includes (3.1.2(c))', () => {
+  it('renders the includes list, not just the catalog of copy', () => {
+    assert.match(
+      PAYWALL_SCREEN,
+      /PaywallIncludes/,
+      'paywall-screen.tsx must mount PaywallIncludes — a data file the screen never renders is how 3.1.2(c) came back',
+    );
+    assert.match(PAYWALL_INCLUDES, /PRO_FEATURE_ROWS/);
+    assert.match(PAYWALL_INCLUDES, /PAYWALL_INCLUDES_HEADING/);
+  });
+
+  it('names the subscription on the purchase screen', () => {
+    assert.match(PAYWALL_HERO, /PAYWALL_PRODUCT_NAME/);
+    assert.match(PAYWALL_SCREEN, /showProductName/);
+  });
+
+  it('builds the App Store Connect description from the same rows', () => {
+    assert.match(SOURCE, /function appStoreConnectSubscriptionDescription/);
+    assert.match(SOURCE, /PRO_FEATURE_ROWS\.map/);
+    for (const label of [
+      'Team and roles',
+      'Documents and PDFs',
+      'AI paperwork',
+      'Bulk import',
+      'Priority support',
+    ]) {
+      assert.ok(SOURCE.includes(label), `ASC copy source is missing "${label}"`);
+    }
+  });
+
+  it('does not sell the four free features from the Settings upgrade row', () => {
+    assert.match(MANAGE_SCREEN, /PAYWALL_UPGRADE_SUBTITLE/);
+    assert.doesNotMatch(MANAGE_SCREEN, /Unlimited engines, work orders, AI and reports/);
+    const subtitle = SOURCE.match(/PAYWALL_UPGRADE_SUBTITLE = '([^']+)'/)?.[1] ?? '';
+    assert.ok(subtitle.length > 0, 'upgrade subtitle missing');
+    for (const banned of ['unlimited', 'API', 'reports']) {
+      assert.ok(
+        !subtitle.toLowerCase().includes(banned.toLowerCase()),
+        `upgrade subtitle still mentions "${banned}"`,
+      );
+    }
   });
 });

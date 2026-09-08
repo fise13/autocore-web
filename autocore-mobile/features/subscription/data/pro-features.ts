@@ -5,6 +5,10 @@
  * gate (which permission, which tier, what happens on denial), while this is the
  * *marketing* list and its order is a copy decision. Where they overlap, the
  * `feature` key links a row back to its gate so the two cannot silently drift.
+ *
+ * App Store guideline 3.1.2(c) requires this list (or an equivalent functional
+ * description) to appear on the purchase screen itself — price and duration
+ * alone are not enough. `paywall-screen.tsx` must render `PaywallIncludes`.
  */
 import {
   FileTextIcon,
@@ -83,6 +87,44 @@ export const PRO_FEATURE_ROWS: ProFeatureRow[] = [
     feature: 'priority_support',
   },
 ];
+
+/** Display name of the auto-renewable subscription, as shown on the paywall. */
+export const PAYWALL_PRODUCT_NAME = 'AutoCore Pro';
+
+export const PAYWALL_INCLUDES_HEADING = 'What AutoCore Pro includes';
+
+/**
+ * Settings upgrade row. Kept to the same claims as `PRO_FEATURE_ROWS` — the
+ * previous line sold unlimited engines, work orders, AI and reports, which
+ * the free tier already has.
+ */
+export const PAYWALL_UPGRADE_SUBTITLE = 'Team, documents, bulk import and priority support';
+
+/**
+ * Functional description of the subscription contents.
+ *
+ * Used as the VoiceOver summary on the paywall. The on-screen list is the
+ * same data, one row at a time. Guideline 3.1.2(c) is the reason this exists.
+ */
+export function describeSubscriptionContents(): string {
+  const items = PRO_FEATURE_ROWS.map((row) => `${row.label}: ${row.detail}`).join('. ');
+  return `${PAYWALL_INCLUDES_HEADING}. ${items}.`;
+}
+
+/**
+ * Paste into App Store Connect → Subscriptions → each AutoCore Pro product
+ * → Localization → Description. Reviewers read that field independently of
+ * the binary; an empty or generic description is the same 3.1.2(c) rejection
+ * as a paywall that only shows a price.
+ */
+export function appStoreConnectSubscriptionDescription(): string {
+  const items = PRO_FEATURE_ROWS.map((row) => `${row.label} (${row.detail})`).join('; ');
+  return (
+    `${PAYWALL_PRODUCT_NAME} is an auto-renewable subscription. It includes ${items}. ` +
+    'Choose monthly or yearly billing. Payment is charged to the Apple ID account at confirmation. ' +
+    'The subscription renews unless cancelled at least 24 hours before the end of the current period.'
+  );
+}
 
 /**
  * Same company on a computer — the one piece of new information the

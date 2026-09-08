@@ -19,7 +19,7 @@ import { PurchaseStatusBanner } from './components/purchase-status-banner';
 import { StatusCardSkeleton } from './components/subscription-skeletons';
 import { SubscriptionPlanSection } from './components/subscription-plan-section';
 import { VerificationMonitor } from './components/verification-monitor';
-import { PRO_FEATURE_ROWS } from './data/pro-features';
+import { PAYWALL_UPGRADE_SUBTITLE, PRO_FEATURE_ROWS } from './data/pro-features';
 
 /**
  * The current-subscription screen.
@@ -103,7 +103,7 @@ export function ManageSubscriptionScreen() {
           {showUpgrade ? (
             <CollectionRow
               title="Upgrade to Pro"
-              subtitle="Unlimited engines, work orders, AI and reports"
+              subtitle={PAYWALL_UPGRADE_SUBTITLE}
               onPress={() => present()}
             />
           ) : null}

@@ -6,41 +6,76 @@ import { tokens } from '@/theme';
 
 import { paywallDuration, paywallTimeline } from '../animation/paywall-motion';
 import { usePaywallEnter } from '../animation/use-paywall-enter';
+import { PAYWALL_PRODUCT_NAME } from '../data/pro-features';
 import { PaywallHeroMark } from './paywall-hero-mark';
 
 type PaywallHeroProps = {
   headline?: string;
   /**
    * Only passed when the paywall was opened by a specific locked feature —
-   * there it explains why the wall appeared. The default screen carries no
-   * subhead: it restated the headline in more words, and the engine says more
-   * about the product than a second sentence does.
+   * there it explains why the wall appeared. What the subscription contains
+   * lives in `PaywallIncludes`, not here.
    */
   subhead?: string | null;
+  /**
+   * The purchase screen always names the service (guideline 3.1.2(c)). Hidden
+   * on the post-purchase celebration, where the title is already "Welcome to
+   * Pro" and repeating the product name is noise.
+   */
+  showProductName?: boolean;
+  /** Smaller engine so the includes list fits above the fold. */
+  compact?: boolean;
   /** Post-purchase: run the engine up instead of idling it. */
   celebrate?: boolean;
 };
 
-/** Big enough to read as a mechanism rather than an icon. */
 const HERO_SCALE = 1.06;
+const HERO_SCALE_COMPACT = 0.72;
 
-export function PaywallHero({ headline, subhead, celebrate = false }: PaywallHeroProps) {
+export function PaywallHero({
+  headline,
+  subhead,
+  showProductName = false,
+  compact = false,
+  celebrate = false,
+}: PaywallHeroProps) {
   const markStyle = usePaywallEnter({
     delay: paywallTimeline.hero,
     duration: paywallDuration.hero,
     scale: true,
     spring: true,
   });
+  const productStyle = usePaywallEnter({ delay: paywallTimeline.title - 30 });
   const titleStyle = usePaywallEnter({ delay: paywallTimeline.title });
   const subtitleStyle = usePaywallEnter({ delay: paywallTimeline.subtitle });
 
   const titleLines = (headline ?? 'Your entire operation.\nOne workspace.').split('\n');
+  const titleSize = compact ? 24 : 27;
+  const titleLine = compact ? 29 : 33;
 
   return (
-    <View style={{ alignItems: 'center', gap: tokens.space.stack, flexShrink: 0 }}>
+    <View style={{ alignItems: 'center', gap: compact ? tokens.space.inline : tokens.space.stack, flexShrink: 0 }}>
       <Animated.View style={markStyle}>
-        <PaywallHeroMark scale={HERO_SCALE} celebrate={celebrate} />
+        <PaywallHeroMark scale={compact ? HERO_SCALE_COMPACT : HERO_SCALE} celebrate={celebrate} />
       </Animated.View>
+
+      {showProductName ? (
+        <Animated.View style={productStyle}>
+          <Text
+            variant="footnote"
+            color="accent"
+            style={{
+              fontSize: 13,
+              lineHeight: 18,
+              fontWeight: '600',
+              letterSpacing: 0.2,
+              textAlign: 'center',
+            }}
+          >
+            {PAYWALL_PRODUCT_NAME}
+          </Text>
+        </Animated.View>
+      ) : null}
 
       <Animated.View style={[{ alignItems: 'center' }, titleStyle]}>
         {titleLines.map((line) => (
@@ -49,8 +84,8 @@ export function PaywallHero({ headline, subhead, celebrate = false }: PaywallHer
             variant="body"
             accessibilityRole="header"
             style={{
-              fontSize: 27,
-              lineHeight: 33,
+              fontSize: titleSize,
+              lineHeight: titleLine,
               letterSpacing: -0.7,
               fontWeight: '700',
               textAlign: 'center',

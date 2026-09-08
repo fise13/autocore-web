@@ -92,7 +92,7 @@ export function StatusCardSkeleton() {
 }
 
 /** Feature rows while the paywall copy settles — used only on a cold open. */
-export function FeatureListSkeleton({ rows = 6 }: { rows?: number }) {
+export function FeatureListSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <View style={{ gap: spacing[4] }} accessibilityRole="progressbar" accessibilityLabel="Loading">
       {Array.from({ length: rows }, (_, index) => (

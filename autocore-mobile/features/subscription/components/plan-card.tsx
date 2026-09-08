@@ -15,6 +15,7 @@ import { haptics, tokens } from '@/theme';
 
 import { paywallSpring, paywallTimeline } from '../animation/paywall-motion';
 import { usePaywallEnter } from '../animation/use-paywall-enter';
+import { PAYWALL_PRODUCT_NAME } from '../data/pro-features';
 
 type PlanCardProps = {
   offer: PlanOffer;
@@ -87,7 +88,7 @@ export function PlanCard({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected }}
-        accessibilityLabel={`${title}, ${price}${savingsLabel ? `, ${savingsLabel}` : ''}`}
+        accessibilityLabel={`${PAYWALL_PRODUCT_NAME}, ${title}, ${price}${savingsLabel ? `, ${savingsLabel}` : ''}`}
         accessibilityHint="Selects this billing period"
         onPressIn={() => {
           if (reduced) return;
