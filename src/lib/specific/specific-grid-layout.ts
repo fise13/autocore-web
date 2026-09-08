@@ -72,7 +72,7 @@ function columnFit(column: SpecificColumnDef, index: number): GridColumnFitHint 
     return CANONICAL_FIT[column.slotIndex] ?? { flex: 1.2, maxWidth: 220 };
   }
   const width = columnWidth(column, index);
-  if (index === 3) return { flex: 0, maxWidth: width };
+  if (index === 3) return { flex: 0, maxWidth: width, minWidth: width, role: "fixed" };
   return { flex: 1.2, maxWidth: Math.round(width * 1.35) };
 }
 
@@ -87,6 +87,7 @@ function columnAlign(column: SpecificColumnDef, index: number): "left" | "center
 
 export type BuildSpecificGridLayoutOptions = {
   containerWidth?: number;
+  widthOverrides?: Readonly<Record<string, number>>;
 };
 
 export function buildSpecificMotorGridLayout(
@@ -153,9 +154,14 @@ export function buildSpecificMotorGridLayout(
   ];
 
   const fitted = applyDensityToColumns({
-    columns: baseColumns.map((column) => ({ width: column.width, fit: column.fit })),
+    columns: baseColumns.map((column) => ({
+      id: column.id,
+      width: column.width,
+      fit: column.fit,
+    })),
     zoom,
     containerWidth: options?.containerWidth,
+    widthOverrides: options?.widthOverrides,
     scaleDimension: scaleMotorGridDimension,
     baseRowHeight: MOTOR_GRID_BASE_ROW_HEIGHT,
     baseHeaderHeight: MOTOR_GRID_BASE_HEADER_HEIGHT,

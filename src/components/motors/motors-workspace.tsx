@@ -79,7 +79,7 @@ function CollectionCachePanel({
 }) {
   return (
     <div
-      className={cn("min-h-0", isActive ? "flex flex-1 flex-col" : "hidden")}
+      className={cn("min-h-0 min-w-0 w-full", isActive ? "flex flex-1 flex-col" : "hidden")}
       aria-hidden={!isActive}
       data-collection-cache={cacheKey}
       data-panel-active={isActive ? "true" : "false"}
@@ -588,7 +588,7 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
     rowData.length === 0;
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
       {deepActionError && motorsSheetActive ? (
         <div className="mx-3 mt-3 shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {deepActionError}

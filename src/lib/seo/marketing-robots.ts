@@ -27,6 +27,7 @@ export function marketingRobotsAllowPaths(): string[] {
     "/",
     "/product",
     "/modules",
+    "/how-it-works",
     "/pricing",
     "/security",
     "/contact",

@@ -117,10 +117,6 @@
   }
 }
 
-.autocore-excel-grid {
-  display: none;
-}
-
 /* ── AutoCore motion (macOS-like, subtle) ─────────────────────────────── */
 
 @keyframes autocore-fade-in-up {

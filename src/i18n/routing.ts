@@ -9,6 +9,7 @@ export const marketingPathnames = {
   "/": "/",
   "/product": "/product",
   "/modules": "/modules",
+  "/how-it-works": "/how-it-works",
   "/pricing": "/pricing",
   "/security": "/security",
   "/contact": "/contact",

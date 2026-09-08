@@ -1,32 +1,29 @@
 "use client";
 
 import { useMemo } from "react";
-import { LabelList, Pie, PieChart } from "recharts";
+import { Pie, PieChart } from "recharts";
 
+import {
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Delta, DeltaIcon, DeltaValue } from "@/components/ui/delta";
-import {
-  McPanel,
-  McPanelBody,
-  McPanelHeader,
-} from "@/components/overview/dashboard/dashboard-panel";
+import { Delta, DeltaIcon } from "@/components/ui/delta";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { McPanel } from "@/components/overview/dashboard/dashboard-panel";
+import { buildStockPieSeries } from "@/lib/overview/compute-dashboard-charts";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { InventoryItem } from "@/domain/inventory";
 import { Skeleton } from "@/components/ui/skeleton";
-
-type InventorySegmentKey = "motors" | "warehouse" | "deficits";
-
-type InventorySegment = {
-  segment: InventorySegmentKey;
-  share: number;
-  fill: string;
-};
 
 type McWarehouseHealthProps = {
   warehouseItems: InventoryItem[];
@@ -50,57 +47,42 @@ export function McWarehouseHealth({
   const copy = userCopy.overview.dashboard.charts;
 
   const chartConfig = {
-    share: { label: copy.share },
+    count: { label: copy.stockUnits },
     motors: { label: copy.motors, color: "var(--chart-1)" },
-    warehouse: { label: copy.warehouse, color: "var(--chart-2)" },
-    deficits: { label: copy.deficits, color: "var(--chart-3)" },
+    aggregates: { label: copy.aggregates, color: "var(--chart-2)" },
+    parts: { label: copy.parts, color: "var(--chart-3)" },
+    consumables: { label: copy.consumables, color: "var(--chart-4)" },
   } satisfies ChartConfig;
 
-  const chartData = useMemo(() => {
-    const activeWarehouse = warehouseItems.filter((item) => item.status === "active");
-    const warehouseLow = activeWarehouse.filter(
-      (item) => item.totalAvailable <= (item.lowStockThreshold ?? 1),
-    ).length;
-    const warehouseHealthy = Math.max(0, activeWarehouse.length - warehouseLow);
-    const motorsHealthy = Math.max(0, motorAvailable - motorLowStock);
-    const deficits = motorLowStock + warehouseLow;
+  const { slices, lowStockCount } = useMemo(
+    () =>
+      buildStockPieSeries({
+        warehouseItems,
+        motorAvailable,
+        motorLowStock,
+        canWarehouse,
+        canMotors,
+      }),
+    [canMotors, canWarehouse, motorAvailable, motorLowStock, warehouseItems],
+  );
 
-    const segments: InventorySegment[] = [];
-    if (canMotors && motorsHealthy > 0) {
-      segments.push({ segment: "motors", share: motorsHealthy, fill: "var(--color-motors)" });
-    }
-    if (canWarehouse && warehouseHealthy > 0) {
-      segments.push({
-        segment: "warehouse",
-        share: warehouseHealthy,
-        fill: "var(--color-warehouse)",
-      });
-    }
-    if (deficits > 0) {
-      segments.push({ segment: "deficits", share: deficits, fill: "var(--color-deficits)" });
-    }
-
-    const total = segments.reduce((sum, item) => sum + item.share, 0);
-    if (total === 0) {
-      return [{ segment: "motors" as const, share: 1, fill: "var(--color-motors)" }];
-    }
-
-    return segments.map((item) => ({
-      ...item,
-      share: Math.round((item.share / total) * 100),
-    }));
-  }, [canMotors, canWarehouse, motorAvailable, motorLowStock, warehouseItems]);
-
-  const deficitShare = chartData.find((item) => item.segment === "deficits")?.share ?? 0;
-  const delta = deficitShare > 0 ? -deficitShare : 2.4;
+  const delta = lowStockCount > 0 ? -lowStockCount : 0;
+  const panelClassName = cn("flex h-full min-w-0 flex-col shadow-none dark:ring-0", className);
 
   if (isLoading) {
     return (
-      <McPanel className={cn("shadow-none dark:ring-0", className)}>
-        <McPanelHeader title={copy.stock} />
-        <McPanelBody className="flex items-center justify-center py-8">
-          <Skeleton className="mx-auto aspect-square max-h-72 w-full rounded-full" />
-        </McPanelBody>
+      <McPanel className={panelClassName}>
+        <CardHeader className="items-center pb-0">
+          <CardTitle>{copy.stock}</CardTitle>
+          <CardDescription>{copy.stockDesc}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-1 items-center justify-center pb-0">
+          <Skeleton className="mx-auto size-[250px] max-w-full rounded-full" />
+        </CardContent>
+        <CardFooter className="flex-col gap-2 text-sm">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-52" />
+        </CardFooter>
       </McPanel>
     );
   }
@@ -110,48 +92,40 @@ export function McWarehouseHealth({
   }
 
   return (
-    <McPanel className={cn("flex flex-col shadow-none dark:ring-0", className)}>
-      <McPanelHeader
-        title={copy.stock}
-        description={copy.stockDesc}
-        badge={
-          <Delta value={delta} variant="badge">
+    <McPanel className={panelClassName}>
+      <CardHeader className="items-center pb-0">
+        <CardTitle>{copy.stock}</CardTitle>
+        <CardDescription>{copy.stockDesc}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 items-center justify-center pb-0">
+        {slices.length === 0 ? (
+          <Empty className="min-h-[250px] border-0">
+            <EmptyHeader>
+              <EmptyTitle>{copy.stock}</EmptyTitle>
+              <EmptyDescription>{copy.stockEmpty}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <ChartContainer
+            config={chartConfig}
+            className="mx-auto h-[250px] w-full pb-0 [&_.recharts-pie-label-text]:fill-foreground"
+          >
+            <PieChart accessibilityLayer>
+              <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="segment" />} />
+              <Pie data={slices} dataKey="count" label nameKey="segment" />
+            </PieChart>
+          </ChartContainer>
+        )}
+      </CardContent>
+      <CardFooter className="flex-col gap-2 text-sm">
+        <div className="flex items-center gap-2 leading-none font-medium">
+          {lowStockCount > 0 ? copy.stockTrendLow(lowStockCount) : copy.stockTrendOk}
+          <Delta value={delta}>
             <DeltaIcon variant="trend" />
-            <DeltaValue suffix={deficitShare > 0 ? "%" : "pp"} />
           </Delta>
-        }
-        className="items-center space-y-1 pb-0 sm:items-start"
-      />
-      <McPanelBody className="my-auto">
-        <ChartContainer className="mx-auto aspect-square max-h-72 w-full" config={chartConfig}>
-          <PieChart accessibilityLayer>
-            <Pie
-              cornerRadius={8}
-              data={chartData}
-              dataKey="share"
-              innerRadius={36}
-              nameKey="segment"
-              outerRadius="88%"
-              stroke="var(--card)"
-              strokeWidth={4}
-            >
-              <LabelList
-                className="fill-background font-medium"
-                dataKey="share"
-                fill="currentColor"
-                fontWeight={500}
-                formatter={(label) => {
-                  const n = Number(label);
-                  return Number.isFinite(n) ? `${n}%` : String(label ?? "");
-                }}
-                position="inside"
-                stroke="none"
-              />
-            </Pie>
-            <ChartLegend content={<ChartLegendContent nameKey="segment" />} />
-          </PieChart>
-        </ChartContainer>
-      </McPanelBody>
+        </div>
+        <div className="leading-none text-muted-foreground">{copy.stockFooter}</div>
+      </CardFooter>
     </McPanel>
   );
 }

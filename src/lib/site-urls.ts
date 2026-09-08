@@ -235,6 +235,7 @@ export function isAppRoute(pathname: string): boolean {
 export const MARKETING_PUBLIC_PREFIXES = [
   "/product",
   "/modules",
+  "/how-it-works",
   "/pricing",
   "/security",
   "/contact",

@@ -59,7 +59,7 @@ export function ModulesPageContent() {
       ],
       warehouse: [
         { label: links.workOrders, href: { pathname: "/modules", hash: "work-orders" } },
-        { label: links.howItWorks, href: { pathname: "/", hash: "story" } },
+        { label: links.howItWorks, href: "/how-it-works" },
       ],
       "work-orders": [
         { label: links.warehouse, href: { pathname: "/modules", hash: "warehouse" } },

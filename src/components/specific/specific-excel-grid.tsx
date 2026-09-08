@@ -27,7 +27,7 @@ import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
 import { useGridScrollWhileDrag } from "@/lib/grid/grid-scroll-while-drag";
 import { useGridScrollIntoView } from "@/lib/grid/scroll-into-view";
-import { applyColumnWidthOverrides } from "@/lib/grid/column-resize";
+import { SPECIFIC_GRID_COLUMN_WIDTHS_STORAGE_KEY } from "@/lib/grid/column-width-storage";
 import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
 import { handleGridRedo, handleGridUndo } from "@/lib/grid/grid-undo-redo";
 import {
@@ -207,13 +207,15 @@ export function SpecificExcelGrid({
   );
 
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
-  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize();
+  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize({
+    storageKey: SPECIFIC_GRID_COLUMN_WIDTHS_STORAGE_KEY,
+  });
   const layout = useMemo(
     () =>
-      applyColumnWidthOverrides(
-        buildSpecificMotorGridLayout(columnSchema, gridZoom, { containerWidth: scroll.width }),
+      buildSpecificMotorGridLayout(columnSchema, gridZoom, {
+        containerWidth: scroll.width,
         widthOverrides,
-      ),
+      }),
     [columnSchema, gridZoom, scroll.width, widthOverrides],
   );
   const headerMapping = layout.mapping;

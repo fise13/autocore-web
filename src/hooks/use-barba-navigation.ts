@@ -7,6 +7,7 @@ import {
   notifyInstantCacheEnter,
   resolveRouteCacheKey,
 } from "@/components/layout/dashboard-route-cache";
+import { isMarketingLegalDocumentPath } from "@/lib/barba/barba-navigation";
 import {
   initBarbaRuntime,
   resetBarbaContainerVisibility,
@@ -51,7 +52,17 @@ export function useBarbaNavigation({ shouldAnimate }: UseBarbaNavigationOptions)
 
     if (previousPathRef.current === pathname) return;
 
+    const previousPath = previousPathRef.current;
     previousPathRef.current = pathname;
+
+    if (
+      isMarketingLegalDocumentPath(previousPath) &&
+      isMarketingLegalDocumentPath(pathname)
+    ) {
+      resetBarbaContainerVisibility(container);
+      window.scrollTo(0, 0);
+      return;
+    }
 
     if (peekCrossRouteTransition() === "to-marketing") return;
 

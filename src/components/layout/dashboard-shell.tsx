@@ -409,13 +409,13 @@ function DashboardShellInner({ children }: DashboardShellProps) {
                 data-barba-namespace={barbaNamespace}
                 className={
                   isFullBleedWorkspace
-                    ? "relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden"
+                    ? "relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
                     : "relative z-0 min-h-0 flex-1 overflow-y-auto p-4 md:p-6"
                 }
               >
                 <div
                   className={cn(
-                    "flex min-h-0 flex-1 flex-col",
+                    "flex min-h-0 min-w-0 flex-1 flex-col",
                     !isAiRoute && "dashboard-workspace-scroll",
                   )}
                 >

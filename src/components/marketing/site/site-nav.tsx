@@ -211,7 +211,7 @@ export function SiteNav() {
             </Button>
             <Button
               size="sm"
-              className="whitespace-nowrap"
+              className="hidden whitespace-nowrap lg:inline-flex"
               render={<NextLink href={demoHref} onClick={() => storePreferredLocale(locale)} />}
               nativeButton={false}
             >

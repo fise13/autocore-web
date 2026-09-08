@@ -25,6 +25,12 @@ import { uploadGridRowPhotos } from "@/lib/grid/upload-grid-row-photo";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
+const PHOTO_THUMB_CLASS = {
+  sm: "size-6",
+  md: "size-7",
+  lg: "size-8",
+} as const;
+
 type GridPhotoCellProps = {
   urls: string[];
   companyId: string;
@@ -36,6 +42,8 @@ type GridPhotoCellProps = {
   disabled?: boolean;
   onChange: (urls: string[]) => void;
   className?: string;
+  /** Compact / comfortable / visual thumbnail scale. */
+  thumbSize?: "sm" | "md" | "lg";
 };
 
 export function GridPhotoCell({
@@ -47,6 +55,7 @@ export function GridPhotoCell({
   disabled,
   onChange,
   className,
+  thumbSize = "md",
 }: GridPhotoCellProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -58,6 +67,7 @@ export function GridPhotoCell({
   const [error, setError] = useState<string | null>(null);
   const copy = userCopy.gridPhotos;
   const primary = urls[0] ?? null;
+  const thumbClass = PHOTO_THUMB_CLASS[thumbSize];
 
   function openViewer(index = 0) {
     if (urls.length === 0 || !entityId.trim()) return;
@@ -146,7 +156,8 @@ export function GridPhotoCell({
             <button
               type="button"
               className={cn(
-                "group relative flex size-7 items-center justify-center overflow-hidden rounded-md border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted",
+                "group relative flex items-center justify-center overflow-hidden rounded-md border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-muted",
+                thumbClass,
                 uploading && "opacity-60",
                 disabled && "pointer-events-none opacity-40",
               )}
@@ -256,11 +267,20 @@ export function GridPhotoCell({
 }
 
 /** Compact empty-state control used when entity is not yet persistable. */
-export function GridPhotoCellDisabledHint({ className }: { className?: string }) {
+export function GridPhotoCellDisabledHint({
+  className,
+  thumbSize = "md",
+}: {
+  className?: string;
+  thumbSize?: "sm" | "md" | "lg";
+}) {
   return (
     <div className={cn("flex h-full w-full items-center justify-center", className)}>
       <span
-        className="flex size-7 items-center justify-center rounded-md border border-dashed border-border/70 text-muted-foreground/70"
+        className={cn(
+          "flex items-center justify-center rounded-md border border-dashed border-border/70 text-muted-foreground/70",
+          PHOTO_THUMB_CLASS[thumbSize],
+        )}
         title={userCopy.gridPhotos.saveRowFirst}
       >
         <X className="size-3 opacity-40" />

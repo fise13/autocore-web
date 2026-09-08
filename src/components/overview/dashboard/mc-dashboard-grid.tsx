@@ -60,17 +60,29 @@ export function McDashboardGrid(props: McDashboardGridProps) {
 
       <McDashboardStats stats={stats} isLoading={isLoading} />
 
-      {permissions.canAccounting ? <McRevenueChart operations={operations} isLoading={isLoading} /> : null}
+      {permissions.canAccounting || permissions.canWarehouse || permissions.canMotors ? (
+        <div
+          className={
+            permissions.canAccounting && (permissions.canWarehouse || permissions.canMotors)
+              ? "col-span-full grid grid-cols-1 gap-4 lg:grid-cols-2"
+              : "col-span-full grid grid-cols-1 gap-4"
+          }
+        >
+          {permissions.canAccounting ? (
+            <McRevenueChart operations={operations} isLoading={isLoading} />
+          ) : null}
 
-      {permissions.canWarehouse || permissions.canMotors ? (
-        <McWarehouseHealth
-          warehouseItems={warehouseItems}
-          motorLowStock={overview.lowStockCount}
-          motorAvailable={motorAvailable}
-          isLoading={isLoading}
-          canWarehouse={permissions.canWarehouse}
-          canMotors={permissions.canMotors}
-        />
+          {permissions.canWarehouse || permissions.canMotors ? (
+            <McWarehouseHealth
+              warehouseItems={warehouseItems}
+              motorLowStock={overview.lowStockCount}
+              motorAvailable={motorAvailable}
+              isLoading={isLoading}
+              canWarehouse={permissions.canWarehouse}
+              canMotors={permissions.canMotors}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       {permissions.canAccounting ? (

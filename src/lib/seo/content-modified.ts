@@ -26,6 +26,10 @@ const SOURCES: Record<MarketingPathKey, string[]> = {
     "src/app/marketing/[locale]/modules/page.tsx",
     "src/components/marketing/site/modules-page-content.tsx",
   ],
+  howItWorks: [
+    "src/app/marketing/[locale]/how-it-works/page.tsx",
+    "src/components/marketing/how-it-works",
+  ],
   pricing: ["src/app/marketing/[locale]/pricing/page.tsx", "src/components/marketing/pricing"],
   security: ["src/app/marketing/[locale]/security/page.tsx", "src/components/marketing/security"],
   contact: ["src/app/marketing/[locale]/contact/page.tsx", "src/components/marketing/contact"],
@@ -34,9 +38,18 @@ const SOURCES: Record<MarketingPathKey, string[]> = {
     "src/app/marketing/[locale]/download/mobile/page.tsx",
     "src/components/marketing/download",
   ],
-  privacy: ["src/app/marketing/[locale]/legal/privacy/page.tsx"],
-  refund: ["src/app/marketing/[locale]/legal/refund/page.tsx"],
-  terms: ["src/app/marketing/[locale]/legal/terms/page.tsx"],
+  privacy: [
+    "src/app/marketing/[locale]/legal/privacy/page.tsx",
+    "src/components/marketing/legal",
+  ],
+  refund: [
+    "src/app/marketing/[locale]/legal/refund/page.tsx",
+    "src/components/marketing/legal",
+  ],
+  terms: [
+    "src/app/marketing/[locale]/legal/terms/page.tsx",
+    "src/components/marketing/legal",
+  ],
 };
 
 /** Copy lives here for every page, so it counts as a source for all of them. */

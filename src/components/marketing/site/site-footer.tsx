@@ -35,9 +35,9 @@ export function SiteFooter() {
     {
       title: t("footer.columns.company.title"),
       items: [
+        { href: "/how-it-works", label: t("footer.columns.company.items.howItWorks") },
         { href: "/security", label: t("footer.columns.company.items.security") },
         { href: "/contact", label: t("footer.columns.company.items.contact") },
-        { href: { pathname: "/", hash: "operating-loop" }, label: t("footer.columns.company.items.howItWorks") },
       ],
     },
     {

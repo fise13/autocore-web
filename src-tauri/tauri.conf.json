@@ -6,7 +6,7 @@
   "identifier": "com.wise.autocore.desktop",
   "build": {
     "frontendDist": "../public",
-    "devUrl": "https://app.myautocore.com/home?desktop=1",
+    "devUrl": "http://localhost:3000/home?desktop=1",
     "beforeDevCommand": "",
     "beforeBuildCommand": "node scripts/sync-tauri-app-url.mjs"
   },

@@ -101,6 +101,7 @@ export function MarketingPricingBlock({
       }
     >
       <PricingCard
+        className="mkt-pricing-card bg-surface-elevated border-foreground/25 shadow-[0_0_0_1px_color-mix(in_srgb,var(--foreground)_10%,transparent)]"
         frequency={frequency}
         plan={{
           name: copy.planName,

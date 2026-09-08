@@ -35,14 +35,21 @@ export function SectionShell({
   className,
   id,
   ariaLabelledby,
+  backdrop,
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
   ariaLabelledby?: string;
+  backdrop?: ReactNode;
 }) {
   return (
-    <section id={id} className={cn("exp-section", className)} aria-labelledby={ariaLabelledby}>
+    <section
+      id={id}
+      className={cn("exp-section", backdrop && "mkt-has-world-map", className)}
+      aria-labelledby={ariaLabelledby}
+    >
+      {backdrop}
       <div className="exp-section-inner">{children}</div>
     </section>
   );

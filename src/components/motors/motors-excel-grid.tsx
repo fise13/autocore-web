@@ -53,9 +53,10 @@ import {
 import { useExcelColumnResize } from "@/hooks/use-excel-column-resize";
 import { useExcelGridInteraction } from "@/hooks/use-excel-grid-interaction";
 import { buildFillOperations, resolveFillDragTarget } from "@/lib/grid/grid-fill-engine";
-import { applyColumnWidthOverrides } from "@/lib/grid/column-resize";
+import { MAX_EXCEL_COLUMN_WIDTH, MIN_EXCEL_COLUMN_WIDTH } from "@/lib/grid/column-resize";
+import { MOTOR_GRID_COLUMN_WIDTHS_STORAGE_KEY } from "@/lib/grid/column-width-storage";
 import { buildGridLayoutMetrics, cellFrame } from "@/lib/grid/grid-layout-engine";
-import { gridHeaderFontSizePx } from "@/lib/grid/grid-density";
+import { gridHeaderFontSizePx, gridPhotoThumbSize } from "@/lib/grid/grid-density";
 import { GridMutation, GridCommandBus } from "@/lib/grid/grid-command-bus";
 import { deleteShortcutLabel, modShortcutLabel } from "@/lib/grid/grid-keyboard-shortcuts";
 import { resolvePointerCellClamped } from "@/lib/grid/pointer-to-cell";
@@ -76,10 +77,14 @@ import {
 import { GridCellAddress, GridColumnDefinition, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
 import { formatMotorDate, parseMotorDateInput } from "@/lib/motor-dates";
 import {
+  MOTOR_GRID_COLUMN_FIT,
   MOTOR_GRID_EMPTY_ROWS_BASE,
   MOTOR_GRID_EMPTY_ROWS_EXPAND,
   MOTOR_GRID_EMPTY_ROWS_THRESHOLD,
+  MOTOR_GRID_PINNED_COLUMN_IDS,
+  scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
+import { pinnedColumnMetrics, stickyColumnLeft, unionVisibleColumnIndexes } from "@/lib/grid/pinned-columns";
 import {
   motorQualityBadgeVariant,
   resolveMotorQualityTone,
@@ -356,6 +361,19 @@ function reconcileRowsWithRemote(
   return nextRows;
 }
 
+function motorColumnResizeBounds(columnId: string, zoom: number) {
+  const fit = MOTOR_GRID_COLUMN_FIT[columnId as keyof typeof MOTOR_GRID_COLUMN_FIT];
+  if (!fit) return undefined;
+  return {
+    minWidth: fit.minWidth
+      ? scaleMotorGridDimension(fit.minWidth, zoom)
+      : MIN_EXCEL_COLUMN_WIDTH,
+    maxWidth: Number.isFinite(fit.maxWidth)
+      ? scaleMotorGridDimension(fit.maxWidth, zoom)
+      : MAX_EXCEL_COLUMN_WIDTH,
+  };
+}
+
 export function MotorsExcelGrid({
   motors,
   catalogMotors,
@@ -392,17 +410,21 @@ export function MotorsExcelGrid({
 
   const hideBrandColumn = Boolean(defaultBrandName?.trim());
   const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
-  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize();
+  const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize({
+    storageKey: MOTOR_GRID_COLUMN_WIDTHS_STORAGE_KEY,
+  });
   const layout = useMemo(
     () =>
-      applyColumnWidthOverrides(
-        buildGridLayoutMetrics(gridZoom, {
-          hiddenColumnIds: hideBrandColumn ? ["brandName"] : [],
-          containerWidth: scroll.width,
-        }),
+      buildGridLayoutMetrics(gridZoom, {
+        hiddenColumnIds: hideBrandColumn ? ["brandName"] : [],
+        containerWidth: scroll.width,
         widthOverrides,
-      ),
+      }),
     [gridZoom, hideBrandColumn, scroll.width, widthOverrides],
+  );
+  const pinned = useMemo(
+    () => pinnedColumnMetrics(layout.columns, MOTOR_GRID_PINNED_COLUMN_IDS),
+    [layout.columns],
   );
   const layoutColumns = layout.columns;
   const gridBounds = useMemo(() => motorGridColumnBounds(layoutColumns), [layoutColumns]);
@@ -553,6 +575,19 @@ export function MotorsExcelGrid({
     colEnd = Math.min(columnWidths.length - 1, colEnd + 1);
     return { rowStart, rowEnd, colStart, colEnd };
   }, [columnWidths, layout.rowHeight, rows.length, scroll.height, scroll.left, scroll.top, scroll.width]);
+
+  const visibleColumnIndexes = useMemo(
+    () =>
+      unionVisibleColumnIndexes(
+        visible.colStart,
+        visible.colEnd,
+        pinned.indexes,
+        layout.columns.length,
+      ),
+    [layout.columns.length, pinned.indexes, visible.colEnd, visible.colStart],
+  );
+
+  const photoThumbSize = gridPhotoThumbSize(layout.density.band);
 
   const editorAutocompleteMatch = useMemo(() => {
     if (!editor) return null;
@@ -1343,13 +1378,13 @@ export function MotorsExcelGrid({
   }, [gridBounds.editableEnd, layoutColumns, primary.maxColumn, primary.maxRow]);
 
   return (
-    <div className="animate-autocore-grid-enter relative flex h-full min-h-0 flex-col bg-card">
+    <div className="animate-autocore-grid-enter relative flex h-full min-h-0 w-full min-w-0 flex-col bg-card">
       <div
         ref={gridRef}
         tabIndex={0}
         data-grid-root
         data-context-menu-scope="local"
-        className="relative min-h-0 flex-1 overflow-hidden outline-none"
+        className="relative min-h-0 w-full min-w-0 flex-1 overflow-hidden outline-none"
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
         onBlur={handleBlur}
@@ -1417,36 +1452,54 @@ export function MotorsExcelGrid({
           }}
         >
           <div
-            className="relative antialiased bg-card shadow-[1px_0_0_0_var(--border)]"
+            className="relative min-w-full antialiased bg-card shadow-[1px_0_0_0_var(--border)]"
             data-grid-canvas
             data-grid-density={layout.density.band}
             style={{
-              width: layout.totalWidth,
+              width: Math.max(layout.totalWidth, scroll.width || 0),
+              minWidth: layout.totalWidth,
               height: layout.headerHeight + rows.length * layout.rowHeight,
               fontSize: `${Math.max(12, Math.round(13 * gridZoom * layout.density.scale))}px`,
             }}
           >
             <div
               className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
-              style={{ height: layout.headerHeight }}
+              style={{ height: layout.headerHeight, width: Math.max(layout.totalWidth, scroll.width || 0) }}
             >
               {layout.columns.map((column, colIdx) => {
-                if (colIdx < visible.colStart || colIdx > visible.colEnd) return null;
+                if (!visibleColumnIndexes.includes(colIdx)) return null;
+                const pinnedLeft = pinned.lefts.get(colIdx);
+                const isPinned = pinnedLeft != null;
                 return (
                   <ExcelGridHeaderCell
                     key={column.id}
                     title={column.title}
                     width={column.width}
-                    left={layout.xOffsets[colIdx] ?? 0}
+                    left={stickyColumnLeft(colIdx, layout.xOffsets[colIdx] ?? 0, scroll.left, pinnedLeft)}
                     height={layout.headerHeight}
                     fontSize={gridHeaderFontSizePx(gridZoom, layout.density.scale)}
                     align={column.align}
+                    pinned={isPinned}
+                    style={{
+                      zIndex: isPinned ? 30 : undefined,
+                      boxShadow:
+                        isPinned && colIdx === pinned.lastIndex && scroll.left > 0
+                          ? "4px 0 10px rgba(0, 0, 0, 0.28)"
+                          : undefined,
+                    }}
                     buttonClassName="uppercase tracking-[0.06em]"
                     onSelectColumn={() => {
                       if (!isEditableColumn(colIdx, layoutColumns)) return;
                       setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
                     }}
-                    onResizeMouseDown={(event) => beginColumnResize(column.id, column.width, event)}
+                    onResizeMouseDown={(event) =>
+                      beginColumnResize(
+                        column.id,
+                        column.width,
+                        event,
+                        motorColumnResizeBounds(column.id, gridZoom),
+                      )
+                    }
                   />
                 );
               })}
@@ -1467,14 +1520,16 @@ export function MotorsExcelGrid({
                     className="transition-[height] duration-200 ease-out"
                     style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
-                    {Array.from({ length: visible.colEnd - visible.colStart + 1 }, (_, colOffset) => {
-                      const colIdx = visible.colStart + colOffset;
+                    {visibleColumnIndexes.map((colIdx) => {
                       const column = layout.columns[colIdx];
+                      if (!column) return null;
                       const selected = allRanges(selection).some((range) =>
                         isCellInsideRange({ row: rowIdx, column: colIdx }, range),
                       );
                       const focused = selection.head.row === rowIdx && selection.head.column === colIdx;
                       const cell = cellFrame(layout, { row: rowIdx, column: colIdx });
+                      const pinnedLeft = pinned.lefts.get(colIdx);
+                      const isPinned = pinnedLeft != null;
                       const displayValue =
                         column.id === "rowNumber"
                           ? String(rowIdx + 1)
@@ -1493,19 +1548,29 @@ export function MotorsExcelGrid({
                             "absolute flex border-r border-b px-2.5 text-[13px] leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
                             motorGridCellClass(column.id),
                             column.align === "center" ? "items-center justify-center" : "items-center justify-start",
-                            selected && "bg-emerald-500/12",
-                            focused && "z-[2] ring-2 ring-inset",
+                            !isPinned && selected && "bg-emerald-500/12",
+                            focused && !isPinned && "z-[2] ring-2 ring-inset",
                             saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
+                            isPinned && "bg-card",
                           )}
                           style={{
-                            left: cell.x,
+                            left: stickyColumnLeft(colIdx, cell.x, scroll.left, pinnedLeft),
                             top: cell.y,
                             width: cell.width,
                             height: cell.height,
-                            ...(selected ? { backgroundColor: gridPalette.selectionFill } : {}),
-                            ...(focused
-                              ? { boxShadow: `inset 0 0 0 2px ${gridPalette.activeBorder}` }
-                              : {}),
+                            zIndex: isPinned ? (focused ? 6 : 4) : undefined,
+                            backgroundColor: selected
+                              ? isPinned
+                                ? "color-mix(in srgb, var(--card) 82%, rgb(22, 163, 74))"
+                                : gridPalette.selectionFill
+                              : isPinned
+                                ? "var(--card)"
+                                : undefined,
+                            boxShadow: focused
+                              ? `inset 0 0 0 2px ${gridPalette.activeBorder}`
+                              : isPinned && colIdx === pinned.lastIndex && scroll.left > 0
+                                ? "4px 0 10px rgba(0, 0, 0, 0.28)"
+                                : undefined,
                           }}
                           onPointerDown={(event) => {
                             if (isInteractiveGridTarget(event.target)) return;
@@ -1582,6 +1647,7 @@ export function MotorsExcelGrid({
                                 companyId={companyId}
                                 entityKind="motor"
                                 entityId={row.id}
+                                thumbSize={photoThumbSize}
                                 onChange={(urls) => {
                                   const photoCol = photoColumnIndex(layoutColumns);
                                   if (photoCol < 0) return;
@@ -1601,7 +1667,7 @@ export function MotorsExcelGrid({
                                 }}
                               />
                             ) : (
-                              <GridPhotoCellDisabledHint />
+                              <GridPhotoCellDisabledHint thumbSize={photoThumbSize} />
                             )
                           ) : qualityTone ? (
                             <Badge
@@ -1661,7 +1727,16 @@ export function MotorsExcelGrid({
 
               {fillHandleCell ? (
                 <GridFillHandle
-                  x={layout.xOffsets[fillHandleCell.column] + layout.columns[fillHandleCell.column].width - 7}
+                  x={
+                    stickyColumnLeft(
+                      fillHandleCell.column,
+                      layout.xOffsets[fillHandleCell.column],
+                      scroll.left,
+                      pinned.lefts.get(fillHandleCell.column),
+                    ) +
+                    layout.columns[fillHandleCell.column].width -
+                    7
+                  }
                   y={fillHandleCell.row * layout.rowHeight + layout.rowHeight - 7}
                   onPointerDown={(event) => {
                     event.stopPropagation();
@@ -1707,7 +1782,18 @@ export function MotorsExcelGrid({
                   editorKey={`${editor.cell.row}-${editor.cell.column}`}
                   value={editor.value}
                   selectAll={editor.selectAll}
-                  frame={cellFrame(layout, editor.cell)}
+                  frame={(() => {
+                    const frame = cellFrame(layout, editor.cell);
+                    return {
+                      ...frame,
+                      x: stickyColumnLeft(
+                        editor.cell.column,
+                        frame.x,
+                        scroll.left,
+                        pinned.lefts.get(editor.cell.column),
+                      ),
+                    };
+                  })()}
                   onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
                   onCommit={(direction, value) => commitEditor(direction, value)}
                   onCancel={() => {

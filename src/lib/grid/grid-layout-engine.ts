@@ -14,8 +14,10 @@ import { userCopy } from "@/lib/user-copy";
 
 export type BuildGridLayoutOptions = {
   hiddenColumnIds?: GridColumnId[];
-  /** Scrollport width; drives density band + capped leftover absorb. */
+  /** Scrollport width; drives density band + leftover absorb into flex columns. */
   containerWidth?: number;
+  /** User-resized widths in zoomed pixels; those columns stay locked while others fill. */
+  widthOverrides?: Readonly<Record<string, number>>;
 };
 
 function motorGridBaseColumns(): GridColumnDefinition[] {
@@ -135,11 +137,13 @@ export function buildGridLayoutMetrics(
   const baseColumns = motorGridBaseColumns().filter((column) => !hidden.has(column.id));
   const fitted = applyDensityToColumns({
     columns: baseColumns.map((column) => ({
+      id: column.id,
       width: column.width,
       fit: MOTOR_GRID_COLUMN_FIT[column.id as keyof typeof MOTOR_GRID_COLUMN_FIT],
     })),
     zoom,
     containerWidth: options?.containerWidth,
+    widthOverrides: options?.widthOverrides,
     scaleDimension: scaleMotorGridDimension,
     baseRowHeight: MOTOR_GRID_BASE_ROW_HEIGHT,
     baseHeaderHeight: MOTOR_GRID_BASE_HEADER_HEIGHT,

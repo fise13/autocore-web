@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ export function ExcelColumnResizer({ onMouseDown }: ExcelColumnResizerProps) {
       role="separator"
       aria-orientation="vertical"
       data-excel-col-resizer
-      className="absolute top-0 right-0 z-20 h-full w-1.5 cursor-col-resize touch-none hover:bg-primary/30"
+      className="absolute top-0 right-0 z-20 h-full w-1.5 cursor-col-resize touch-none opacity-0 group-hover:opacity-100 hover:bg-primary/40"
       onMouseDown={onMouseDown}
       onClick={(event) => event.stopPropagation()}
     />
@@ -29,6 +29,9 @@ type ExcelGridHeaderCellProps = {
   fontSize: number;
   align?: "left" | "center";
   buttonClassName?: string;
+  className?: string;
+  style?: CSSProperties;
+  pinned?: boolean;
   onSelectColumn?: () => void;
   onResizeMouseDown: (event: ReactMouseEvent) => void;
   children?: ReactNode;
@@ -42,12 +45,18 @@ export function ExcelGridHeaderCell({
   fontSize,
   align = "left",
   buttonClassName,
+  className,
+  style,
+  pinned = false,
   onSelectColumn,
   onResizeMouseDown,
   children,
 }: ExcelGridHeaderCellProps) {
   return (
-    <div className="absolute top-0" style={{ left, width, height }}>
+    <div
+      className={cn("group absolute top-0", pinned && "bg-muted", className)}
+      style={{ left, width, height, ...style }}
+    >
       <button
         type="button"
         className={cn(

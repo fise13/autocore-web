@@ -106,6 +106,58 @@ export function useMarketingPages() {
         },
       };
     },
+    get howItWorks() {
+      return {
+        hero: {
+          title: t("howItWorks.hero.title"),
+          description: t("howItWorks.hero.description"),
+        },
+        sections: {
+          breadcrumbsAria: t("howItWorks.sections.breadcrumbsAria"),
+          statsAria: t("howItWorks.sections.statsAria"),
+          chainTitle: t("howItWorks.sections.chainTitle"),
+          chainBody: t("howItWorks.sections.chainBody"),
+          chainActionLabel: t("howItWorks.sections.chainActionLabel"),
+          chainAutoLabel: t("howItWorks.sections.chainAutoLabel"),
+          surfacesTitle: t("howItWorks.sections.surfacesTitle"),
+          surfacesBody: t("howItWorks.sections.surfacesBody"),
+          manualTitle: t("howItWorks.sections.manualTitle"),
+          manualBody: t("howItWorks.sections.manualBody"),
+          rolloutTitle: t("howItWorks.sections.rolloutTitle"),
+          rolloutBody: t("howItWorks.sections.rolloutBody"),
+          relatedTitle: t("howItWorks.sections.relatedTitle"),
+          relatedProductTitle: t("howItWorks.sections.relatedProductTitle"),
+          relatedProductMeta: t("howItWorks.sections.relatedProductMeta"),
+          relatedModulesTitle: t("howItWorks.sections.relatedModulesTitle"),
+          relatedModulesMeta: t("howItWorks.sections.relatedModulesMeta"),
+          relatedSecurityTitle: t("howItWorks.sections.relatedSecurityTitle"),
+          relatedSecurityMeta: t("howItWorks.sections.relatedSecurityMeta"),
+        },
+        stats: t.raw("howItWorks.stats") as Array<{ value: string; label: string }>,
+        chain: t.raw("howItWorks.chain") as Array<{
+          id: string;
+          actor: string;
+          surface: string;
+          trigger: string;
+          title: string;
+          body: string;
+          cascade: string[];
+        }>,
+        surfaces: t.raw("howItWorks.surfaces") as Array<{
+          name: string;
+          where: string;
+          detail: string;
+        }>,
+        manual: t.raw("howItWorks.manual") as Array<{ title: string; body: string }>,
+        rollout: t.raw("howItWorks.rollout") as Array<{ label: string; detail: string }>,
+        cta: {
+          title: t("howItWorks.cta.title"),
+          body: t("howItWorks.cta.body"),
+          primary: t("howItWorks.cta.primary"),
+          secondary: t("howItWorks.cta.secondary"),
+        },
+      };
+    },
     get security() {
       return {
         hero: {
@@ -283,6 +335,11 @@ export function useMarketingPages() {
     },
     get legal() {
       return {
+        family: t("legal.family"),
+        switcherAria: t("legal.switcherAria"),
+        onThisPage: t("legal.onThisPage"),
+        alsoSee: t("legal.alsoSee"),
+        alsoSeeAria: t("legal.alsoSeeAria"),
         updatedPrefix: t("legal.updatedPrefix"),
         relatedHeading: t("legal.relatedHeading"),
         relatedDescription: t("legal.relatedDescription"),
@@ -299,6 +356,7 @@ export function useMarketingPages() {
         download: tSeo("breadcrumbs.download"),
         product: tSeo("breadcrumbs.product"),
         modules: tSeo("breadcrumbs.modules"),
+        howItWorks: tSeo("breadcrumbs.howItWorks"),
         privacy: tSeo("breadcrumbs.privacy"),
         refund: tSeo("breadcrumbs.refund"),
         terms: tSeo("breadcrumbs.terms"),

@@ -42,7 +42,7 @@ function warehouseGridBaseColumns(): Array<GridColumnDefinition & { fit: GridCol
       editable: true,
       modelField: "name",
       domainCategory: "consumables",
-      fit: TEXT(188, 260),
+      fit: TEXT(188, 280),
     },
     {
       id: "col-4",
@@ -128,7 +128,7 @@ function warehouseGridBaseColumns(): Array<GridColumnDefinition & { fit: GridCol
       width: 148,
       editable: true,
       modelField: "notes",
-      fit: TEXT(148, 220),
+      fit: { flex: 1.7, minWidth: 140, maxWidth: Number.POSITIVE_INFINITY, role: "flex" },
     },
     {
       id: "col-17",
@@ -188,6 +188,7 @@ export type WarehouseGridLayoutMetrics = {
 
 export type BuildWarehouseGridLayoutOptions = {
   containerWidth?: number;
+  widthOverrides?: Readonly<Record<string, number>>;
 };
 
 export function buildWarehouseGridLayoutMetrics(
@@ -196,9 +197,14 @@ export function buildWarehouseGridLayoutMetrics(
 ): WarehouseGridLayoutMetrics {
   const baseColumns = warehouseGridBaseColumns();
   const fitted = applyDensityToColumns({
-    columns: baseColumns.map((column) => ({ width: column.width, fit: column.fit })),
+    columns: baseColumns.map((column) => ({
+      id: column.id,
+      width: column.width,
+      fit: column.fit,
+    })),
     zoom,
     containerWidth: options?.containerWidth,
+    widthOverrides: options?.widthOverrides,
     scaleDimension: scaleMotorGridDimension,
     baseRowHeight: MOTOR_GRID_BASE_ROW_HEIGHT,
     baseHeaderHeight: MOTOR_GRID_BASE_HEADER_HEIGHT,

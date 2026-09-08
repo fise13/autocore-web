@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useMarketingPages } from "@/components/marketing/content/use-marketing-pages";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import { MarketingPricingBlock } from "@/components/marketing/pricing/marketing-pricing-block";
+import { MarketingWorldMapBackdrop } from "@/components/marketing/site/marketing-world-map-backdrop";
 import {
   Accordion,
   AccordionContent,
@@ -86,7 +87,8 @@ export function PricingExperience() {
 
   return (
     <div className="pricing-page">
-      <section className="pricing-panel pricing-panel-hero" aria-label={pages.breadcrumbs.pricing}>
+      <section className="pricing-panel pricing-panel-hero mkt-has-world-map" aria-label={pages.breadcrumbs.pricing}>
+        <MarketingWorldMapBackdrop />
         <div className="exp-section-inner pricing-panel-inner">
           <HeroReveal className="w-full" delay={0.08} duration={0.6} y={14}>
             <MarketingPricingBlock

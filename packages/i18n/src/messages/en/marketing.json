@@ -1670,6 +1670,188 @@
         }
       }
     },
+    "howItWorks": {
+      "meta": {
+        "title": "How it works",
+        "description": "One part from the dock to the invoice: what a person enters, what AutoCore records on its own, and who sees the result at each step."
+      },
+      "hero": {
+        "title": "One part, from the dock to the invoice",
+        "description": "Six steps of an ordinary shift. At each one: what a person does, what AutoCore writes down on its own, and who sees the result."
+      },
+      "sections": {
+        "breadcrumbsAria": "Breadcrumbs",
+        "statsAria": "How the operating chain works",
+        "chainTitle": "The operating chain",
+        "chainBody": "Each step below is one entry, made once. The lines beside it are what follows without anyone typing again.",
+        "chainActionLabel": "Someone does this",
+        "chainAutoLabel": "AutoCore does this",
+        "surfacesTitle": "Where each step happens",
+        "surfacesBody": "The same company on three surfaces. A change made on the floor is on the office screen before the mechanic puts the phone away.",
+        "manualTitle": "What stays with your team",
+        "manualBody": "Automation stops where judgment starts. These three are yours, and the product does not pretend otherwise.",
+        "rolloutTitle": "Starting without stopping the shift",
+        "rolloutBody": "One process at a time. Your spreadsheet becomes the archive rather than the system, and no developer is involved.",
+        "relatedTitle": "Keep reading",
+        "relatedProductTitle": "Product overview",
+        "relatedProductMeta": "What each part of the system does",
+        "relatedModulesTitle": "Modules",
+        "relatedModulesMeta": "Warehouse, work orders, accounting, team",
+        "relatedSecurityTitle": "Security",
+        "relatedSecurityMeta": "Roles, audit log, and company isolation"
+      },
+      "stats": [
+        {
+          "value": "6",
+          "label": "steps from intake to a paid invoice"
+        },
+        {
+          "value": "1×",
+          "label": "every fact entered exactly once"
+        },
+        {
+          "value": "3",
+          "label": "surfaces: phone, desktop, browser"
+        },
+        {
+          "value": "Live",
+          "label": "floor changes reach the office at once"
+        }
+      ],
+      "chain": [
+        {
+          "id": "intake",
+          "actor": "Warehouse clerk",
+          "surface": "Phone",
+          "trigger": "Scan",
+          "title": "A part arrives and gets a shelf",
+          "body": "Scan the VIN or the barcode at the dock. The engine or part is identified, priced from your list, and given a location before it leaves your hands.",
+          "cascade": [
+            "Stock record created with SKU and shelf",
+            "Photos attached from the same phone",
+            "Catalog entry ready to sell",
+            "Office sees the new stock immediately"
+          ]
+        },
+        {
+          "id": "quote",
+          "actor": "Parts seller",
+          "surface": "Browser",
+          "trigger": "Search",
+          "title": "A customer asks what you have",
+          "body": "One search over live stock answers availability, price, and shelf. Nobody walks the aisle or calls the warehouse to check.",
+          "cascade": [
+            "Availability answered from the live count",
+            "Quote built from real stock lines",
+            "Reservation holds the part for that customer"
+          ]
+        },
+        {
+          "id": "order",
+          "actor": "Service advisor",
+          "surface": "Browser",
+          "trigger": "Open",
+          "title": "The job becomes a work order",
+          "body": "The work order carries the customer, the vehicle, the labor, and the parts. Reserved stock moves with it instead of being noted somewhere else.",
+          "cascade": [
+            "Reserved parts attach to the order",
+            "Labor and mechanic assigned",
+            "Status visible to the floor and the office"
+          ]
+        },
+        {
+          "id": "floor",
+          "actor": "Mechanic",
+          "surface": "Phone",
+          "trigger": "Update",
+          "title": "Work happens where the car is",
+          "body": "The mechanic adds a part, attaches a photo, or moves the stage from the bay. No paper slip travels back to the front desk.",
+          "cascade": [
+            "Extra parts written off as they are used",
+            "Photos land on the vehicle timeline",
+            "The advisor sees the stage change without asking"
+          ]
+        },
+        {
+          "id": "close",
+          "actor": "Service advisor",
+          "surface": "Desktop",
+          "trigger": "Close",
+          "title": "Closing the order writes everything down",
+          "body": "This is the step the rest of the system hangs on. One confirmation moves stock, documents, and the ledger together.",
+          "cascade": [
+            "Stock written off for every line used",
+            "Handover certificate and warranty generated",
+            "Invoice built from the same lines",
+            "Ledger entry posted with the sale"
+          ]
+        },
+        {
+          "id": "cash",
+          "actor": "Owner",
+          "surface": "Browser",
+          "trigger": "Review",
+          "title": "The numbers are already there",
+          "body": "Revenue, margin, and open orders come out of the operations themselves, so the end of the month is a review rather than a reconstruction.",
+          "cascade": [
+            "Overview updated for the owner",
+            "Audit log records who did what",
+            "Nothing re-typed into a spreadsheet"
+          ]
+        }
+      ],
+      "surfaces": [
+        {
+          "name": "Phone",
+          "where": "Dock and shop floor",
+          "detail": "Scanning, intake, photos, and work-order updates — for the people whose hands are on the parts."
+        },
+        {
+          "name": "Desktop",
+          "where": "Warehouse and front desk",
+          "detail": "Keyboard-first grids for stock and work orders, with the same data as the browser and shortcuts for volume entry."
+        },
+        {
+          "name": "Browser",
+          "where": "Office and anywhere else",
+          "detail": "The full product with nothing to install: overview, accounting, documents, and team access."
+        }
+      ],
+      "manual": [
+        {
+          "title": "What a part is worth",
+          "body": "AutoCore imports your price list and keeps it consistent everywhere. Setting the number is still your call."
+        },
+        {
+          "title": "The first import",
+          "body": "Existing stock comes in once, from a spreadsheet or by scanning. After that the count maintains itself."
+        },
+        {
+          "title": "Who sees what",
+          "body": "Roles are yours to define. The system enforces them on every screen and every request, but it will not guess your org chart."
+        }
+      ],
+      "rollout": [
+        {
+          "label": "Day one",
+          "detail": "Open the demo company and walk this exact chain on sample data."
+        },
+        {
+          "label": "First week",
+          "detail": "Import your price list, invite the team by role, and run one process live — usually the warehouse."
+        },
+        {
+          "label": "Second week",
+          "detail": "Add work orders and documents once the stock count is trusted."
+        }
+      ],
+      "cta": {
+        "title": "See the chain on real data",
+        "body": "The demo company is fully populated. Close one work order in it and watch the stock, the documents, and the ledger move together.",
+        "primary": "Open the demo",
+        "secondary": "Talk to us"
+      }
+    },
     "pricing": {
       "meta": {
         "title": "Pricing",
@@ -2149,7 +2331,17 @@
       "contactSupport": "Contact support"
     },
     "legal": {
+      "family": "Legal",
+      "switcherAria": "Legal documents",
+      "onThisPage": "On this page",
+      "alsoSee": "Also see",
+      "alsoSeeAria": "Related documents",
       "updatedPrefix": "Updated",
+      "tabs": {
+        "privacy": "Privacy",
+        "refund": "Refunds",
+        "terms": "Terms"
+      },
       "relatedHeading": "Trust and transparency",
       "relatedDescription": "Legal documents, security, and contact details in one place.",
       "hub": [
@@ -2587,6 +2779,11 @@
         "description": "Modules for used engine inventory, parts warehouse, work orders, accounting, and team roles. VIN, barcode, and SKU tracking with an engine catalog built in.",
         "ogTitle": "AutoCore modules: engines, warehouse, work orders, accounting"
       },
+      "howItWorks": {
+        "title": "How Auto Parts Inventory Software Works | AutoCore",
+        "description": "Follow one part from intake to invoice: what your team enters by hand, what AutoCore records automatically, and where each step happens on phone, desktop, web.",
+        "ogTitle": "How AutoCore works — one entry, the whole chain"
+      },
       "pricing": {
         "title": "Salvage Yard & Auto Recycler Software Pricing | $40/mo — AutoCore",
         "description": "One plan for auto parts inventory software: $40/month per company. Warehouse, engines, work orders, and accounting. 14-day free trial, no module upsells.",
@@ -2632,6 +2829,7 @@
       "home": "Home",
       "product": "Product",
       "modules": "Modules",
+      "howItWorks": "How it works",
       "pricing": "Pricing",
       "security": "Security",
       "contact": "Contact",

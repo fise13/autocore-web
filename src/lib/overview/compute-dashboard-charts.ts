@@ -4,7 +4,9 @@ import { format } from "date-fns";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { InventoryItem } from "@/domain/inventory";
+import type { InventoryGroupId } from "@/domain/inventory-taxonomy";
 import { WorkOrder } from "@/domain/work-order";
+import { mixedCashPortion, roundMoney } from "@/lib/accounting/mixed-payment";
 import { OverviewOverviewMetrics } from "@/lib/overview/compute-overview-metrics";
 import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 
@@ -12,6 +14,14 @@ export type DailyRevenueRow = {
   day: string;
   label: string;
   revenue: number;
+};
+
+export const INTERACTIVE_REVENUE_DAYS = 90;
+
+export type InteractiveRevenueRow = {
+  date: string;
+  cashbox: number;
+  kaspi: number;
 };
 
 export type IncomeExpenseRow = {
@@ -89,6 +99,44 @@ export function buildDailyRevenueSeries(
       day: format(day, "EEE", { locale }),
       label: format(day, "d MMM", { locale }),
       revenue,
+    };
+  });
+}
+
+function incomeSplitByAccount(operation: FinancialOperation): { cashbox: number; kaspi: number } {
+  if (!isIncomeOperation(operation)) return { cashbox: 0, kaspi: 0 };
+  const cash = mixedCashPortion(operation);
+  if (cash != null) {
+    return { cashbox: cash, kaspi: roundMoney(operation.amount - cash) };
+  }
+  if (operation.account === "kaspi") return { cashbox: 0, kaspi: operation.amount };
+  return { cashbox: operation.amount, kaspi: 0 };
+}
+
+export function buildInteractiveRevenueSeries(
+  operations: FinancialOperation[],
+  days = INTERACTIVE_REVENUE_DAYS,
+): InteractiveRevenueRow[] {
+  const today = startOfDay(new Date());
+  return Array.from({ length: days }, (_, index) => {
+    const day = subDays(today, days - 1 - index);
+    const key = day.toDateString();
+    const split = operations
+      .filter((operation) => operation.createdAt.toDateString() === key)
+      .reduce(
+        (acc, operation) => {
+          const next = incomeSplitByAccount(operation);
+          acc.cashbox += next.cashbox;
+          acc.kaspi += next.kaspi;
+          return acc;
+        },
+        { cashbox: 0, kaspi: 0 },
+      );
+
+    return {
+      date: format(day, "yyyy-MM-dd"),
+      cashbox: split.cashbox,
+      kaspi: split.kaspi,
     };
   });
 }
@@ -231,6 +279,72 @@ export function countLowStockIssues(
     return item.totalAvailable <= (item.lowStockThreshold ?? 1);
   }).length;
   return warehouseLow + motorLowStock;
+}
+
+export const STOCK_PIE_KEYS = ["motors", "aggregates", "parts", "consumables"] as const;
+export type StockPieKey = (typeof STOCK_PIE_KEYS)[number];
+
+export type StockPieSlice = {
+  segment: StockPieKey;
+  count: number;
+  fill: string;
+};
+
+const WAREHOUSE_PIE_GROUPS: InventoryGroupId[] = ["aggregates", "parts", "consumables"];
+
+export function buildStockPieSeries(input: {
+  warehouseItems: InventoryItem[];
+  motorAvailable: number;
+  motorLowStock: number;
+  canWarehouse: boolean;
+  canMotors: boolean;
+}): { slices: StockPieSlice[]; lowStockCount: number; totalCount: number } {
+  const { warehouseItems, motorAvailable, motorLowStock, canWarehouse, canMotors } = input;
+  const active = warehouseItems.filter((item) => item.status === "active");
+  const warehouseLow = active.filter(
+    (item) => item.totalAvailable <= (item.lowStockThreshold ?? 1),
+  ).length;
+  const lowStockCount = warehouseLow + (canMotors ? motorLowStock : 0);
+
+  const slices: StockPieSlice[] = [];
+
+  if (canMotors && motorAvailable > 0) {
+    slices.push({
+      segment: "motors",
+      count: motorAvailable,
+      fill: "var(--color-motors)",
+    });
+  }
+
+  if (canWarehouse) {
+    const grouped: Record<InventoryGroupId, number> = {
+      aggregates: 0,
+      parts: 0,
+      consumables: 0,
+    };
+    for (const item of active) {
+      const group: InventoryGroupId =
+        item.inventoryGroup && WAREHOUSE_PIE_GROUPS.includes(item.inventoryGroup)
+          ? item.inventoryGroup
+          : "consumables";
+      grouped[group] += Math.max(0, item.totalAvailable);
+    }
+    for (const group of WAREHOUSE_PIE_GROUPS) {
+      if (grouped[group] > 0) {
+        slices.push({
+          segment: group,
+          count: grouped[group],
+          fill: `var(--color-${group})`,
+        });
+      }
+    }
+  }
+
+  return {
+    slices,
+    lowStockCount,
+    totalCount: slices.reduce((sum, slice) => sum + slice.count, 0),
+  };
 }
 
 export function formatMoneyKztFallback(value: number): string {

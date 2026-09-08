@@ -13,6 +13,7 @@ const SITEMAP_PRIORITY: Record<MarketingPathKey, number> = {
   home: 1,
   product: 0.9,
   modules: 0.9,
+  howItWorks: 0.85,
   pricing: 0.85,
   security: 0.7,
   contact: 0.6,

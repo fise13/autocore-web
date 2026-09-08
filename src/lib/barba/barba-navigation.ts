@@ -60,10 +60,22 @@ export function pathToBarbaNamespace(
   return `app-${pathname.slice(1).replace(/\//g, "-")}`;
 }
 
+const LEGAL_DOCUMENT_PATH = /(?:^|\/)legal\/(?:privacy|refund|terms)\/?$/;
+
+export function isMarketingLegalDocumentPath(pathname: string): boolean {
+  return LEGAL_DOCUMENT_PATH.test(pathname);
+}
+
 export function shouldAnimateMarketingNavigation(target: URL, currentPathname: string): boolean {
   if (target.origin !== window.location.origin) return false;
   if (!isMarketingNavPath(target.pathname)) return false;
   if (target.pathname === currentPathname && target.hash && !target.search) return false;
+  if (
+    isMarketingLegalDocumentPath(target.pathname) &&
+    isMarketingLegalDocumentPath(currentPathname)
+  ) {
+    return false;
+  }
   const current = currentPathname + window.location.search;
   const next = target.pathname + target.search;
   return current !== next;

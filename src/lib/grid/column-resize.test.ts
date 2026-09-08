@@ -12,6 +12,10 @@ test("clampExcelColumnWidth floors at the Excel minimum", () => {
   assert.equal(clampExcelColumnWidth(80.4), 80);
 });
 
+test("clampExcelColumnWidth also caps at the Excel maximum", () => {
+  assert.equal(clampExcelColumnWidth(4000), 1400);
+});
+
 test("applyColumnWidthOverrides updates one column and rebuilds offsets", () => {
   const layout = {
     columns: [

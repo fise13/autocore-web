@@ -28,6 +28,9 @@ export const marketingRoutes = {
   get modules() {
     return resolveMarketingPath("modules");
   },
+  get howItWorks() {
+    return resolveMarketingPath("howItWorks");
+  },
   get pricing() {
     return resolveMarketingPath("pricing");
   },

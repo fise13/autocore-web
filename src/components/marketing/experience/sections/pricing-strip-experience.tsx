@@ -4,12 +4,17 @@ import { useLandingContent } from "@/components/marketing/experience/content/use
 import { SectionReveal, SectionShell } from "@/components/marketing/experience/ui/section-shell";
 import { TrialButton } from "@/components/marketing/experience/ui/trial-button";
 import { MarketingPricingBlock } from "@/components/marketing/pricing/marketing-pricing-block";
+import { MarketingWorldMapBackdrop } from "@/components/marketing/site/marketing-world-map-backdrop";
 
 export function PricingStripExperience() {
   const copy = useLandingContent().pricing;
 
   return (
-    <SectionShell className="exp-pricing-strip" ariaLabelledby="pricing-strip-heading">
+    <SectionShell
+      className="exp-pricing-strip"
+      ariaLabelledby="pricing-strip-heading"
+      backdrop={<MarketingWorldMapBackdrop />}
+    >
       <SectionReveal>
         <MarketingPricingBlock
           layoutId="landing-frequency"
