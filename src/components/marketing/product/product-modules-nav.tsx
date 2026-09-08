@@ -44,9 +44,8 @@ export function ProductModulesNav({ className }: { className?: string }) {
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    if (hash && idsRef.current.includes(hash)) {
-      setActiveId(hash);
-    }
+    const sectionId = idsRef.current.find((id) => id === hash);
+    if (sectionId) setActiveId(sectionId);
   }, []);
 
   useEffect(() => {
