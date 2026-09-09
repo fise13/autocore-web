@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { CookieConsentBanner } from "@/components/analytics/cookie-consent-banner";
 import { GoogleAdsSubscriptionConversion } from "@/components/analytics/google-ads-subscription-conversion";
+import { GoogleAnalyticsPageViews } from "@/components/analytics/google-analytics-pageviews";
 import { GoogleAnalyticsTag } from "@/components/analytics/google-analytics-tag";
 import { GoogleTagHead } from "@/components/analytics/google-tag-head";
 import "./globals.css";
@@ -56,12 +57,14 @@ export default function RootLayout({
         <Analytics />
         {/*
           Production HTML embeds GA4 (G-QEVTMP0BYB) plus Google Ads
-          (AW-18344172044) in <head> with Consent Mode denied until the banner
-          is answered. Local and preview stay silent unless an env id is set.
-          See `lib/analytics/gtag-bootstrap.ts`.
+          (AW-18344172044) as real <script> tags in <head>, Consent Mode
+          denied until the banner is answered. The Подписка event snippet
+          lives on /welcome. Local and preview stay silent unless an env id
+          is set. See `lib/analytics/gtag-bootstrap.ts`.
         */}
         <GoogleAnalyticsTag embedded={googleTagEmbedded} />
         <Suspense fallback={null}>
+          <GoogleAnalyticsPageViews />
           <GoogleAdsSubscriptionConversion />
         </Suspense>
         <CookieConsentBanner />

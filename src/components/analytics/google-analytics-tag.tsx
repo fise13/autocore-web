@@ -10,7 +10,14 @@ import {
   resolveGoogleAdsId,
   resolveMeasurementId,
 } from "@/lib/analytics/ga-config";
-import { gtagConsentUpdatePayload } from "@/lib/analytics/gtag-bootstrap";
+import {
+  buildGtagConfigCall,
+  gtagConsentUpdatePayload,
+  gtagLinkerDomains,
+  gtagSharedCookieDomain,
+  primaryGtagId,
+} from "@/lib/analytics/gtag-bootstrap";
+import { getAppUrl, getMarketingUrl } from "@/lib/site-urls";
 
 type GtagFn = (command: string, ...args: unknown[]) => void;
 
@@ -18,6 +25,7 @@ function applyGtagConsentUpdate(consent: "granted" | "denied"): boolean {
   const gtag = (window as Window & { gtag?: GtagFn }).gtag;
   if (typeof gtag !== "function") return false;
   gtag("consent", "update", gtagConsentUpdatePayload(consent));
+  gtag("set", "ads_data_redaction", consent !== "granted");
   return true;
 }
 
@@ -72,8 +80,11 @@ export function GoogleAnalyticsTag({ embedded = false }: GoogleAnalyticsTagProps
   const ga = isSafeGtagId(ids.ga) ? ids.ga : "";
   const ads = isSafeGtagId(ids.ads) ? ids.ads : "";
   const unique = [...new Set([ga, ads].filter(Boolean))];
-  const primary = unique[0];
+  const primary = primaryGtagId(unique);
   if (!primary) return null;
+
+  const linkerDomains = gtagLinkerDomains(getMarketingUrl(), getAppUrl());
+  const cookieDomain = gtagSharedCookieDomain(linkerDomains);
 
   return (
     <>
@@ -83,7 +94,7 @@ export function GoogleAnalyticsTag({ embedded = false }: GoogleAnalyticsTagProps
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-${unique.map((id) => `gtag('config', '${id}');`).join("\n")}
+${unique.map((id) => buildGtagConfigCall(id, linkerDomains, cookieDomain)).join("\n")}
 `}
       </Script>
     </>

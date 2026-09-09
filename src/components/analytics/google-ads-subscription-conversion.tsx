@@ -1,26 +1,26 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 
-import { getConsent, getServerConsent, subscribeConsent } from "@/lib/analytics/consent";
 import { isSubscriptionThankYou, trackGoogleAdsSubscriptionConversion } from "@/lib/analytics/events";
 
 /**
- * Google Ads event snippet for the "Подписка" conversion page.
+ * Google Ads `gtag('event', 'conversion')` for SPA thank-you routes.
  *
- * Overlay checkout already fires this from Paddle `checkout.completed`. The
- * thank-you routes cover the redirect path (`successUrl`) when that event
- * never arrived. Both share a per-tab lock so they cannot double-count.
+ * `/welcome` already ships the same snippet in HTML so Ads' scanner can see
+ * it. Overlay checkout fires from Paddle `checkout.completed`. This covers
+ * `?checkout=success` after client navigation. All three share a per-tab lock.
+ *
+ * Does not wait for the cookie banner: Consent Mode is already on the Google
+ * tag, and Ads' crawler never clicks Accept.
  */
 export function GoogleAdsSubscriptionConversion() {
-  const consent = useSyncExternalStore(subscribeConsent, getConsent, getServerConsent);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const checkout = searchParams.get("checkout");
 
   useEffect(() => {
-    if (consent !== "granted") return;
     if (!isSubscriptionThankYou(pathname, checkout)) return;
 
     const tryFire = (): boolean => {
@@ -41,7 +41,7 @@ export function GoogleAdsSubscriptionConversion() {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [checkout, consent, pathname]);
+  }, [checkout, pathname]);
 
   return null;
 }

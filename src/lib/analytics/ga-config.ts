@@ -44,6 +44,12 @@ export const PRODUCTION_GOOGLE_ADS_ID = "AW-18344172044";
 export const PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO =
   "AW-18344172044/FsM2CKqomuscEIy0l6tE";
 
+/**
+ * sessionStorage key shared by the page-load event snippet and the Paddle /
+ * thank-you JS fire, so overlay checkout and `/welcome` cannot double-count.
+ */
+export const ADS_SUBSCRIPTION_CONVERSION_LOCK = "autocore-aw-subscription-conversion";
+
 /** Env override. Empty means "use the production tag on live hosts only". */
 const CONFIGURED_GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 

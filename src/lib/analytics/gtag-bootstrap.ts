@@ -1,6 +1,8 @@
 import {
+  ADS_SUBSCRIPTION_CONVERSION_LOCK,
   PRODUCTION_GA_MEASUREMENT_ID,
   PRODUCTION_GOOGLE_ADS_ID,
+  isSafeGoogleAdsSendTo,
   isSafeGtagId,
 } from "./ga-config";
 
@@ -74,16 +76,83 @@ export function gtagLoaderSrc(id: string): string {
   return `https://www.googletagmanager.com/gtag/js?id=${id}`;
 }
 
-/** Prefer the GA4 id as `gtag/js?id=`, matching Google's own snippet. */
+/**
+ * Prefer the Ads id as `gtag/js?id=`. Google Ads' HTML scanner looks for
+ * `AW-` in that URL; the same gtag.js still accepts `gtag('config', 'G-…')`.
+ */
 export function primaryGtagId(ids: string[]): string {
   const unique = [...new Set(ids.filter(isSafeGtagId))];
-  return unique.find((id) => id.startsWith("G-")) ?? unique[0] ?? "";
+  return unique.find((id) => id.startsWith("AW-")) ?? unique.find((id) => id.startsWith("G-")) ?? unique[0] ?? "";
 }
 
 export function gtagConsentUpdatePayload(
   consent: "granted" | "denied",
 ): typeof GTAG_CONSENT_GRANTED | typeof GTAG_CONSENT_DENIED {
   return consent === "granted" ? GTAG_CONSENT_GRANTED : GTAG_CONSENT_DENIED;
+}
+
+/** Hostnames interpolatable into gtag linker / cookie_domain. */
+export function isSafeGtagHostname(host: string): boolean {
+  const normalized = host.toLowerCase().replace(/^www\./, "");
+  if (!normalized || normalized === "localhost" || normalized === "127.0.0.1") return false;
+  if (normalized === "vercel.app" || normalized.endsWith(".vercel.app")) return false;
+  return /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(
+    normalized,
+  );
+}
+
+/**
+ * Marketing + app hosts for `linker.domains`. Without this, a click on
+ * myautocore.com that continues on app.myautocore.com starts a second GA4
+ * session and drops the Google Ads click id.
+ */
+export function gtagLinkerDomains(marketingOrigin: string, appOrigin: string): string[] {
+  const hosts = [marketingOrigin, appOrigin].map((origin) => {
+    try {
+      return new URL(origin).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  });
+  return [...new Set(hosts.filter(isSafeGtagHostname))];
+}
+
+/** Shared parent so `_ga` is readable on both `myautocore.com` and `app.`. */
+export function gtagSharedCookieDomain(hosts: string[]): string {
+  const unique = [...new Set(hosts.filter(isSafeGtagHostname))];
+  if (unique.length === 0) return "";
+  const sorted = [...unique].sort((a, b) => a.length - b.length);
+  const root = sorted[0];
+  if (!root) return "";
+  if (sorted.every((host) => host === root || host.endsWith(`.${root}`))) return root;
+  return "";
+}
+
+export function buildGtagConfigCall(
+  id: string,
+  linkerDomains: string[] = [],
+  cookieDomain = "",
+): string {
+  if (!isSafeGtagId(id)) {
+    throw new Error("gtag config id is not interpolatable");
+  }
+  const safeDomains = [...new Set(linkerDomains.filter(isSafeGtagHostname))];
+  const safeCookie = isSafeGtagHostname(cookieDomain) ? cookieDomain : "";
+
+  if (id.startsWith("AW-")) {
+    // One page_view per load: GA4's config owns it. Ads still conversion-links.
+    return `gtag('config', '${id}', {"send_page_view":false,"conversion_linker":true});`;
+  }
+
+  const options: Record<string, unknown> = {};
+  if (safeDomains.length > 0) {
+    options.linker = { domains: safeDomains, decorate_forms: true };
+  }
+  if (safeCookie) options.cookie_domain = safeCookie;
+  if (Object.keys(options).length === 0) {
+    return `gtag('config', '${id}');`;
+  }
+  return `gtag('config', '${id}', ${JSON.stringify(options)});`;
 }
 
 /**
@@ -96,6 +165,8 @@ export function gtagConsentUpdatePayload(
 export function buildGtagBootstrapScript(
   ids: string[],
   cookieName = CONSENT_COOKIE_NAME,
+  linkerDomains: string[] = [],
+  cookieDomain = "",
 ): string {
   const unique = [...new Set(ids.filter(isSafeGtagId))];
   if (unique.length === 0) {
@@ -105,7 +176,9 @@ export function buildGtagBootstrapScript(
     throw new Error("consent cookie name is not interpolatable");
   }
 
-  const configs = unique.map((id) => `gtag('config', '${id}');`).join("\n");
+  const configs = unique
+    .map((id) => buildGtagConfigCall(id, linkerDomains, cookieDomain))
+    .join("\n");
   const granted = JSON.stringify(GTAG_CONSENT_GRANTED);
   const denied = JSON.stringify(GTAG_CONSENT_DENIED);
   const pending = JSON.stringify({ ...GTAG_CONSENT_DENIED, wait_for_update: 500 });
@@ -123,14 +196,62 @@ function gtag(){dataLayer.push(arguments);}
   }
   if (granted) {
     gtag('consent', 'default', ${granted});
+    gtag('set', 'ads_data_redaction', false);
   } else if (denied) {
     gtag('consent', 'default', ${denied});
+    gtag('set', 'ads_data_redaction', true);
   } else {
     gtag('consent', 'default', ${pending});
+    gtag('set', 'ads_data_redaction', true);
   }
 })();
 gtag('set', 'url_passthrough', true);
-gtag('set', 'ads_data_redaction', true);
 gtag('js', new Date());
 ${configs}`;
+}
+
+/**
+ * Google Ads event snippet for the "Подписка" conversion page.
+ *
+ * The `gtag('event', 'conversion', { 'send_to': … })` call must appear as
+ * plain text in the HTML. Ads' scanner greps page source; it does not run
+ * the React tree that fires the same event after hydration.
+ *
+ * The sessionStorage lock is the same key the Paddle `purchase` path uses, so
+ * overlay checkout and this page-load snippet count a payment once.
+ */
+export function buildGoogleAdsSubscriptionEventSnippet(
+  sendTo: string,
+  lockKey = ADS_SUBSCRIPTION_CONVERSION_LOCK,
+): string {
+  if (!isSafeGoogleAdsSendTo(sendTo)) {
+    throw new Error("Google Ads send_to is not interpolatable");
+  }
+  if (!/^[a-z0-9_-]+$/i.test(lockKey)) {
+    throw new Error("conversion lock key is not interpolatable");
+  }
+
+  return `(function(){
+  try {
+    if (sessionStorage.getItem('${lockKey}') === '1') return;
+    sessionStorage.setItem('${lockKey}', '1');
+  } catch (e) {}
+  gtag('event', 'conversion', {
+      'send_to': '${sendTo}'
+  });
+})();`;
+}
+
+/**
+ * Noscript pixel from Google's event snippet. Crawlers that never run JS
+ * still see the conversion id and label in an image URL.
+ */
+export function googleAdsConversionPixelSrc(sendTo: string): string {
+  if (!isSafeGoogleAdsSendTo(sendTo)) {
+    throw new Error("Google Ads send_to is not interpolatable");
+  }
+  const separator = sendTo.indexOf("/");
+  const conversionId = sendTo.slice("AW-".length, separator);
+  const label = sendTo.slice(separator + 1);
+  return `https://www.googleadservices.com/pagead/conversion/${conversionId}/?label=${label}&guid=ON&script=0`;
 }

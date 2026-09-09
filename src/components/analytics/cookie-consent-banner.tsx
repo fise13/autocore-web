@@ -4,14 +4,10 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Cookie } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  getConsent,
-  getServerConsent,
-  setConsent,
-  subscribeConsent,
-  type ConsentState,
-} from "@/lib/analytics/consent";
+import { getConsent, getServerConsent, setConsent, subscribeConsent, type ConsentState } from "@/lib/analytics/consent";
+import { trackPageView } from "@/lib/analytics/events";
 import { isAnalyticsEnabled } from "@/lib/analytics/ga-config";
+import { gtagConsentUpdatePayload } from "@/lib/analytics/gtag-bootstrap";
 import { getMarketingUrl } from "@/lib/site-urls";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
@@ -92,6 +88,15 @@ export function CookieConsentBanner() {
   const choose = (next: Exclude<ConsentState, "unknown">) => {
     // `setConsent` notifies the effect above, which owns the exit and unmount.
     setConsent(next);
+    const gtag = (window as Window & { gtag?: (command: string, ...args: unknown[]) => void }).gtag;
+    if (typeof gtag === "function") {
+      gtag("consent", "update", gtagConsentUpdatePayload(next));
+      gtag("set", "ads_data_redaction", next !== "granted");
+    }
+    // Path exploration only shows cookied hits. The landing `config` page_view
+    // went out with storage denied; this one is the session GA4 will actually
+    // draw after the visitor accepts.
+    if (next === "granted") trackPageView();
   };
 
   return (

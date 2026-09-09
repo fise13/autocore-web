@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  ADS_SUBSCRIPTION_CONVERSION_LOCK,
   isAnalyticsEnabled,
   isSafeGoogleAdsSendTo,
   resolveGoogleAdsId,
   resolveGoogleAdsSubscriptionSendTo,
+  resolveMeasurementId,
 } from "./ga-config";
 
 /**
@@ -61,8 +63,6 @@ export type AnalyticsParams = {
 type GtagWindow = Window & {
   gtag?: (command: "event" | "config" | "js" | "consent" | "set", ...args: unknown[]) => void;
 };
-
-const ADS_SUBSCRIPTION_CONVERSION_LOCK = "autocore-aw-subscription-conversion";
 
 function readTrimmed(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
@@ -158,6 +158,43 @@ export function trackGoogleAdsSubscriptionConversion(params: AnalyticsParams = {
 
   try {
     gtag("event", "conversion", googleAdsSubscriptionConversionParams(params, sendTo));
+  } catch {
+    // An analytics call is never worth an interrupted user action.
+  }
+}
+
+/** SPA / consent-grant payload. Path is the pathname only so `gclid` does not explode reports. */
+export function pageViewParamsFrom(
+  href: string,
+  title: string,
+): { page_title: string; page_location: string; page_path: string } {
+  const url = new URL(href);
+  return {
+    page_title: title,
+    page_location: href,
+    page_path: url.pathname,
+  };
+}
+
+/**
+ * Record a page view after the initial `gtag('config')` hit.
+ *
+ * Next.js + Barba change the URL without a document load, so GA4 would otherwise
+ * show only the landing `/` — Ads clicks that opened the site, then moved to
+ * `/pricing`, disappear from Path exploration.
+ */
+export function trackPageView(): void {
+  if (!isAnalyticsEnabled()) return;
+  if (typeof window === "undefined") return;
+  if (!resolveMeasurementId(window.location.hostname) && !resolveGoogleAdsId(window.location.hostname)) {
+    return;
+  }
+
+  const gtag = (window as GtagWindow).gtag;
+  if (typeof gtag !== "function") return;
+
+  try {
+    gtag("event", "page_view", pageViewParamsFrom(window.location.href, document.title));
   } catch {
     // An analytics call is never worth an interrupted user action.
   }

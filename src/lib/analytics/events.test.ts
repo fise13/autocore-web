@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   googleAdsSubscriptionConversionParams,
   isSubscriptionThankYou,
+  pageViewParamsFrom,
   purchaseParamsFromCheckout,
 } from "./events";
 import { PRODUCTION_GOOGLE_ADS_SUBSCRIPTION_SEND_TO } from "./ga-config";
@@ -75,5 +76,18 @@ describe("isSubscriptionThankYou", () => {
     assert.equal(isSubscriptionThankYou("/settings", "success"), true);
     assert.equal(isSubscriptionThankYou("/settings", "canceled"), false);
     assert.equal(isSubscriptionThankYou("/pricing", null), false);
+  });
+});
+
+describe("pageViewParamsFrom", () => {
+  it("keeps a clean page_path so gclid does not explode the path report", () => {
+    assert.deepEqual(
+      pageViewParamsFrom("https://myautocore.com/pricing?gclid=abc", "Pricing"),
+      {
+        page_title: "Pricing",
+        page_location: "https://myautocore.com/pricing?gclid=abc",
+        page_path: "/pricing",
+      },
+    );
   });
 });
