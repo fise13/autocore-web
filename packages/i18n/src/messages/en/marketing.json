@@ -1011,9 +1011,9 @@
     },
     "pricing": {
       "title": "One price. The entire product.",
-      "price": "$40",
+      "price": "$15",
       "period": "/ month",
-      "yearlyPrice": "$400",
+      "yearlyPrice": "$150",
       "yearlyPeriod": "/ year",
       "monthlyLabel": "Monthly",
       "yearlyLabel": "Yearly",
@@ -1043,7 +1043,7 @@
       }
     },
     "roi": {
-      "title": "$40 versus an hour of evening reconciliations.",
+      "title": "$15 versus an hour of evening reconciliations.",
       "subtitle": "Conservative math: minutes a day on reconciliations and the occasional lost sale. No \"+300%\" fairy tale.",
       "minutesLabel": "Minutes spent reconciling per day",
       "rateLabel": "Hourly rate, $",
@@ -1096,11 +1096,11 @@
         },
         {
           "q": "What happens after 14 days? Are there extra fees for modules?",
-          "a": "It's $40 per month per company, or $400 per year (two months free). You can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
+          "a": "It's $15 per month per company, or $150 per year (two months free). You can pause. Your data is kept. There are no extra fees for modules — one price unlocks the entire product."
         },
         {
           "q": "How do I buy a subscription?",
-          "a": "Open Pricing, pick monthly or yearly, and pay with a card. Yearly is $400 — two months free versus $40 × 12."
+          "a": "Open Pricing, pick monthly or yearly, and pay with a card. Yearly is $150 — two months free versus $15 × 12."
         }
       ],
       "ctaPrimary": "Open the demo",
@@ -1855,17 +1855,17 @@
     "pricing": {
       "meta": {
         "title": "Pricing",
-        "description": "Salvage yard software: $40 monthly or $400 yearly per company. Donors, used parts, warehouse, and work orders. 14-day trial; payment method required."
+        "description": "Salvage yard software: $15 monthly or $150 yearly per company. Donors, used parts, warehouse, and work orders. 14-day trial; payment method required."
       },
       "hero": {
         "titleLine1": "One plan.",
         "titleLine2": "The whole yard.",
-        "lead": "Donors, used parts, warehouse, work orders, and documents. $40 a month or $400 a year per company — no module upsells."
+        "lead": "Donors, used parts, warehouse, work orders, and documents. $15 a month or $150 a year per company — no module upsells."
       },
       "plan": {
-        "price": "$40",
+        "price": "$15",
         "period": "/ month",
-        "yearlyPrice": "$400",
+        "yearlyPrice": "$150",
         "yearlyPeriod": "/ year",
         "monthlyLabel": "Monthly",
         "yearlyLabel": "Yearly",
@@ -1917,7 +1917,7 @@
         },
         {
           "q": "What happens after the trial?",
-          "a": "It's $40 per month per company, or $400 per year (two months free). You can pause; your data is kept."
+          "a": "It's $15 per month per company, or $150 per year (two months free). You can pause; your data is kept."
         },
         {
           "q": "Are there extra fees for modules?",
@@ -2785,9 +2785,9 @@
         "ogTitle": "How AutoCore works — one entry, the whole chain"
       },
       "pricing": {
-        "title": "Salvage Yard & Auto Recycler Software Pricing | $40/mo — AutoCore",
-        "description": "One plan for auto parts inventory software: $40/month per company. Warehouse, engines, work orders, and accounting. 14-day free trial, no module upsells.",
-        "ogTitle": "AutoCore pricing — $40/mo inventory software for salvage yards"
+        "title": "Salvage Yard & Auto Recycler Software Pricing | $15/mo — AutoCore",
+        "description": "One plan for auto parts inventory software: $15/month per company. Warehouse, engines, work orders, and accounting. 14-day free trial, no module upsells.",
+        "ogTitle": "AutoCore pricing — $15/mo inventory software for salvage yards"
       },
       "contact": {
         "title": "Contact AutoCore | Auto Parts Inventory Software",

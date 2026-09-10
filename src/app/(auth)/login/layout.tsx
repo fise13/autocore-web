@@ -52,7 +52,7 @@ export default async function LoginLayout({ children }: LoginLayoutProps) {
       <footer className="border-t border-border/60 px-6 py-8 text-center text-sm text-muted-foreground">
         <p>
           AutoCore is cloud software for auto dismantlers, engine sellers, and repair shops.
-          Pricing: $40/month or $400/year per company. Contact{" "}
+          Pricing: $15/month or $150/year per company. Contact{" "}
           <a href="mailto:support@myautocore.com" className="underline underline-offset-4">
             support@myautocore.com
           </a>

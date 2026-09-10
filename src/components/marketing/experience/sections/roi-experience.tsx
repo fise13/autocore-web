@@ -61,7 +61,7 @@ export function RoiExperience() {
           <p className="text-xs text-muted-foreground">{copy.resultLabel}</p>
           <p className="exp-display mt-1 text-3xl tracking-tight">{formatUsd(chaosCost)}</p>
           <p className="mt-3 text-xs text-muted-foreground">
-            {copy.vsLabel}: ~$40 / {copy.perMonth}
+            {copy.vsLabel}: ~$15 / {copy.perMonth}
           </p>
         </div>
 

@@ -14,8 +14,8 @@ import {
   type MarketingBillingFrequency,
 } from "@/lib/paddle/marketing-plan";
 
-const FALLBACK_MONTHLY = 40;
-const FALLBACK_YEARLY = 400;
+const FALLBACK_MONTHLY = 15;
+const FALLBACK_YEARLY = 150;
 
 function parseAmount(formatted: string | undefined, fallback: number): number {
   if (!formatted) return fallback;

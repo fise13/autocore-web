@@ -1,4 +1,4 @@
-/** Paddle live Price IDs — AutoCore Pro @ $40/mo. */
+/** Paddle live Price IDs — AutoCore Pro @ $15/mo. */
 export const paddlePriceIds = {
   proMonthly:
     process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY ?? "pri_01m0mhggbp5skqpsmwh2963d53",

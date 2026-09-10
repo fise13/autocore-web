@@ -37,7 +37,7 @@ export function AppPublicHome() {
       <dl className="mt-8 grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-5 text-sm sm:grid-cols-2">
         <div>
           <dt className="font-medium text-foreground">Pricing</dt>
-          <dd className="mt-1 text-muted-foreground">$40 / month or $400 / year per company</dd>
+          <dd className="mt-1 text-muted-foreground">$15 / month or $150 / year per company</dd>
         </div>
         <div>
           <dt className="font-medium text-foreground">Trial</dt>

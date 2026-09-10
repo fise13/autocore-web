@@ -67,13 +67,13 @@ async function main() {
   );
   monthly ??= await paddle.prices.create({
     productId: product.id,
-    description: "AutoCore Pro monthly USD ($40)",
+    description: "AutoCore Pro monthly USD ($15)",
     name: "AutoCore Pro — Monthly",
     type: "standard",
     billingCycle: { interval: "month", frequency: 1 },
     trialPeriod: { interval: "day", frequency: 14, requiresPaymentMethod: true },
     taxMode: "location",
-    unitPrice: { amount: "4000", currencyCode: "USD" },
+    unitPrice: { amount: "1500", currencyCode: "USD" },
     quantity: { minimum: 1, maximum: 100 },
     customData: { autocore_plan_id: "pro_monthly" },
   });
@@ -88,13 +88,13 @@ async function main() {
   );
   yearly ??= await paddle.prices.create({
     productId: product.id,
-    description: "AutoCore Pro yearly USD ($400)",
+    description: "AutoCore Pro yearly USD ($150)",
     name: "AutoCore Pro — Yearly",
     type: "standard",
     billingCycle: { interval: "year", frequency: 1 },
     trialPeriod: { interval: "day", frequency: 14, requiresPaymentMethod: true },
     taxMode: "location",
-    unitPrice: { amount: "40000", currencyCode: "USD" },
+    unitPrice: { amount: "15000", currencyCode: "USD" },
     quantity: { minimum: 1, maximum: 100 },
     customData: { autocore_plan_id: "pro_yearly" },
   });

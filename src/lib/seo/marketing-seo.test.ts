@@ -19,7 +19,7 @@ const KEYS = Object.keys(marketingCleanPaths) as MarketingPathKey[];
 
 /* ---------------------------------------------------------------- pricing */
 // The defect this guards against shipped to production: structured data said
-// $39 while every visible surface said $40, which is a rich-result violation.
+// one price while every visible surface said another — a rich-result violation.
 
 test("structured-data price matches the published monthly price", () => {
   const offer = buildPricingOfferJsonLd("en");
