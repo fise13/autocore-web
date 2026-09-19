@@ -151,6 +151,12 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLocalDev = isLocalDevHost(host);
 
+  // docs.myautocore.com is the standalone document desk. Its root is the engine
+  // sale form; every other path on that host is served as written.
+  if (normalizeHost(host).startsWith("docs.") && pathname === "/") {
+    return NextResponse.rewrite(new URL("/docs/motor-sale", request.url));
+  }
+
   if (kind === "marketing") {
     return handleMarketingRoutes(request, pathname, true);
   }
