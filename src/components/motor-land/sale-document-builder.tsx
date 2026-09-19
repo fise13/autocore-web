@@ -1,19 +1,22 @@
 "use client";
 
-import { Download, FilePlus2, Loader2, Plus, Printer, Trash2 } from "lucide-react";
+import {
+  Download,
+  FilePlus2,
+  Loader2,
+  LogOut,
+  Plus,
+  Printer,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useMotorLandDocuments } from "@/hooks/use-motor-land-documents";
 import { DOCX_MIME_TYPE, buildSaleDocx } from "@/lib/motor-land/docx/package";
-import {
-  loadHistory,
-  removeHistoryEntry,
-  saveHistory,
-  upsertHistory,
-  type HistoryEntry,
-} from "@/lib/motor-land/history";
 import {
   computeTotals,
   createEmptyItem,
@@ -80,7 +83,15 @@ function TextField({
   );
 }
 
-function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
     <section className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -93,8 +104,17 @@ function Section({ title, children, action }: { title: string; children: React.R
 }
 
 export function SaleDocumentBuilder() {
+  const { firebaseUser, logout } = useAuth();
+  const uid = firebaseUser?.uid ?? null;
+  const {
+    documents: history,
+    isLoading: historyLoading,
+    error: historyError,
+    save,
+    remove,
+  } = useMotorLandDocuments(uid);
+
   const [data, setData] = useState<SaleDocumentData | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [building, setBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,8 +131,13 @@ export function SaleDocumentBuilder() {
     // so the first document can only be built after mount — a lazy useState
     // initializer would render different HTML than it hydrates.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setData(createEmptySaleDocument(new Date(), nextDocumentNumber(stored), crypto.randomUUID()));
-    setHistory(loadHistory());
+    setData(
+      createEmptySaleDocument(
+        new Date(),
+        nextDocumentNumber(stored),
+        crypto.randomUUID(),
+      ),
+    );
   }, []);
 
   const update = useCallback((patch: Partial<SaleDocumentData>) => {
@@ -122,12 +147,20 @@ export function SaleDocumentBuilder() {
   const updateItem = useCallback((id: string, patch: Partial<SaleItem>) => {
     setData((current) =>
       current
-        ? { ...current, items: current.items.map((item) => (item.id === id ? { ...item, ...patch } : item)) }
+        ? {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === id ? { ...item, ...patch } : item,
+            ),
+          }
         : current,
     );
   }, []);
 
-  const fileName = useMemo(() => (data ? saleDocumentFileName(data) : ""), [data]);
+  const fileName = useMemo(
+    () => (data ? saleDocumentFileName(data) : ""),
+    [data],
+  );
 
   /** Builds the two-page .docx for `source` and hands it to the browser. */
   const downloadDocx = useCallback(async (source: SaleDocumentData) => {
@@ -135,7 +168,8 @@ export function SaleDocumentBuilder() {
     setError(null);
     try {
       const response = await fetch("/motor-land/logo.png");
-      if (!response.ok) throw new Error(`Логотип не загрузился (${response.status})`);
+      if (!response.ok)
+        throw new Error(`Логотип не загрузился (${response.status})`);
       const logoPng = new Uint8Array(await response.arrayBuffer());
 
       const bytes = await buildSaleDocx(source, { logoPng });
@@ -148,7 +182,9 @@ export function SaleDocumentBuilder() {
       URL.revokeObjectURL(url);
       return true;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Не удалось собрать документ");
+      setError(
+        cause instanceof Error ? cause.message : "Не удалось собрать документ",
+      );
       return false;
     } finally {
       setBuilding(false);
@@ -160,233 +196,337 @@ export function SaleDocumentBuilder() {
     if (!data) return;
     if (!(await downloadDocx(data))) return;
 
-    const next = upsertHistory(history, data, new Date().toISOString());
-    setHistory(next);
-    saveHistory(next);
+    try {
+      await save(data);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? `Файл готов, но запись в историю не сохранилась: ${cause.message}`
+          : "Файл готов, но запись в историю не сохранилась",
+      );
+    }
     try {
       window.localStorage.setItem(COUNTER_KEY, data.documentNumber);
     } catch {
       // Private browsing: the counter simply restarts next time.
     }
-  }, [data, downloadDocx, history]);
+  }, [data, downloadDocx, save]);
 
   const handleNewDocument = useCallback(() => {
-    const latest = history[0]?.id ?? data?.documentNumber ?? null;
-    setData(createEmptySaleDocument(new Date(), nextDocumentNumber(latest), crypto.randomUUID()));
+    const latest =
+      history[0]?.data.documentNumber ?? data?.documentNumber ?? null;
+    setData(
+      createEmptySaleDocument(
+        new Date(),
+        nextDocumentNumber(latest),
+        crypto.randomUUID(),
+      ),
+    );
   }, [data?.documentNumber, history]);
 
   const handleDelete = useCallback(
-    (id: string) => {
-      const next = removeHistoryEntry(history, id);
-      setHistory(next);
-      saveHistory(next);
+    async (id: string) => {
+      try {
+        await remove(id);
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Не удалось удалить документ",
+        );
+      }
     },
-    [history],
+    [remove],
   );
 
   if (!data) {
-    return <div className="h-[60vh] animate-pulse rounded-xl border border-border bg-card" />;
+    return (
+      <div className="h-[60vh] animate-pulse rounded-xl border border-border bg-card" />
+    );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
-      <div className="flex flex-col gap-4 print:hidden">
-        <Section title="Документ">
-          <div className="grid grid-cols-2 gap-3">
-            <TextField
-              label="Номер документа"
-              value={data.documentNumber}
-              onChange={(value) => update({ documentNumber: value })}
-            />
-            <TextField
-              label="Дата и время"
-              type="datetime-local"
-              value={toLocalInputValue(data.issuedAt)}
-              onChange={(value) => {
-                const parsed = new Date(value);
-                if (!Number.isNaN(parsed.getTime())) update({ issuedAt: parsed.toISOString() });
-              }}
-            />
-          </div>
-        </Section>
+    <>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Товарная накладная на двигатель
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Номер и дата подставляются автоматически. Условия гарантии
+            печатаются на обороте каждого документа — отдельно включать их не
+            нужно. Каждый выданный документ сохраняется в вашем аккаунте.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {firebaseUser?.email}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void logout()}
+          >
+            <LogOut className="size-3.5" />
+            Выйти
+          </Button>
+        </div>
+      </header>
 
-        <Section
-          title="Двигатели и запчасти"
-          action={
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+        <div className="flex flex-col gap-4 print:hidden">
+          <Section title="Документ">
+            <div className="grid grid-cols-2 gap-3">
+              <TextField
+                label="Номер документа"
+                value={data.documentNumber}
+                onChange={(value) => update({ documentNumber: value })}
+              />
+              <TextField
+                label="Дата и время"
+                type="datetime-local"
+                value={toLocalInputValue(data.issuedAt)}
+                onChange={(value) => {
+                  const parsed = new Date(value);
+                  if (!Number.isNaN(parsed.getTime()))
+                    update({ issuedAt: parsed.toISOString() });
+                }}
+              />
+            </div>
+          </Section>
+
+          <Section
+            title="Двигатели и запчасти"
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  update({
+                    items: [
+                      ...data.items,
+                      createEmptyItem(crypto.randomUUID()),
+                    ],
+                  })
+                }
+              >
+                <Plus className="size-3.5" />
+                Строка
+              </Button>
+            }
+          >
+            <div className="flex flex-col gap-4">
+              {data.items.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-border/70 bg-background p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Позиция {index + 1}
+                    </span>
+                    {data.items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          update({
+                            items: data.items.filter(
+                              (row) => row.id !== item.id,
+                            ),
+                          })
+                        }
+                        aria-label={`Удалить позицию ${index + 1}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <TextField
+                        label="Наименование"
+                        value={item.title}
+                        placeholder="Двигатель EJ253 (Subaru)"
+                        onChange={(value) =>
+                          updateItem(item.id, { title: value })
+                        }
+                      />
+                    </div>
+                    <TextField
+                      label="Номер агрегата"
+                      value={item.serial}
+                      placeholder="928420"
+                      onChange={(value) =>
+                        updateItem(item.id, { serial: value })
+                      }
+                    />
+                    <TextField
+                      label="Количество"
+                      type="number"
+                      value={String(item.quantity)}
+                      onChange={(value) =>
+                        updateItem(item.id, { quantity: parseNumber(value) })
+                      }
+                    />
+                    <TextField
+                      label="Единица"
+                      value={item.unit}
+                      onChange={(value) => updateItem(item.id, { unit: value })}
+                    />
+                    <TextField
+                      label="Цена, ₸"
+                      type="number"
+                      value={String(item.price)}
+                      onChange={(value) =>
+                        updateItem(item.id, { price: parseNumber(value) })
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section title="Стороны">
+            <div className="grid gap-3">
+              <TextField
+                label="Заказчик"
+                value={data.customer.orderer}
+                placeholder="Приходящий Клиент"
+                onChange={(value) =>
+                  update({ customer: { ...data.customer, orderer: value } })
+                }
+              />
+              <TextField
+                label="Клиент"
+                value={data.customer.client}
+                placeholder="Иванов И. И., +7 777 000 00 00"
+                onChange={(value) =>
+                  update({ customer: { ...data.customer, client: value } })
+                }
+              />
+            </div>
+          </Section>
+
+          <Section title="НДС">
+            <TextField
+              label="НДС, % (0 — без НДС)"
+              type="number"
+              value={String(data.vatRate)}
+              onChange={(value) => update({ vatRate: parseNumber(value) })}
+            />
+          </Section>
+
+          <Section
+            title={`История документов${history.length > 0 ? ` (${history.length})` : ""}`}
+          >
+            {historyError && (
+              <p className="mb-2 text-xs text-destructive">
+                История недоступна: {historyError}
+              </p>
+            )}
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {historyLoading
+                  ? "Загружаем историю…"
+                  : "Каждый выданный документ сохраняется в вашем аккаунте: его можно открыть, перевыпустить или удалить с любого устройства."}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {history.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        № {entry.data.documentNumber} ·{" "}
+                        {formatMoney(computeTotals(entry.data).total)} ₸
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {formatDateTime(entry.data.issuedAt)}
+                        {entry.data.customer.orderer
+                          ? ` · ${entry.data.customer.orderer}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setData(entry.data)}
+                      >
+                        Открыть
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={building}
+                        onClick={() => void downloadDocx(entry.data)}
+                        aria-label={`Скачать документ ${entry.id}`}
+                      >
+                        <Download className="size-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handleDelete(entry.id)}
+                        aria-label={`Удалить документ ${entry.id}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Button type="button" onClick={handleIssue} disabled={building}>
+              {building ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Скачать Word
+            </Button>
             <Button
               type="button"
               variant="outline"
-              size="sm"
-              onClick={() =>
-                update({ items: [...data.items, createEmptyItem(crypto.randomUUID())] })
-              }
+              onClick={() => window.print()}
             >
-              <Plus className="size-3.5" />
-              Строка
+              <Printer className="size-4" />
+              Печать
             </Button>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            {data.items.map((item, index) => (
-              <div key={item.id} className="rounded-lg border border-border/70 bg-background p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Позиция {index + 1}</span>
-                  {data.items.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => update({ items: data.items.filter((row) => row.id !== item.id) })}
-                      aria-label={`Удалить позицию ${index + 1}`}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <TextField
-                      label="Наименование"
-                      value={item.title}
-                      placeholder="Двигатель EJ253 (Subaru)"
-                      onChange={(value) => updateItem(item.id, { title: value })}
-                    />
-                  </div>
-                  <TextField
-                    label="Номер агрегата"
-                    value={item.serial}
-                    placeholder="928420"
-                    onChange={(value) => updateItem(item.id, { serial: value })}
-                  />
-                  <TextField
-                    label="Количество"
-                    type="number"
-                    value={String(item.quantity)}
-                    onChange={(value) => updateItem(item.id, { quantity: parseNumber(value) })}
-                  />
-                  <TextField
-                    label="Единица"
-                    value={item.unit}
-                    onChange={(value) => updateItem(item.id, { unit: value })}
-                  />
-                  <TextField
-                    label="Цена, ₸"
-                    type="number"
-                    value={String(item.price)}
-                    onChange={(value) => updateItem(item.id, { price: parseNumber(value) })}
-                  />
-                </div>
-              </div>
-            ))}
+            <Button type="button" variant="outline" onClick={handleNewDocument}>
+              <FilePlus2 className="size-4" />
+              Новый документ
+            </Button>
+            <span className="text-xs text-muted-foreground">{fileName}</span>
           </div>
-        </Section>
 
-        <Section title="Стороны">
-          <div className="grid gap-3">
-            <TextField
-              label="Заказчик"
-              value={data.customer.orderer}
-              placeholder="Приходящий Клиент"
-              onChange={(value) => update({ customer: { ...data.customer, orderer: value } })}
-            />
-            <TextField
-              label="Клиент"
-              value={data.customer.client}
-              placeholder="Иванов И. И., +7 777 000 00 00"
-              onChange={(value) => update({ customer: { ...data.customer, client: value } })}
-            />
-          </div>
-        </Section>
-
-        <Section title="НДС">
-          <TextField
-            label="НДС, % (0 — без НДС)"
-            type="number"
-            value={String(data.vatRate)}
-            onChange={(value) => update({ vatRate: parseNumber(value) })}
-          />
-        </Section>
-
-        <Section title={`История документов${history.length > 0 ? ` (${history.length})` : ""}`}>
-          {history.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Каждый выданный документ сохраняется здесь: его можно открыть, перевыпустить или удалить.
+          {error && (
+            <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive print:hidden">
+              {error}
             </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {history.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      № {entry.id} · {formatMoney(computeTotals(entry.data).total)} ₸
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {formatDateTime(entry.data.issuedAt)}
-                      {entry.data.customer.orderer ? ` · ${entry.data.customer.orderer}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setData(entry.data)}>
-                      Открыть
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={building}
-                      onClick={() => void downloadDocx(entry.data)}
-                      aria-label={`Скачать документ ${entry.id}`}
-                    >
-                      <Download className="size-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(entry.id)}
-                      aria-label={`Удалить документ ${entry.id}`}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
           )}
-        </Section>
-      </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <Button type="button" onClick={handleIssue} disabled={building}>
-            {building ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            Скачать Word
-          </Button>
-          <Button type="button" variant="outline" onClick={() => window.print()}>
-            <Printer className="size-4" />
-            Печать
-          </Button>
-          <Button type="button" variant="outline" onClick={handleNewDocument}>
-            <FilePlus2 className="size-4" />
-            Новый документ
-          </Button>
-          <span className="text-xs text-muted-foreground">{fileName}</span>
-        </div>
-
-        {error && (
-          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive print:hidden">
-            {error}
-          </p>
-        )}
-
-        <div className="flex flex-col gap-6 print:gap-0">
-          <SaleDocumentSheet data={data} />
-          <WarrantySheet data={data} />
+          <div className="flex flex-col gap-6 print:gap-0">
+            <SaleDocumentSheet data={data} />
+            <WarrantySheet data={data} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

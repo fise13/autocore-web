@@ -1,24 +1,34 @@
 /**
- * Local history of issued waybills.
+ * Shape of a waybill record in the account's document history.
  *
- * The document desk is open without a sign-in, so there is no company to bind
- * the records to — they live in the browser that printed them. Keyed by
- * document number: re-issuing ПР-267 updates that record instead of piling up
- * near-duplicates.
+ * The records live in Firestore under the signed-in account, so a document
+ * issued on the counter PC is there on the phone as well. Reading them is
+ * treated as reading untrusted data — a record written by an older version of
+ * the form is repaired field by field rather than trusted or dropped.
  */
 
 import type { SaleDocumentData, SaleItem } from "./sale-document";
 
 export type HistoryEntry = {
-  /** The document number, which is also the identity of the record. */
+  /** Firestore document id — the waybill number, made safe for a path. */
   id: string;
   /** ISO timestamp of the last time this document was produced. */
   savedAt: string;
   data: SaleDocumentData;
 };
 
-export const HISTORY_KEY = "motor-land:documents";
+/** How many records the history screen subscribes to. */
 export const HISTORY_LIMIT = 200;
+
+/**
+ * `ПР-267` → `ПР-267`, `ПР/267` → `ПР-267`. Firestore ids may not contain a
+ * slash and may not be `.` or `..`, and re-issuing the same number has to land
+ * on the same record rather than create a second one.
+ */
+export function documentIdFor(documentNumber: string): string {
+  const safe = documentNumber.trim().replace(/[/\\]/g, "-").replace(/^\.+$/, "");
+  return safe || "без-номера";
+}
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -40,7 +50,7 @@ function asItem(value: unknown, index: number): SaleItem {
   };
 }
 
-function asDocument(value: unknown): SaleDocumentData | null {
+export function coerceSaleDocument(value: unknown): SaleDocumentData | null {
   const raw = (value ?? {}) as Record<string, unknown>;
   const documentNumber = asString(raw.documentNumber);
   const issuedAt = asString(raw.issuedAt);
@@ -56,70 +66,14 @@ function asDocument(value: unknown): SaleDocumentData | null {
   };
 }
 
-/**
- * Reads whatever is in storage without trusting it: a record written by an
- * older version of the form, or edited by hand, is dropped rather than crashing
- * the page it is rendered on.
- */
-export function parseHistory(raw: string | null): HistoryEntry[] {
-  if (!raw) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  if (!Array.isArray(parsed)) return [];
-
-  const entries: HistoryEntry[] = [];
-  for (const candidate of parsed) {
-    const row = (candidate ?? {}) as Record<string, unknown>;
-    const data = asDocument(row.data);
-    if (!data) continue;
-    entries.push({
-      id: asString(row.id) || data.documentNumber,
-      savedAt: asString(row.savedAt) || data.issuedAt,
-      data,
-    });
-  }
-  return entries;
-}
-
-export function serializeHistory(entries: readonly HistoryEntry[]): string {
-  return JSON.stringify(entries);
-}
-
-/** Newest first, one record per document number, capped at `limit`. */
-export function upsertHistory(
-  entries: readonly HistoryEntry[],
-  data: SaleDocumentData,
-  savedAt: string,
-  limit: number = HISTORY_LIMIT,
-): HistoryEntry[] {
-  const id = data.documentNumber;
-  const rest = entries.filter((entry) => entry.id !== id);
-  return [{ id, savedAt, data }, ...rest].slice(0, limit);
-}
-
-export function removeHistoryEntry(entries: readonly HistoryEntry[], id: string): HistoryEntry[] {
-  return entries.filter((entry) => entry.id !== id);
-}
-
-/** Browser-only. Private mode or blocked storage simply yields an empty list. */
-export function loadHistory(): HistoryEntry[] {
-  try {
-    return parseHistory(window.localStorage.getItem(HISTORY_KEY));
-  } catch {
-    return [];
-  }
-}
-
-export function saveHistory(entries: readonly HistoryEntry[]): void {
-  try {
-    window.localStorage.setItem(HISTORY_KEY, serializeHistory(entries));
-  } catch {
-    // Storage unavailable or full: the document is still produced, only the
-    // record is lost.
-  }
+/** A stored record → a history entry, or `null` when there is no document in it. */
+export function coerceHistoryEntry(id: string, value: unknown): HistoryEntry | null {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const data = coerceSaleDocument(raw.data);
+  if (!data) return null;
+  return {
+    id: id || documentIdFor(data.documentNumber),
+    savedAt: asString(raw.savedAt) || data.issuedAt,
+    data,
+  };
 }

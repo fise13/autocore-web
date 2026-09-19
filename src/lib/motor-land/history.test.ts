@@ -1,85 +1,67 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  HISTORY_LIMIT,
-  parseHistory,
-  removeHistoryEntry,
-  serializeHistory,
-  upsertHistory,
-  type HistoryEntry,
-} from "./history";
-import { createEmptySaleDocument, type SaleDocumentData } from "./sale-document";
+import { coerceHistoryEntry, coerceSaleDocument, documentIdFor } from "./history";
 
-function document(number: string): SaleDocumentData {
-  return {
-    ...createEmptySaleDocument(new Date("2026-09-19T14:30:00"), number, "item-1"),
-    customer: { orderer: "Приходящий Клиент", client: "Иванов И. И." },
-    items: [
-      { id: "item-1", serial: "928420", title: "Двигатель EJ253", quantity: 1, unit: "шт", price: 450000 },
-    ],
-  };
-}
-
-function entry(number: string, savedAt: string): HistoryEntry {
-  return { id: number, savedAt, data: document(number) };
-}
-
-test("a saved document round-trips through storage", () => {
-  const entries = [entry("ПР-267", "2026-09-19T14:30:00.000Z")];
-  const restored = parseHistory(serializeHistory(entries));
-  assert.deepEqual(restored, entries);
+test("the document number is the record id, made safe for a Firestore path", () => {
+  assert.equal(documentIdFor("ПР-267"), "ПР-267");
+  assert.equal(documentIdFor(" ПР-267 "), "ПР-267");
+  assert.equal(documentIdFor("ПР/267"), "ПР-267");
+  assert.equal(documentIdFor(".."), "без-номера");
+  assert.equal(documentIdFor(""), "без-номера");
 });
 
-test("re-issuing the same number updates the record instead of adding one", () => {
-  const first = upsertHistory([], document("ПР-267"), "2026-09-19T10:00:00.000Z");
-  const second = upsertHistory(first, document("ПР-267"), "2026-09-19T12:00:00.000Z");
-  assert.equal(second.length, 1);
-  assert.equal(second[0]?.savedAt, "2026-09-19T12:00:00.000Z");
+test("re-issuing the same number lands on the same record", () => {
+  assert.equal(documentIdFor("ПР-267"), documentIdFor("ПР-267"));
 });
 
-test("the newest document comes first", () => {
-  const history = upsertHistory(
-    upsertHistory([], document("ПР-1"), "2026-09-19T10:00:00.000Z"),
-    document("ПР-2"),
-    "2026-09-19T11:00:00.000Z",
-  );
-  assert.deepEqual(
-    history.map((row) => row.id),
-    ["ПР-2", "ПР-1"],
-  );
+test("a stored record becomes a history entry", () => {
+  const entry = coerceHistoryEntry("ПР-267", {
+    savedAt: "2026-09-19T14:30:00.000Z",
+    data: {
+      documentNumber: "ПР-267",
+      issuedAt: "2026-09-19T14:30:00.000Z",
+      customer: { orderer: "Приходящий Клиент", client: "Иванов И. И." },
+      items: [{ id: "item-1", serial: "928420", title: "Двигатель EJ253", quantity: 1, unit: "шт", price: 450000 }],
+      vatRate: 12,
+    },
+  });
+
+  assert.equal(entry?.id, "ПР-267");
+  assert.equal(entry?.data.items[0]?.price, 450000);
 });
 
-test("history is capped so storage cannot grow without bound", () => {
-  let history: HistoryEntry[] = [];
-  for (let index = 0; index < HISTORY_LIMIT + 10; index += 1) {
-    history = upsertHistory(history, document(`ПР-${index}`), "2026-09-19T10:00:00.000Z");
-  }
-  assert.equal(history.length, HISTORY_LIMIT);
-  assert.equal(history[0]?.id, `ПР-${HISTORY_LIMIT + 9}`);
+test("a record with no document in it is skipped instead of rendering blank", () => {
+  assert.equal(coerceHistoryEntry("x", {}), null);
+  assert.equal(coerceHistoryEntry("x", { data: { documentNumber: "" } }), null);
+  assert.equal(coerceSaleDocument(null), null);
 });
 
-test("removing a record leaves the rest untouched", () => {
-  const history = [entry("ПР-1", "2026-09-19T10:00:00.000Z"), entry("ПР-2", "2026-09-19T11:00:00.000Z")];
-  assert.deepEqual(
-    removeHistoryEntry(history, "ПР-1").map((row) => row.id),
-    ["ПР-2"],
-  );
+test("fields added after a record was written are filled with safe defaults", () => {
+  const entry = coerceHistoryEntry("ПР-9", {
+    data: { documentNumber: "ПР-9", issuedAt: "2026-09-19T10:00:00.000Z", items: [{ title: "Двигатель" }] },
+  });
+
+  assert.deepEqual(entry?.data.customer, { orderer: "", client: "" });
+  assert.equal(entry?.data.items[0]?.unit, "шт");
+  assert.equal(entry?.data.vatRate, 0);
+  assert.equal(entry?.savedAt, "2026-09-19T10:00:00.000Z");
 });
 
-test("corrupt or outdated storage is ignored rather than breaking the page", () => {
-  assert.deepEqual(parseHistory(null), []);
-  assert.deepEqual(parseHistory("not json"), []);
-  assert.deepEqual(parseHistory('{"not":"an array"}'), []);
-  assert.deepEqual(parseHistory('[{"data":{"documentNumber":""}}]'), []);
-});
+test("a hostile value in a stored field cannot change the type of the entry", () => {
+  const entry = coerceHistoryEntry("ПР-9", {
+    savedAt: 42,
+    data: {
+      documentNumber: "ПР-9",
+      issuedAt: "2026-09-19T10:00:00.000Z",
+      customer: "не объект",
+      items: "не массив",
+      vatRate: "двенадцать",
+    },
+  });
 
-test("a record missing newer fields is repaired, not dropped", () => {
-  const restored = parseHistory(
-    '[{"id":"ПР-9","savedAt":"2026-09-19T10:00:00.000Z","data":{"documentNumber":"ПР-9","issuedAt":"2026-09-19T10:00:00.000Z","items":[{"title":"Двигатель"}]}}]',
-  );
-  assert.equal(restored.length, 1);
-  assert.deepEqual(restored[0]?.data.customer, { orderer: "", client: "" });
-  assert.equal(restored[0]?.data.items[0]?.unit, "шт");
-  assert.equal(restored[0]?.data.vatRate, 0);
+  assert.deepEqual(entry?.data.items, []);
+  assert.deepEqual(entry?.data.customer, { orderer: "", client: "" });
+  assert.equal(entry?.data.vatRate, 0);
+  assert.equal(entry?.savedAt, "2026-09-19T10:00:00.000Z");
 });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { RequireAuth } from "@/components/auth/require-auth";
 import { SaleDocumentBuilder } from "@/components/motor-land/sale-document-builder";
 
 export const metadata: Metadata = {
@@ -12,17 +13,19 @@ export const metadata: Metadata = {
 /**
  * Standalone document desk for Motor Land (docs.myautocore.com).
  *
- * Deliberately outside the workspace shell and without a sign-in: the counter
- * staff open it, type the engine and its serial, and print or download a
+ * Outside the workspace shell but behind the ordinary AutoCore sign-in: the
+ * waybills an account issues are kept under that account, so the same history
+ * is there on the counter PC and on a phone. Filling the form produces a
  * two-page Word file — waybill on the front, warranty on the back, always.
  */
 export default function MotorSaleDocumentPage() {
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
-      <style
-        // The preview sheets are the print layout: A4, edge to edge, one page each.
-        dangerouslySetInnerHTML={{
-          __html: `
+    <RequireAuth>
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+        <style
+          // The preview sheets are the print layout: A4, edge to edge, one page each.
+          dangerouslySetInnerHTML={{
+            __html: `
 @media print {
   @page { size: A4; margin: 0; }
   html, body { background: #fff !important; }
@@ -30,21 +33,11 @@ export default function MotorSaleDocumentPage() {
   .motor-land-sheet { width: 210mm !important; box-shadow: none !important; break-after: page; }
   .motor-land-sheet:last-of-type { break-after: auto; }
 }`,
-        }}
-      />
+          }}
+        />
 
-      <header className="mb-6 print:hidden">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          Товарная накладная на двигатель
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Номер и дата подставляются автоматически. Условия гарантии печатаются на обороте каждого
-          документа — отдельно включать их не нужно. Каждый выданный документ остаётся в истории на
-          этом устройстве.
-        </p>
-      </header>
-
-      <SaleDocumentBuilder />
-    </main>
+        <SaleDocumentBuilder />
+      </main>
+    </RequireAuth>
   );
 }
