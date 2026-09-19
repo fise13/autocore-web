@@ -1,34 +1,24 @@
 /**
- * Shape of a waybill record in the account's document history.
+ * History of the waybills issued from this browser.
  *
- * The records live in Firestore under the signed-in account, so a document
- * issued on the counter PC is there on the phone as well. Reading them is
- * treated as reading untrusted data — a record written by an older version of
- * the form is repaired field by field rather than trusted or dropped.
+ * The document desk is open without a sign-in, so the records live in the
+ * browser that printed them. Everything read back out of storage is treated as
+ * untrusted: a record written by an older version of the form is repaired field
+ * by field rather than trusted or dropped.
  */
 
-import type { SaleDocumentData, SaleItem } from "./sale-document";
+import { itemAmount, type SaleDocumentData, type SaleItem } from "./sale-document";
 
 export type HistoryEntry = {
-  /** Firestore document id — the waybill number, made safe for a path. */
+  /** The waybill number, which is also the identity of the record. */
   id: string;
   /** ISO timestamp of the last time this document was produced. */
   savedAt: string;
   data: SaleDocumentData;
 };
 
-/** How many records the history screen subscribes to. */
+export const HISTORY_KEY = "motor-land:documents";
 export const HISTORY_LIMIT = 200;
-
-/**
- * `ПР-267` → `ПР-267`, `ПР/267` → `ПР-267`. Firestore ids may not contain a
- * slash and may not be `.` or `..`, and re-issuing the same number has to land
- * on the same record rather than create a second one.
- */
-export function documentIdFor(documentNumber: string): string {
-  const safe = documentNumber.trim().replace(/[/\\]/g, "-").replace(/^\.+$/, "");
-  return safe || "без-номера";
-}
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -66,14 +56,95 @@ export function coerceSaleDocument(value: unknown): SaleDocumentData | null {
   };
 }
 
-/** A stored record → a history entry, or `null` when there is no document in it. */
-export function coerceHistoryEntry(id: string, value: unknown): HistoryEntry | null {
-  const raw = (value ?? {}) as Record<string, unknown>;
-  const data = coerceSaleDocument(raw.data);
-  if (!data) return null;
-  return {
-    id: id || documentIdFor(data.documentNumber),
-    savedAt: asString(raw.savedAt) || data.issuedAt,
-    data,
-  };
+export function parseHistory(raw: string | null): HistoryEntry[] {
+  if (!raw) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const entries: HistoryEntry[] = [];
+  for (const candidate of parsed) {
+    const row = (candidate ?? {}) as Record<string, unknown>;
+    const data = coerceSaleDocument(row.data);
+    if (!data) continue;
+    entries.push({
+      id: asString(row.id) || data.documentNumber,
+      savedAt: asString(row.savedAt) || data.issuedAt,
+      data,
+    });
+  }
+  return entries;
+}
+
+export function serializeHistory(entries: readonly HistoryEntry[]): string {
+  return JSON.stringify(entries);
+}
+
+/** Newest first, one record per waybill number, capped at `limit`. */
+export function upsertHistory(
+  entries: readonly HistoryEntry[],
+  data: SaleDocumentData,
+  savedAt: string,
+  limit: number = HISTORY_LIMIT,
+): HistoryEntry[] {
+  const id = data.documentNumber;
+  const rest = entries.filter((entry) => entry.id !== id);
+  return [{ id, savedAt, data }, ...rest].slice(0, limit);
+}
+
+export function removeHistoryEntry(entries: readonly HistoryEntry[], id: string): HistoryEntry[] {
+  return entries.filter((entry) => entry.id !== id);
+}
+
+/**
+ * Free-text search over the history.
+ *
+ * Matches the waybill number, both party lines and every item's name and serial
+ * — the four things somebody actually remembers about a sale they are trying to
+ * find again. All terms must match, in any field, in any order.
+ */
+export function searchHistory(entries: readonly HistoryEntry[], search: string): HistoryEntry[] {
+  const terms = search.toLocaleLowerCase("ru").split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [...entries];
+
+  return entries.filter((entry) => {
+    const haystack = [
+      entry.data.documentNumber,
+      entry.data.customer.orderer,
+      entry.data.customer.client,
+      ...entry.data.items.flatMap((item) => [item.title, item.serial]),
+    ]
+      .join(" ")
+      .toLocaleLowerCase("ru");
+
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
+/** Total of a stored document, for the one-line summary in the list. */
+export function entryTotal(entry: HistoryEntry): number {
+  return entry.data.items.reduce((sum, item) => sum + itemAmount(item), 0);
+}
+
+/** Browser-only. Private mode or blocked storage simply yields an empty list. */
+export function loadHistory(): HistoryEntry[] {
+  try {
+    return parseHistory(window.localStorage.getItem(HISTORY_KEY));
+  } catch {
+    return [];
+  }
+}
+
+export function saveHistory(entries: readonly HistoryEntry[]): void {
+  try {
+    window.localStorage.setItem(HISTORY_KEY, serializeHistory(entries));
+  } catch {
+    // Storage unavailable or full: the document is still produced, only the
+    // record is lost.
+  }
 }

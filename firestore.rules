@@ -665,14 +665,6 @@ service cloud.firestore {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
 
-      // Motor Land document desk (docs.myautocore.com): the waybills this
-      // account has issued. Personal to the account rather than company-scoped
-      // — the desk is used signed in but outside any workspace, so there is no
-      // membership to check against.
-      match /motorLandDocuments/{documentId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-      }
-
       // Incremental motor mirror (macOS / web → users/{uid}/motors/{localId}).
       match /motors/{motorDocId} {
         // A motor is company inventory that happens to be stored under the
