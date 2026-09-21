@@ -136,13 +136,11 @@ function HistoryPanel({
   building,
   onOpen,
   onDownload,
-  onDelete,
 }: {
   history: HistoryEntry[];
   building: boolean;
   onOpen: (entry: HistoryEntry) => void;
   onDownload: (entry: HistoryEntry) => void;
-  onDelete: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const found = useMemo(() => searchHistory(history, search), [history, search]);
@@ -219,15 +217,6 @@ function HistoryPanel({
                       aria-label={`Скачать документ ${entry.data.documentNumber}`}
                     >
                       <Download className="size-3.5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(entry.id)}
-                      aria-label={`Удалить документ ${entry.data.documentNumber}`}
-                    >
-                      <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>
@@ -363,15 +352,6 @@ export function SaleDocumentBuilder() {
   const handleOpen = useCallback((entry: HistoryEntry) => {
     setData(entry.data);
     setView("document");
-  }, []);
-
-  const handleDelete = useCallback(async (id: string) => {
-    try {
-      await fetch(`${API}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      setHistory(await fetchHistory());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Не удалось удалить документ");
-    }
   }, []);
 
   if (!data) {
@@ -542,7 +522,6 @@ export function SaleDocumentBuilder() {
             building={building}
             onOpen={handleOpen}
             onDownload={(entry) => void downloadDocx(entry.data)}
-            onDelete={(id) => void handleDelete(id)}
           />
         )}
 

@@ -12,6 +12,9 @@ import { HISTORY_LIMIT, coerceSaleDocument, documentIdFor } from "@/lib/motor-la
  * and capped, so nothing but a well-formed waybill of bounded size is ever
  * stored.
  *
+ * Records are append-only: there is no delete route, so an issued waybill
+ * cannot be removed — not from the page, and not by anyone who finds the URL.
+ *
  * ponytail: open endpoint, scoped to one small collection. Put it behind a
  * shared secret or sign-in if the URL ever leaks beyond the shop.
  */
@@ -50,12 +53,4 @@ export async function POST(request: Request) {
   await getAdminFirestore().collection(COLLECTION).doc(id).set({ savedAt, data });
 
   return NextResponse.json({ id, savedAt, data });
-}
-
-export async function DELETE(request: Request) {
-  const id = new URL(request.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "Нужен id" }, { status: 400 });
-
-  await getAdminFirestore().collection(COLLECTION).doc(id).delete();
-  return NextResponse.json({ ok: true });
 }
