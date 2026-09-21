@@ -1,10 +1,11 @@
 /**
- * History of the waybills issued from this browser.
+ * History of the issued waybills.
  *
- * The document desk is open without a sign-in, so the records live in the
- * browser that printed them. Everything read back out of storage is treated as
- * untrusted: a record written by an older version of the form is repaired field
- * by field rather than trusted or dropped.
+ * The records live on the server (`/api/motor-land/documents`), so every
+ * computer at the counter sees the same list without anyone signing in.
+ * Everything read back is treated as untrusted: a record written by an older
+ * version of the form is repaired field by field rather than trusted or
+ * dropped.
  */
 
 import { itemAmount, type SaleDocumentData, type SaleItem } from "./sale-document";
@@ -17,8 +18,17 @@ export type HistoryEntry = {
   data: SaleDocumentData;
 };
 
-export const HISTORY_KEY = "motor-land:documents";
 export const HISTORY_LIMIT = 200;
+
+/**
+ * `ПР-267` → `ПР-267`, `ПР/267` → `ПР-267`. Firestore ids may not contain a
+ * slash and may not be `.` or `..`, and re-issuing the same number has to land
+ * on the same record rather than create a second one.
+ */
+export function documentIdFor(documentNumber: string): string {
+  const safe = documentNumber.trim().replace(/[/\\]/g, "-").replace(/^\.+$/, "");
+  return safe || "без-номера";
+}
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -56,15 +66,8 @@ export function coerceSaleDocument(value: unknown): SaleDocumentData | null {
   };
 }
 
-export function parseHistory(raw: string | null): HistoryEntry[] {
-  if (!raw) return [];
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
+/** Rows coming back from the API — data, never instructions. */
+export function parseHistory(parsed: unknown): HistoryEntry[] {
   if (!Array.isArray(parsed)) return [];
 
   const entries: HistoryEntry[] = [];
@@ -79,26 +82,6 @@ export function parseHistory(raw: string | null): HistoryEntry[] {
     });
   }
   return entries;
-}
-
-export function serializeHistory(entries: readonly HistoryEntry[]): string {
-  return JSON.stringify(entries);
-}
-
-/** Newest first, one record per waybill number, capped at `limit`. */
-export function upsertHistory(
-  entries: readonly HistoryEntry[],
-  data: SaleDocumentData,
-  savedAt: string,
-  limit: number = HISTORY_LIMIT,
-): HistoryEntry[] {
-  const id = data.documentNumber;
-  const rest = entries.filter((entry) => entry.id !== id);
-  return [{ id, savedAt, data }, ...rest].slice(0, limit);
-}
-
-export function removeHistoryEntry(entries: readonly HistoryEntry[], id: string): HistoryEntry[] {
-  return entries.filter((entry) => entry.id !== id);
 }
 
 /**
@@ -129,22 +112,4 @@ export function searchHistory(entries: readonly HistoryEntry[], search: string):
 /** Total of a stored document, for the one-line summary in the list. */
 export function entryTotal(entry: HistoryEntry): number {
   return entry.data.items.reduce((sum, item) => sum + itemAmount(item), 0);
-}
-
-/** Browser-only. Private mode or blocked storage simply yields an empty list. */
-export function loadHistory(): HistoryEntry[] {
-  try {
-    return parseHistory(window.localStorage.getItem(HISTORY_KEY));
-  } catch {
-    return [];
-  }
-}
-
-export function saveHistory(entries: readonly HistoryEntry[]): void {
-  try {
-    window.localStorage.setItem(HISTORY_KEY, serializeHistory(entries));
-  } catch {
-    // Storage unavailable or full: the document is still produced, only the
-    // record is lost.
-  }
 }

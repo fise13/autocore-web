@@ -30,8 +30,6 @@ import {
   cell,
   esc,
   inlineImage,
-  pageBreak,
-  pageNumberField,
   paragraph,
   row,
   run,
@@ -50,7 +48,6 @@ const LINE = PRINT_INK.line;
 
 const FIELD_GRID = [2000, CONTENT_WIDTH - 2000];
 const ITEM_GRID = [520, 1400, 4952, 1100, 500, 1100, 1200];
-const SIGNATURE_GRID = [1600, 3786, CONTENT_WIDTH - 5386];
 
 const RELS = {
   styles: "rId1",
@@ -88,7 +85,7 @@ function bodyCell(
 }
 
 function sectionCaption(text: string): string {
-  return paragraph(run(text, { size: 17, color: INK }), { align: "center", before: 200, after: 60, keepNext: true });
+  return paragraph(run(text, { size: 17, color: INK }), { align: "center", before: 140, after: 40, keepNext: true });
 }
 
 function buildHeader(data: SaleDocumentData): string {
@@ -102,15 +99,24 @@ function buildHeader(data: SaleDocumentData): string {
 
   const requisitesCell = cell(
     [
-      paragraph(run(COMPANY.legalName, { size: 19, color: INK }), { align: "center", before: 200 }),
+      paragraph(run(COMPANY.legalName, { size: 19, color: INK }), { align: "center", before: 120 }),
       paragraph(run(COMPANY.address, { size: 19, color: INK }), { align: "center", before: 50 }),
       paragraph(run(COMPANY.site.toUpperCase(), { size: 17, color: MUTED }), { align: "center", before: 50 }),
     ].join(""),
     { width: 6172, valign: "top" },
   );
 
-  // Mirror of the logo column, so the requisites stay optically centred.
-  const spacerCell = cell("<w:p/>", { width: 2300, valign: "top" });
+  const phonesCell = cell(
+    COMPANY.phones
+      .map((phone, index) =>
+        paragraph(run(phone, { size: 19, bold: true, color: INK }), {
+          align: "right",
+          before: index === 0 ? 200 : 40,
+        }),
+      )
+      .join(""),
+    { width: 2300, valign: "top" },
+  );
 
   const title = paragraph(
     [
@@ -118,17 +124,17 @@ function buildHeader(data: SaleDocumentData): string {
       tab(),
       run(formatDateTime(data.issuedAt), { size: 19, color: LABEL }),
     ].join(""),
-    { before: 240, after: 80, rightTabAt: CONTENT_WIDTH, bottomBorder: { size: 8, color: LABEL }, outlineLevel: 0 },
+    { before: 140, after: 70, rightTabAt: CONTENT_WIDTH, bottomBorder: { size: 8, color: LABEL }, outlineLevel: 0 },
   );
 
-  return table(row(logoCell + requisitesCell + spacerCell), [2300, 6172, 2300]) + title;
+  return table(row(logoCell + requisitesCell + phonesCell), [2300, 6172, 2300]) + title;
 }
 
 function buildFields(data: SaleDocumentData): string {
   const fieldRow = (caption: string, value: string) =>
     row(
-      cell(paragraph(labelRun(caption), { before: 60, after: 60 }), { width: FIELD_GRID[0]!, valign: "top" }) +
-        cell(paragraph(valueRun(value), { before: 60, after: 60 }), { width: FIELD_GRID[1]!, valign: "top" }),
+      cell(paragraph(labelRun(caption), { before: 40, after: 40 }), { width: FIELD_GRID[0]!, valign: "top" }) +
+        cell(paragraph(valueRun(value), { before: 40, after: 40 }), { width: FIELD_GRID[1]!, valign: "top" }),
     );
 
   return table(fieldRow("Заказчик:", data.customer.orderer) + fieldRow("Клиент:", data.customer.client), FIELD_GRID);
@@ -183,14 +189,14 @@ function buildTotals(data: SaleDocumentData): string {
 
   return table(
     row(
-      cell(paragraph(run("Сумма документа:", { size: 24, color: INK }), { before: 60, after: 60 }), {
+      cell(paragraph(run("Сумма документа:", { size: 24, color: INK }), { before: 40, after: 40 }), {
         width: 3200,
       }) +
         cell(
           paragraph(
             run(formatMoney(totals.total), { size: 24, bold: true, color: INK }) +
               (vatNote ? run(vatNote, { size: 24, color: INK }) : ""),
-            { before: 60, after: 60 },
+            { before: 40, after: 40 },
           ),
           { width: CONTENT_WIDTH - 3200 },
         ),
@@ -199,21 +205,18 @@ function buildTotals(data: SaleDocumentData): string {
   );
 }
 
-/** The only signature the form asks for: the buyer confirming receipt. */
+/**
+ * The only signature the form asks for: the buyer confirming receipt.
+ *
+ * A plain paragraph with an underscore tab leader rather than a bordered table
+ * — Pages flattens a table nested inside a footer into loose text.
+ */
 function buyerSignature(): string {
-  return (
-    cell(paragraph(labelRun("Покупатель:"), { before: 120, after: 40 }), {
-      width: SIGNATURE_GRID[0]!,
-      valign: "bottom",
-    }) +
-    cell("<w:p/>", {
-      width: SIGNATURE_GRID[1]!,
-      borders: { bottom: true },
-      borderColor: LABEL,
-      valign: "bottom",
-    }) +
-    cell("<w:p/>", { width: SIGNATURE_GRID[2]!, valign: "bottom" })
-  );
+  return paragraph(labelRun("Покупатель:") + tab(), {
+    before: 120,
+    after: 40,
+    tabStops: [{ pos: 5600, leader: "underscore" }],
+  });
 }
 
 function buildFooterBlock(): string {
@@ -223,64 +226,72 @@ function buildFooterBlock(): string {
         "Продавец несет гарантийные обязательства при условии соблюдения покупателем правил эксплуатации агрегата и рекомендаций продавца по его установке и обслуживанию.",
         { size: 17, color: INK },
       ),
-      { before: 260, after: 80, align: "both" },
+      { before: 140, after: 60, align: "both" },
     ),
     paragraph(
-      run(`${WARRANTY_ACKNOWLEDGEMENT} Условия гарантии приведены на обороте документа.`, { size: 17, color: INK }),
-      { before: 0, after: 200, align: "both" },
+      run(WARRANTY_ACKNOWLEDGEMENT, { size: 17, color: INK }),
+      { before: 0, after: 100, align: "both" },
     ),
   ].join("");
 
-  return legal + table(row(buyerSignature()), SIGNATURE_GRID);
+  return legal;
 }
 
-function buildWarrantyPage(data: SaleDocumentData): string {
+/** Warranty terms, printed on the same sheet under the signature line. */
+function buildWarrantyBlock(): string {
   const numbered = (text: string, index: number) =>
     paragraph(
-      run(`${index + 1}. `, { size: 19, color: INK, bold: true }) + run(text, { size: 19, color: INK }),
-      { before: 50, after: 50, align: "both", indentLeft: 320, indentHanging: 320, line: 240 },
+      run(`${index + 1}. `, { size: 16, color: INK, bold: true }) + run(text, { size: 16, color: INK }),
+      { before: 15, after: 15, align: "both", indentLeft: 240, indentHanging: 240, line: 200 },
     );
 
   return [
-    pageBreak(),
-    paragraph(
-      run(`Приложение к товарной накладной № ${data.documentNumber} от ${formatDateTime(data.issuedAt)}`, {
-        size: 15,
-        color: MUTED,
-      }),
-      { align: "right", after: 40 },
-    ),
-    paragraph(run(WARRANTY_TITLE, { size: 26, bold: true, color: INK }), { align: "center", after: 160 }),
-    ...WARRANTY_TERMS.map(numbered),
-    paragraph(run(WARRANTY_EXCLUSIONS_TITLE, { size: 21, bold: true, color: INK }), {
+    paragraph(run(WARRANTY_TITLE, { size: 21, bold: true, color: INK }), {
       align: "center",
-      before: 220,
-      after: 100,
+      before: 160,
+      after: 60,
+      bottomBorder: { size: 6, color: LABEL },
+    }),
+    ...WARRANTY_TERMS.map(numbered),
+    paragraph(run(WARRANTY_EXCLUSIONS_TITLE, { size: 18, bold: true, color: INK }), {
+      align: "center",
+      before: 100,
+      after: 40,
     }),
     ...WARRANTY_EXCLUSIONS.map(numbered),
-    paragraph(run(WARRANTY_ACKNOWLEDGEMENT, { size: 18, color: INK }), { before: 240, after: 120, align: "both" }),
-    table(row(buyerSignature()), SIGNATURE_GRID),
+  ].join("");
+}
+
+/**
+ * @param columns 1 for the waybill, 2 for the warranty — at readable body size
+ *                the terms only fit under the waybill when set in two columns.
+ */
+function sectionProperties(columns: number, continuous: boolean): string {
+  return [
+    "<w:sectPr>",
+    continuous ? '<w:type w:val="continuous"/>' : "",
+    `<w:footerReference w:type="default" r:id="${RELS.footer}"/>`,
+    '<w:pgSz w:w="11906" w:h="16838"/>',
+    `<w:pgMar w:top="${MARGIN}" w:right="${MARGIN}" w:bottom="950" w:left="${MARGIN}" w:header="340" w:footer="280" w:gutter="0"/>`,
+    columns > 1
+      ? `<w:cols w:num="${columns}" w:space="340" w:equalWidth="1"/>`
+      : '<w:cols w:space="708"/>',
+    '<w:docGrid w:linePitch="360"/>',
+    "</w:sectPr>",
   ].join("");
 }
 
 function buildDocumentXml(data: SaleDocumentData): string {
-  const sectPr = [
-    "<w:sectPr>",
-    `<w:footerReference w:type="default" r:id="${RELS.footer}"/>`,
-    '<w:pgSz w:w="11906" w:h="16838"/>',
-    `<w:pgMar w:top="${MARGIN}" w:right="${MARGIN}" w:bottom="${MARGIN}" w:left="${MARGIN}" w:header="340" w:footer="280" w:gutter="0"/>`,
-    '<w:cols w:space="708"/><w:docGrid w:linePitch="360"/>',
-    "</w:sectPr>",
-  ].join("");
-
   const body = [
     buildHeader(data),
     buildFields(data),
     buildItems(data),
     buildTotals(data),
     buildFooterBlock(),
-    buildWarrantyPage(data),
-    sectPr,
+    // Ends the single-column waybill section without starting a new page.
+    `<w:p><w:pPr><w:spacing w:before="0" w:after="0"/><w:rPr><w:sz w:val="2"/></w:rPr>${sectionProperties(1, true)}</w:pPr></w:p>`,
+    buildWarrantyBlock(),
+    sectionProperties(2, true),
   ].join("");
 
   return `${XML_DECLARATION}<w:document ${DOCUMENT_NAMESPACES}><w:body>${body}</w:body></w:document>`;
@@ -308,11 +319,15 @@ function settingsXml(): string {
 </w:settings>`;
 }
 
+/** Carries the buyer's signature line, so it always sits at the foot of the sheet. */
 function footerXml(): string {
-  return `${XML_DECLARATION}<w:ftr ${DOCUMENT_NAMESPACES}>${paragraph(
-    run("Страница ", { size: 15, color: MUTED }) + pageNumberField({ size: 15, color: MUTED }),
-    { align: "right" },
-  )}</w:ftr>`;
+  return `${XML_DECLARATION}<w:ftr ${DOCUMENT_NAMESPACES}>${
+    buyerSignature() +
+    paragraph(run(`${COMPANY.brand} · ${COMPANY.phones.join(" · ")}`, { size: 13, color: MUTED }), {
+      align: "center",
+      before: 60,
+    })
+  }</w:ftr>`;
 }
 
 function contentTypesXml(): string {
@@ -360,7 +375,7 @@ function corePropsXml(data: SaleDocumentData): string {
 
 function appPropsXml(): string {
   return `${XML_DECLARATION}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-<Application>AutoCore</Application><Company>${esc(COMPANY.brand)}</Company><Pages>2</Pages>
+<Application>AutoCore</Application><Company>${esc(COMPANY.brand)}</Company><Pages>1</Pages>
 </Properties>`;
 }
 

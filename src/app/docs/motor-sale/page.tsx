@@ -15,9 +15,9 @@ export const metadata: Metadata = {
  * Standalone document desk for Motor Land (docs.myautocore.com).
  *
  * Open without a sign-in and outside the workspace shell: the counter staff
- * type the engine and its serial, and get a two-page Word file — waybill on the
- * front, warranty on the back, always. Issued documents stay searchable in the
- * browser that printed them.
+ * type the engine and its serial, and get a one-page Word file — waybill with
+ * the warranty terms under it, always. Issued documents go to a shared server
+ * history that every counter sees.
  */
 export default function MotorSaleDocumentPage() {
   return (
@@ -57,9 +57,9 @@ export default function MotorSaleDocumentPage() {
 
       <main className="motor-land-page mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
         <p className="mb-5 max-w-3xl text-sm text-muted-foreground print:hidden">
-          Номер и дата подставляются автоматически. Условия гарантии печатаются на обороте каждого
-          документа — отдельно включать их не нужно. Выданные документы остаются в истории, там же по
-          ним работает поиск.
+          Номер и дата подставляются автоматически. Условия гарантии печатаются на том же листе —
+          отдельно включать их не нужно. Выданные документы попадают в общую историю на сервере, там
+          же по ним работает поиск.
         </p>
 
         <SaleDocumentBuilder />

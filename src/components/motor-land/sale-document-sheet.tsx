@@ -111,7 +111,7 @@ function BodyCell({
 
 function SectionCaption({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ textAlign: "center", color: ink, margin: `${mm(3.5)} 0 ${mm(1.2)}` }}>{children}</p>
+    <p style={{ textAlign: "center", color: ink, margin: `${mm(2.5)} 0 ${mm(1)}` }}>{children}</p>
   );
 }
 
@@ -175,8 +175,13 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
           <p style={{ color: ink, marginTop: mm(1) }}>{COMPANY.address}</p>
           <p style={{ color: muted, marginTop: mm(1), fontSize: pt(8) }}>{COMPANY.site.toUpperCase()}</p>
         </div>
-        {/* Mirror of the logo column, so the requisites stay optically centred. */}
-        <div style={{ width: mm(29) }} aria-hidden />
+        <div style={{ width: mm(34), paddingTop: mm(3), textAlign: "right" }}>
+          {COMPANY.phones.map((phone) => (
+            <p key={phone} style={{ color: ink, fontWeight: 600, letterSpacing: pt(0.2) }}>
+              {phone}
+            </p>
+          ))}
+        </div>
       </header>
 
       <div
@@ -187,7 +192,7 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
           gap: mm(4),
           borderBottom: `${mm(0.3)} solid ${label}`,
           paddingBottom: mm(1.4),
-          marginTop: mm(6),
+          marginTop: mm(4.5),
         }}
       >
         <h1 style={{ fontSize: pt(15), fontWeight: 600, color: ink }}>
@@ -250,59 +255,72 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
         </span>
       </div>
 
-      <div style={{ marginTop: mm(5), fontSize: pt(8.5), color: ink, textAlign: "justify" }}>
+      <div style={{ marginTop: mm(3), fontSize: pt(8.5), color: ink, textAlign: "justify" }}>
         <p>
           Продавец несет гарантийные обязательства при условии соблюдения покупателем правил эксплуатации
           агрегата и рекомендаций продавца по его установке и обслуживанию.
         </p>
-        <p style={{ marginTop: mm(1.5) }}>
-          {WARRANTY_ACKNOWLEDGEMENT} Условия гарантии приведены на обороте документа.
-        </p>
+        <p style={{ marginTop: mm(1.5) }}>{WARRANTY_ACKNOWLEDGEMENT}</p>
       </div>
 
-      <div style={{ marginTop: mm(6) }}>
-        <BuyerSignature />
-      </div>
-
-      <p style={{ marginTop: "auto", textAlign: "right", fontSize: pt(7.5), color: muted }}>Страница 1 / 2</p>
-    </Sheet>
-  );
-}
-
-export function WarrantySheet({ data }: { data: SaleDocumentData }) {
-  const term = (text: string, index: number) => (
-    <li key={index} style={{ marginTop: mm(1.4), textAlign: "justify" }}>
-      {text}
-    </li>
-  );
-
-  return (
-    <Sheet>
-      <p style={{ textAlign: "right", fontSize: pt(7.5), color: muted }}>
-        Приложение к товарной накладной № {data.documentNumber} от {formatDateTime(data.issuedAt)}
-      </p>
-      <h2 style={{ textAlign: "center", fontSize: pt(13), fontWeight: 600, marginTop: mm(2) }}>
+      <h2
+        style={{
+          textAlign: "center",
+          fontSize: pt(11),
+          fontWeight: 700,
+          marginTop: mm(3.5),
+          paddingBottom: mm(1),
+          borderBottom: `${mm(0.2)} solid ${label}`,
+        }}
+      >
         {WARRANTY_TITLE}
       </h2>
 
-      <ol style={{ fontSize: pt(9.5), marginTop: mm(3), paddingLeft: mm(7), listStyle: "decimal" }}>
-        {WARRANTY_TERMS.map(term)}
+      <ol
+        style={{
+          fontSize: pt(8),
+          lineHeight: 1.16,
+          marginTop: mm(1.5),
+          paddingLeft: mm(6),
+          listStyle: "decimal",
+          columnCount: 2,
+          columnGap: mm(6),
+        }}
+      >
+        {WARRANTY_TERMS.map((text, index) => (
+          <li key={index} style={{ marginTop: mm(0.5), textAlign: "justify" }}>
+            {text}
+          </li>
+        ))}
       </ol>
 
-      <h3 style={{ textAlign: "center", fontSize: pt(10.5), fontWeight: 600, marginTop: mm(4) }}>
+      <h3 style={{ textAlign: "center", fontSize: pt(9.5), fontWeight: 700, marginTop: mm(1.5) }}>
         {WARRANTY_EXCLUSIONS_TITLE}
       </h3>
-      <ol style={{ fontSize: pt(9.5), marginTop: mm(2), paddingLeft: mm(7), listStyle: "decimal" }}>
-        {WARRANTY_EXCLUSIONS.map(term)}
+      <ol
+        style={{
+          fontSize: pt(8),
+          lineHeight: 1.16,
+          marginTop: mm(1.2),
+          paddingLeft: mm(6),
+          listStyle: "decimal",
+          columnCount: 2,
+          columnGap: mm(6),
+        }}
+      >
+        {WARRANTY_EXCLUSIONS.map((text, index) => (
+          <li key={index} style={{ marginTop: mm(0.5), textAlign: "justify" }}>
+            {text}
+          </li>
+        ))}
       </ol>
 
-      <p style={{ fontSize: pt(9), marginTop: mm(4), textAlign: "justify" }}>{WARRANTY_ACKNOWLEDGEMENT}</p>
-
-      <div style={{ marginTop: mm(5) }}>
+      <div style={{ marginTop: "auto", paddingTop: mm(4) }}>
         <BuyerSignature />
+        <p style={{ marginTop: mm(2), textAlign: "center", fontSize: pt(6.5), color: muted }}>
+          {COMPANY.brand} · {COMPANY.phones.join(" · ")}
+        </p>
       </div>
-
-      <p style={{ marginTop: "auto", textAlign: "right", fontSize: pt(7.5), color: muted }}>Страница 2 / 2</p>
     </Sheet>
   );
 }

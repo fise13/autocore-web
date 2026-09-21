@@ -50,6 +50,7 @@ export const COMPANY = {
   address: "Г. АЛМАТЫ, ТУРКСИБСКИЙ РАЙОН",
   brand: "Motor Land",
   site: "www.motor-land.kz",
+  phones: ["8 701 144 54 45", "8 777 144 54 45", "8 707 144 54 45"],
 } as const;
 
 function round2(value: number): number {
@@ -123,6 +124,6 @@ export function createEmptySaleDocument(now: Date, documentNumber: string, itemI
     issuedAt: now.toISOString(),
     customer: { orderer: "", client: "" },
     items: [createEmptyItem(itemId)],
-    vatRate: 12,
+    vatRate: 16,
   };
 }

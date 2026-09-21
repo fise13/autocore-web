@@ -57,28 +57,32 @@ test("every image relationship used in the body is declared", () => {
   }
 });
 
-test("page one prints the sale and page two the warranty, separated by a page break", () => {
+test("waybill and warranty share one sheet — no page break", () => {
   const xml = documentXml(sample());
-  const breakAt = xml.indexOf('w:type="page"');
-  assert.ok(breakAt > 0, "no page break");
-  assert.ok(xml.indexOf("Двигатель EJ253") < breakAt, "the item belongs on the front page");
-  assert.ok(
-    xml.indexOf("Приложение к товарной накладной") > breakAt,
-    "the warranty belongs on the back page",
-  );
+  assert.ok(!xml.includes('w:type="page"'), "the document must stay on a single page");
+  assert.ok(xml.indexOf("Двигатель EJ253") < xml.indexOf("Условия гарантии"));
   assert.ok(xml.includes("Б.У. агрегаты не подлежат обмену"));
+});
+
+test("the three shop numbers are printed in the header", () => {
+  const xml = documentXml(sample());
+  for (const phone of ["8 701 144 54 45", "8 777 144 54 45", "8 707 144 54 45"]) {
+    assert.ok(xml.includes(phone), `${phone} is missing`);
+  }
 });
 
 test("the warranty is always included — there is no opt-out", () => {
   const xml = documentXml(sample({ items: [] }));
-  assert.ok(xml.includes("Приложение к товарной накладной"));
+  assert.ok(xml.includes("Условия гарантии"));
   assert.ok(xml.includes("контрактные агрегаты"));
 });
 
-test("only the buyer signs — one line per page, none for the seller", () => {
-  const xml = documentXml(sample());
-  assert.equal(xml.split("Покупатель:").length - 1, 2);
-  assert.ok(!xml.includes("Продавец:"));
+test("the buyer signs at the foot of the sheet, and only the buyer", () => {
+  const parts = buildSaleDocxParts(sample(), { logoPng: LOGO });
+  // The line lives in the page footer, which is what pins it to the bottom.
+  assert.ok(String(parts["word/footer1.xml"]).includes("Покупатель:"));
+  assert.ok(!String(parts["word/document.xml"]).includes("Покупатель:"));
+  assert.ok(!String(parts["word/document.xml"]).includes("Продавец:"));
 });
 
 test("the front page is a waybill: no works table, no payment or debt lines", () => {

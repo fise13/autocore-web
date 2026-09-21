@@ -7,15 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DOCX_MIME_TYPE, buildSaleDocx } from "@/lib/motor-land/docx/package";
-import {
-  entryTotal,
-  loadHistory,
-  removeHistoryEntry,
-  saveHistory,
-  searchHistory,
-  upsertHistory,
-  type HistoryEntry,
-} from "@/lib/motor-land/history";
+import { entryTotal, parseHistory, searchHistory, type HistoryEntry } from "@/lib/motor-land/history";
 import {
   computeTotals,
   createEmptyItem,
@@ -28,7 +20,16 @@ import {
 } from "@/lib/motor-land/sale-document";
 import { cn } from "@/lib/utils";
 
-import { SaleDocumentSheet, WarrantySheet } from "./sale-document-sheet";
+import { SaleDocumentSheet } from "./sale-document-sheet";
+
+const API = "/api/motor-land/documents";
+
+/** Shared server history. An unreachable server leaves the form fully usable. */
+async function fetchHistory(): Promise<HistoryEntry[]> {
+  const response = await fetch(API, { cache: "no-store" });
+  if (!response.ok) throw new Error(`История недоступна (${response.status})`);
+  return parseHistory(await response.json());
+}
 
 /**
  * `ПР-267` → `ПР-268`. The last issued document sets the series, so the number
@@ -242,18 +243,27 @@ export function SaleDocumentBuilder() {
   // The date stamps itself and the number continues the last issued document,
   // so a sale needs only the engine and its serial to be typed.
   useEffect(() => {
-    const stored = loadHistory();
-    const fresh = createEmptySaleDocument(
-      new Date(),
-      nextDocumentNumber(stored[0]?.data.documentNumber ?? null),
-      crypto.randomUUID(),
-    );
-    // Clock, localStorage and randomUUID all differ between server and client,
-    // so the first document can only be built after mount — a lazy useState
-    // initializer would render different HTML than it hydrates.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setData(fresh);
-    setHistory(stored);
+    let cancelled = false;
+    void (async () => {
+      let stored: HistoryEntry[] = [];
+      try {
+        stored = await fetchHistory();
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "История недоступна");
+      }
+      if (cancelled) return;
+      setHistory(stored);
+      setData(
+        createEmptySaleDocument(
+          new Date(),
+          nextDocumentNumber(stored[0]?.data.documentNumber ?? null),
+          crypto.randomUUID(),
+        ),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const update = useCallback((patch: Partial<SaleDocumentData>) => {
@@ -296,15 +306,25 @@ export function SaleDocumentBuilder() {
     }
   }, []);
 
-  /** Issuing a document is what puts it in the history. */
+  /** Issuing a document is what puts it in the shared history. */
   const handleIssue = useCallback(async () => {
     if (!data) return;
     if (!(await downloadDocx(data))) return;
 
-    const next = upsertHistory(history, data, new Date().toISOString());
-    setHistory(next);
-    saveHistory(next);
-  }, [data, downloadDocx, history]);
+    try {
+      const response = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+      if (!response.ok) throw new Error(`Сервер ответил ${response.status}`);
+      setHistory(await fetchHistory());
+    } catch (cause) {
+      setError(
+        `Файл готов, но в историю не записался: ${cause instanceof Error ? cause.message : "сервер недоступен"}`,
+      );
+    }
+  }, [data, downloadDocx]);
 
   const handleNewDocument = useCallback(() => {
     const latest = history[0]?.data.documentNumber ?? data?.documentNumber ?? null;
@@ -317,14 +337,14 @@ export function SaleDocumentBuilder() {
     setView("document");
   }, []);
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      const next = removeHistoryEntry(history, id);
-      setHistory(next);
-      saveHistory(next);
-    },
-    [history],
-  );
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await fetch(`${API}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      setHistory(await fetchHistory());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось удалить документ");
+    }
+  }, []);
 
   if (!data) {
     return <div className="h-[70vh] animate-pulse rounded-xl border border-border bg-card" />;
@@ -494,7 +514,7 @@ export function SaleDocumentBuilder() {
             building={building}
             onOpen={handleOpen}
             onDownload={(entry) => void downloadDocx(entry.data)}
-            onDelete={handleDelete}
+            onDelete={(id) => void handleDelete(id)}
           />
         )}
 
@@ -502,7 +522,6 @@ export function SaleDocumentBuilder() {
         <div className={cn("flex flex-col gap-6 print:gap-0", view !== "document" && "hidden print:flex")}>
           <p className="text-xs text-muted-foreground print:hidden">{fileName}</p>
           <SaleDocumentSheet data={data} />
-          <WarrantySheet data={data} />
         </div>
       </div>
     </div>

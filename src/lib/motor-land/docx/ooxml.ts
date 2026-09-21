@@ -64,6 +64,8 @@ export type ParagraphOptions = {
   indentHanging?: number;
   /** Right tab stop position in twips. */
   rightTabAt?: number;
+  /** Extra tab stops; an `underscore` leader draws a signature line. */
+  tabStops?: Array<{ pos: number; val?: "left" | "right" | "center"; leader?: "underscore" | "dot" | "none" }>;
   bottomBorder?: { size: number; color: string };
   keepNext?: boolean;
   outlineLevel?: number;
@@ -78,6 +80,7 @@ export function paragraph(content: string, options: ParagraphOptions = {}): stri
     indentLeft,
     indentHanging,
     rightTabAt,
+    tabStops,
     bottomBorder,
     keepNext,
     outlineLevel,
@@ -88,7 +91,14 @@ export function paragraph(content: string, options: ParagraphOptions = {}): stri
     indentLeft || indentHanging
       ? `<w:ind${indentLeft ? ` w:left="${indentLeft}"` : ""}${indentHanging ? ` w:hanging="${indentHanging}"` : ""}/>`
       : "";
-  const tabs = rightTabAt ? `<w:tabs><w:tab w:val="right" w:pos="${rightTabAt}"/></w:tabs>` : "";
+  const tabDefinitions = [
+    ...(rightTabAt ? [`<w:tab w:val="right" w:pos="${rightTabAt}"/>`] : []),
+    ...(tabStops ?? []).map(
+      (stop) =>
+        `<w:tab w:val="${stop.val ?? "left"}" w:pos="${stop.pos}"${stop.leader ? ` w:leader="${stop.leader}"` : ""}/>`,
+    ),
+  ].join("");
+  const tabs = tabDefinitions ? `<w:tabs>${tabDefinitions}</w:tabs>` : "";
   const border = bottomBorder
     ? `<w:pBdr><w:bottom w:val="single" w:sz="${bottomBorder.size}" w:space="1" w:color="${bottomBorder.color}"/></w:pBdr>`
     : "";
