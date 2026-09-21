@@ -137,7 +137,7 @@ function buildFields(data: SaleDocumentData): string {
         cell(paragraph(valueRun(value), { before: 40, after: 40 }), { width: FIELD_GRID[1]!, valign: "top" }),
     );
 
-  return table(fieldRow("Заказчик:", data.customer.orderer) + fieldRow("Клиент:", data.customer.client), FIELD_GRID);
+  return table(fieldRow("Менеджер:", data.customer.manager) + fieldRow("Клиент:", data.customer.client), FIELD_GRID);
 }
 
 function buildItems(data: SaleDocumentData): string {

@@ -60,7 +60,7 @@ test("file name carries the document number and cannot break a file system", () 
 
 test("a fresh document starts with both identity lines empty", () => {
   const empty = createEmptySaleDocument(new Date("2026-09-19T09:00:00"), "ПР-1", "item-1");
-  assert.deepEqual(empty.customer, { orderer: "", client: "" });
+  assert.deepEqual(empty.customer, { manager: "", client: "" });
 });
 
 test("an empty document still has one line and today's date", () => {

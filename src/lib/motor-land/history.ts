@@ -60,7 +60,11 @@ export function coerceSaleDocument(value: unknown): SaleDocumentData | null {
   return {
     documentNumber,
     issuedAt,
-    customer: { orderer: asString(customer.orderer), client: asString(customer.client) },
+    customer: {
+      // `orderer` is what the field was called before it became the manager.
+      manager: asString(customer.manager) || asString(customer.orderer),
+      client: asString(customer.client),
+    },
     items: Array.isArray(raw.items) ? raw.items.map(asItem) : [],
     vatRate: asNumber(raw.vatRate),
   };
@@ -98,7 +102,7 @@ export function searchHistory(entries: readonly HistoryEntry[], search: string):
   return entries.filter((entry) => {
     const haystack = [
       entry.data.documentNumber,
-      entry.data.customer.orderer,
+      entry.data.customer.manager,
       entry.data.customer.client,
       ...entry.data.items.flatMap((item) => [item.title, item.serial]),
     ]

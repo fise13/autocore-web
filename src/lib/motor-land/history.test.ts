@@ -14,7 +14,7 @@ import { createEmptySaleDocument, type SaleDocumentData } from "./sale-document"
 function document(number: string, overrides: Partial<SaleDocumentData> = {}): SaleDocumentData {
   return {
     ...createEmptySaleDocument(new Date("2026-09-19T14:30:00"), number, "item-1"),
-    customer: { orderer: "Приходящий Клиент", client: "Иванов И. И." },
+    customer: { manager: "Мамонтов Д. А.", client: "Иванов И. И." },
     items: [
       { id: "item-1", serial: "928420", title: "Двигатель EJ253 (Subaru)", quantity: 1, unit: "шт", price: 450000 },
     ],
@@ -30,7 +30,7 @@ test("search finds a document by number, party, engine or serial", () => {
   const history = [
     entry("ПР-1"),
     entry("ПР-2", {
-      customer: { orderer: "ТОО Алтын", client: "Петров П." },
+      customer: { manager: "Алтынов А.", client: "Петров П." },
       items: [{ id: "i", serial: "551203", title: "Двигатель 1MZ-FE (Toyota)", quantity: 1, unit: "шт", price: 700000 }],
     }),
   ];
@@ -72,6 +72,22 @@ test("a malformed server response is ignored rather than breaking the page", () 
   assert.equal(coerceSaleDocument(null), null);
 });
 
+test("records written before the rename still show their manager", () => {
+  const restored = parseHistory([
+    {
+      id: "ПР-8",
+      savedAt: "2026-09-19T10:00:00.000Z",
+      data: {
+        documentNumber: "ПР-8",
+        issuedAt: "2026-09-19T10:00:00.000Z",
+        customer: { orderer: "Мамонтов Д. А." },
+        items: [],
+      },
+    },
+  ]);
+  assert.equal(restored[0]?.data.customer.manager, "Мамонтов Д. А.");
+});
+
 test("a record missing newer fields is repaired, not dropped", () => {
   const restored = parseHistory([
     {
@@ -81,7 +97,7 @@ test("a record missing newer fields is repaired, not dropped", () => {
     },
   ]);
   assert.equal(restored.length, 1);
-  assert.deepEqual(restored[0]?.data.customer, { orderer: "", client: "" });
+  assert.deepEqual(restored[0]?.data.customer, { manager: "", client: "" });
   assert.equal(restored[0]?.data.items[0]?.unit, "шт");
   assert.equal(restored[0]?.data.vatRate, 0);
 });

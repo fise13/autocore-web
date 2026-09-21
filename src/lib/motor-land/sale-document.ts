@@ -19,10 +19,10 @@ export type SaleItem = {
 
 /**
  * The only two identity lines the form carries. Both are free text: the counter
- * staff decide what «Заказчик» and «Клиент» mean for a given sale.
+ * staff decide what «Менеджер» and «Клиент» mean for a given sale.
  */
 export type SaleParty = {
-  orderer: string;
+  manager: string;
   client: string;
 };
 
@@ -122,7 +122,7 @@ export function createEmptySaleDocument(now: Date, documentNumber: string, itemI
   return {
     documentNumber,
     issuedAt: now.toISOString(),
-    customer: { orderer: "", client: "" },
+    customer: { manager: "", client: "" },
     items: [createEmptyItem(itemId)],
     vatRate: 16,
   };

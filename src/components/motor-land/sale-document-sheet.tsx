@@ -204,7 +204,7 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: mm(2), marginTop: mm(3.5) }}>
-        <Field caption="Заказчик:" value={data.customer.orderer} />
+        <Field caption="Менеджер:" value={data.customer.manager} />
         <Field caption="Клиент:" value={data.customer.client} />
       </div>
 

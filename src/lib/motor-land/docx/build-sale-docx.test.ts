@@ -11,7 +11,7 @@ function sample(overrides: Partial<SaleDocumentData> = {}): SaleDocumentData {
   const base = createEmptySaleDocument(new Date("2026-09-19T14:30:00"), "ПР-267", "item-1");
   return {
     ...base,
-    customer: { orderer: "Приходящий Клиент", client: "Иванов И. И., +7 777 123 45 67" },
+    customer: { manager: "Мамонтов Д. А.", client: "Иванов И. И., +7 777 123 45 67" },
     items: [
       { id: "item-1", serial: "928420", title: "Двигатель EJ253 (Subaru)", quantity: 1, unit: "шт", price: 450000 },
     ],
@@ -25,7 +25,7 @@ function documentXml(data: SaleDocumentData): string {
 
 test("the form keeps only the two identity lines", () => {
   const xml = documentXml(sample());
-  assert.ok(xml.includes("Заказчик:"));
+  assert.ok(xml.includes("Менеджер:"));
   assert.ok(xml.includes("Клиент:"));
   for (const removed of ["VIN-номер", "Год выпуска", "Плательщик", "Причины обращения", "Пробег"]) {
     assert.ok(!xml.includes(removed), `${removed} should no longer be printed`);
@@ -94,7 +94,7 @@ test("the front page is a waybill: no works table, no payment or debt lines", ()
 });
 
 test("customer text is XML-escaped rather than breaking the document", () => {
-  const xml = documentXml(sample({ customer: { orderer: 'ТОО <A&B> "ок"', client: "" } }));
+  const xml = documentXml(sample({ customer: { manager: 'ТОО <A&B> "ок"', client: "" } }));
   assert.ok(xml.includes("ТОО &lt;A&amp;B&gt; &quot;ок&quot;"));
 });
 

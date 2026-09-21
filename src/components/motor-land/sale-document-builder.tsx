@@ -200,7 +200,7 @@ function HistoryPanel({
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Заказчик: {entry.data.customer.orderer || "—"} · Клиент:{" "}
+                      Менеджер: {entry.data.customer.manager || "—"} · Клиент:{" "}
                       {entry.data.customer.client || "—"}
                     </p>
                   </div>
@@ -455,10 +455,10 @@ export function SaleDocumentBuilder() {
         <Card title="Стороны">
           <div className="grid gap-3">
             <TextField
-              label="Заказчик"
-              value={data.customer.orderer}
-              placeholder="Приходящий Клиент"
-              onChange={(value) => update({ customer: { ...data.customer, orderer: value } })}
+              label="Менеджер"
+              value={data.customer.manager}
+              placeholder="Мамонтов Д. А."
+              onChange={(value) => update({ customer: { ...data.customer, manager: value } })}
             />
             <TextField
               label="Клиент"
