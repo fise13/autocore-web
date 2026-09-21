@@ -14,6 +14,8 @@ import {
   createEmptySaleDocument,
   formatDateTime,
   formatMoney,
+  formatQuantity,
+  itemAmount,
   saleDocumentFileName,
   type SaleDocumentData,
   type SaleItem,
@@ -176,27 +178,32 @@ function HistoryPanel({
               : `Всего документов: ${history.length}`}
           </p>
           <ul className="flex flex-col gap-2">
-            {found.map((entry) => {
-              const lead = entry.data.items.find((item) => item.title || item.serial);
-              return (
-                <li
-                  key={entry.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-2.5"
-                >
+            {found.map((entry) => (
+              <li
+                key={entry.id}
+                className="rounded-lg border border-border/70 bg-background px-3 py-2.5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       <span className="text-sm font-semibold text-foreground">
                         № {entry.data.documentNumber}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         {formatMoney(entryTotal(entry))} ₸
                       </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDateTime(entry.data.issuedAt)}
+                      </span>
+                      {entry.data.vatRate > 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          НДС {formatQuantity(entry.data.vatRate)}%
+                        </span>
+                      )}
                     </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {formatDateTime(entry.data.issuedAt)}
-                      {entry.data.customer.orderer ? ` · ${entry.data.customer.orderer}` : ""}
-                      {lead?.title ? ` · ${lead.title}` : ""}
-                      {lead?.serial ? ` · № ${lead.serial}` : ""}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Заказчик: {entry.data.customer.orderer || "—"} · Клиент:{" "}
+                      {entry.data.customer.client || "—"}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -223,9 +230,30 @@ function HistoryPanel({
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
-                </li>
-              );
-            })}
+                </div>
+
+                <table className="mt-2 w-full border-separate border-spacing-0 text-xs">
+                  <tbody>
+                    {entry.data.items.map((item, index) => (
+                      <tr key={item.id} className="text-muted-foreground">
+                        <td className="w-5 py-0.5 align-top">{index + 1}.</td>
+                        <td className="py-0.5 align-top text-foreground">
+                          {item.title || "Без наименования"}
+                          {item.serial ? ` · № ${item.serial}` : ""}
+                        </td>
+                        <td className="w-24 py-0.5 text-right align-top whitespace-nowrap">
+                          {formatQuantity(item.quantity)} {item.unit} ×{" "}
+                          {formatMoney(item.price)}
+                        </td>
+                        <td className="w-24 py-0.5 text-right align-top whitespace-nowrap text-foreground">
+                          {formatMoney(itemAmount(item))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </li>
+            ))}
           </ul>
         </>
       )}

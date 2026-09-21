@@ -267,10 +267,13 @@ function buildWarrantyBlock(): string {
  *                the terms only fit under the waybill when set in two columns.
  */
 function sectionProperties(columns: number, continuous: boolean): string {
+  // Child order is fixed by the schema — footerReference, then type, then the
+  // page geometry. Word silently drops section properties it cannot parse, and
+  // a dropped `w:cols` is what pushed the warranty onto a second page.
   return [
     "<w:sectPr>",
-    continuous ? '<w:type w:val="continuous"/>' : "",
     `<w:footerReference w:type="default" r:id="${RELS.footer}"/>`,
+    continuous ? '<w:type w:val="continuous"/>' : "",
     '<w:pgSz w:w="11906" w:h="16838"/>',
     `<w:pgMar w:top="${MARGIN}" w:right="${MARGIN}" w:bottom="950" w:left="${MARGIN}" w:header="340" w:footer="280" w:gutter="0"/>`,
     columns > 1

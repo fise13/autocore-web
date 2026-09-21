@@ -21,17 +21,18 @@ export const metadata: Metadata = {
  */
 export default function MotorSaleDocumentPage() {
   return (
-    <div className="min-h-screen bg-muted/40 print:bg-white">
+    <div className="motor-land-shell min-h-screen bg-muted/40 print:bg-white">
       <style
         // The preview sheets are the print layout: A4, edge to edge, one page each.
         dangerouslySetInnerHTML={{
           __html: `
 @media print {
   @page { size: A4; margin: 0; }
-  html, body { background: #fff !important; }
+  /* Without this the 100vh shell keeps its height and prints a blank second page. */
+  html, body { background: #fff !important; margin: 0 !important; height: auto !important; min-height: 0 !important; }
+  .motor-land-shell { min-height: 0 !important; background: #fff !important; }
   .motor-land-page { background: #fff !important; padding: 0 !important; }
-  .motor-land-sheet { width: 210mm !important; box-shadow: none !important; break-after: page; }
-  .motor-land-sheet:last-of-type { break-after: auto; }
+  .motor-land-sheet { width: 210mm !important; box-shadow: none !important; break-inside: avoid; }
 }`,
         }}
       />
