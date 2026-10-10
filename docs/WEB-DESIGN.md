@@ -1,6 +1,8 @@
 # AutoCore Web Design System
 
-Source of truth for marketing + dashboard visual language.
+Source of truth for marketing visual language.
+
+> **Dashboard product UI:** the proposed web design language now lives in [AUTOCORE_DESIGN_LANGUAGE.md](./AUTOCORE_DESIGN_LANGUAGE.md) (audit: [AUTOCORE_DESIGN_AUDIT.md](./AUTOCORE_DESIGN_AUDIT.md), tokens: [AUTOCORE_DESIGN_TOKENS.md](./AUTOCORE_DESIGN_TOKENS.md), icons and copy: [AUTOCORE_ICON_AND_COPY_AUDIT.md](./AUTOCORE_ICON_AND_COPY_AUDIT.md)). Values below describe the current implementation; the proposal changes the light-theme interactive blue and several other tokens pending product-owner approval.
 
 ## Brand
 
