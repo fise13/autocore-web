@@ -85,6 +85,21 @@
   --color-text-secondary: var(--text-secondary);
   --color-border-muted: var(--border-muted);
   --color-overlay: var(--overlay);
+  --color-brand: var(--brand);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-danger-hover: var(--danger-hover);
+  --color-neutral: var(--neutral);
+  --color-neutral-foreground: var(--neutral-foreground);
+  --color-neutral-subtle: var(--neutral-subtle);
+  --color-neutral-on-subtle: var(--neutral-on-subtle);
+  --color-neutral-border: var(--neutral-border);
+  --color-offline: var(--offline);
+  --color-offline-foreground: var(--offline-foreground);
+  --color-offline-subtle: var(--offline-subtle);
+  --color-offline-on-subtle: var(--offline-on-subtle);
+  --color-offline-border: var(--offline-border);
+  --color-grid-selection: var(--grid-selection);
+  --color-grid-active-border: var(--grid-active-border);
   --color-glass: var(--glass);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -95,11 +110,42 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Non-colour design tokens. See docs/AUTOCORE_DESIGN_TOKENS.md §4. */
+@theme {
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 0.875rem;
+  --text-grid: 0.8125rem;
+  --text-grid--line-height: 1.125rem;
+  --text-metric: 1.5rem;
+  --text-metric--line-height: 2rem;
+  --text-metric--font-weight: 600;
+
+  --shadow-popover: 0 4px 16px rgb(17 19 26 / 0.08), 0 1px 2px rgb(17 19 26 / 0.06);
+  --shadow-dialog: 0 16px 48px rgb(17 19 26 / 0.16), 0 2px 6px rgb(17 19 26 / 0.08);
+  --shadow-pin: 4px 0 10px rgb(0 0 0 / 0.28);
+
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /*
  * Colour tokens live in ../styles/design-tokens.css, generated from
  * packages/design-tokens. Only non-colour custom properties belong here.
  */
 :root {
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+
+  --z-raised: 1;
+  --z-pinned: 4;
+  --z-sticky: 10;
+  --z-header: 30;
+  --z-sidebar: 40;
+  --z-overlay: 50;
+  --z-popover: 60;
+  --z-toast: 100;
+  --z-transition: 9999;
+
   --blur-strength: 12px;
   --transition-blur: 10px;
   --scroll-trigger-scrub: 1;
