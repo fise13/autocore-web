@@ -68,6 +68,8 @@ export type CreateWarehouseLocationInput = {
   path?: string[];
   displayCode?: string;
   isSystem?: boolean;
+  /** Fixed document id; omit for a random one. */
+  id?: string;
 };
 
 export type UpdateWarehouseLocationInput = {
@@ -93,6 +95,15 @@ export function normalizeLocationCode(value: string): string {
 
 export function unlocatedLocationDocId(warehouseId: string): string {
   return `unlocated_${warehouseId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+}
+
+/**
+ * One document per (warehouse, path). Lookup-then-create raced when several grid rows
+ * saved at once, leaving five identical "WAREHOUSE" locations; a fixed id makes the
+ * concurrent creates land on the same document instead.
+ */
+export function locationLeafDocId(warehouseId: string, displayCode: string): string {
+  return `loc_${warehouseId.replace(/[^a-zA-Z0-9_-]/g, "_")}_${encodeURIComponent(displayCode.trim())}`;
 }
 
 export function isUnlocatedLocation(location: Pick<WarehouseLocation, "code" | "isSystem">): boolean {

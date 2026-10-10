@@ -4,6 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import {
   buildLocationDisplayCode,
+  locationLeafDocId,
   normalizeLocationCode,
   UNLOCATED_LOCATION_CODE,
   UNLOCATED_LOCATION_LABEL,
@@ -78,9 +79,8 @@ export function createLocationPathEnsurer(params: {
       .where("companyId", "==", companyId)
       .where("warehouseId", "==", warehouseId)
       .where("displayCode", "==", displayCode)
-      .limit(1)
       .get();
-    const doc = snap.docs[0];
+    const doc = snap.docs.find((item) => item.data().isActive !== false) ?? snap.docs[0];
     if (!doc) return null;
     const mapped = mapDoc(doc.id, doc.data() as Record<string, unknown>);
     remember(mapped);
@@ -94,7 +94,7 @@ export function createLocationPathEnsurer(params: {
     type: ReturnType<typeof inferLocationType>;
   }): Promise<CachedLocation> {
     const displayCode = buildLocationDisplayCode(input.path);
-    const ref = db.collection("warehouseLocations").doc();
+    const ref = db.collection("warehouseLocations").doc(locationLeafDocId(warehouseId, displayCode));
     await ref.set({
       companyId,
       warehouseId,

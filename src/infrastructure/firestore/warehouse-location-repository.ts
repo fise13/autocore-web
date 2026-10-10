@@ -16,6 +16,7 @@ import {
 import {
   buildLocationDisplayCode,
   CreateWarehouseLocationInput,
+  locationLeafDocId,
   normalizeLocationCode,
   UNLOCATED_LOCATION_CODE,
   UNLOCATED_LOCATION_LABEL,
@@ -150,10 +151,11 @@ export function createWarehouseLocationRepository() {
           where("companyId", "==", normalizeCompanyId(companyId)),
           where("warehouseId", "==", warehouseId),
           where("displayCode", "==", normalized),
-          limit(1),
         ),
       );
-      const first = snapshot.docs[0];
+      // Retired duplicates stay readable for old QR labels; never hand one back for new assets.
+      const first =
+        snapshot.docs.find((item) => item.data().isActive !== false) ?? snapshot.docs[0];
       return first ? mapLocation(first.id, first.data() as Record<string, unknown>) : null;
     },
 
@@ -220,7 +222,7 @@ export function createWarehouseLocationRepository() {
         displayCode = buildLocationDisplayCode(path);
       }
 
-      const locationRef = doc(ref);
+      const locationRef = input.id ? doc(db, COLLECTION, input.id) : doc(ref);
       const entityLink = buildLocationEntityLink(locationRef.id);
       await setDoc(
         locationRef,
@@ -299,6 +301,7 @@ export function createWarehouseLocationRepository() {
         const existing = await this.findByDisplayCode(companyId, warehouseId, displayCode);
         if (existing) return existing;
         const id = await this.create({
+          id: locationLeafDocId(warehouseId, displayCode),
           companyId,
           warehouseId,
           type: inferLocationType(segments[0]!, 0, 1),
@@ -325,6 +328,7 @@ export function createWarehouseLocationRepository() {
           continue;
         }
         const id = await this.create({
+          id: locationLeafDocId(warehouseId, displayCode),
           companyId,
           warehouseId,
           parentId,
