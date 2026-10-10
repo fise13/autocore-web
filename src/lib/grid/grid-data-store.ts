@@ -12,7 +12,12 @@ export type MotorRowDefaults = {
   engineCode?: string;
 };
 
-export function createEmptyRow(companyId: string, defaults?: MotorRowDefaults): MotorGridRow {
+/**
+ * Filler rows stay blank. The active brand/model filter is applied only when a row is
+ * actually saved (see applyRowDefaults) — pre-filling every blank row made the grid look
+ * like 20 duplicate motors and turned untouched rows into half-filled drafts.
+ */
+export function createEmptyRow(companyId: string): MotorGridRow {
   const rowId = nextEmptyRowId();
   return {
     rowKind: "empty",
@@ -28,16 +33,23 @@ export function createEmptyRow(companyId: string, defaults?: MotorRowDefaults): 
     transmission: "",
     arrivalDate: null,
     soldDate: null,
-    brandName: defaults?.brandName?.trim() ?? "",
-    engineCode: defaults?.engineCode?.trim() ?? "",
+    brandName: "",
+    engineCode: "",
   };
+}
+
+/** Fill brand/model the user left blank from the active sidebar filter. */
+export function applyRowDefaults<T extends MotorGridRow>(row: T, defaults?: MotorRowDefaults): T {
+  const brandName = row.brandName?.trim() || defaults?.brandName?.trim() || "";
+  const engineCode = row.engineCode?.trim() || defaults?.engineCode?.trim() || "";
+  if (brandName === (row.brandName ?? "") && engineCode === (row.engineCode ?? "")) return row;
+  return { ...row, brandName, engineCode };
 }
 
 export function buildGridRows(
   motors: MotorEntity[],
   companyId: string,
   targetCount?: number,
-  defaults?: MotorRowDefaults,
 ): MotorGridRow[] {
   const seenIds = new Set<string>();
   const uniqueMotors = motors.filter((motor) => {
@@ -54,7 +66,7 @@ export function buildGridRows(
   const goal = Math.max(targetCount ?? MOTOR_GRID_EMPTY_ROWS_BASE, rows.length, MOTOR_GRID_EMPTY_ROWS_BASE);
   const fillers = goal - rows.length;
   for (let i = 0; i < fillers; i += 1) {
-    rows.push(createEmptyRow(companyId, defaults));
+    rows.push(createEmptyRow(companyId));
   }
   return rows;
 }
@@ -63,11 +75,10 @@ export function growRows(
   current: MotorGridRow[],
   companyId: string,
   amount = MOTOR_GRID_EMPTY_ROWS_EXPAND,
-  defaults?: MotorRowDefaults,
 ): MotorGridRow[] {
   const next = [...current];
   for (let i = 0; i < amount; i += 1) {
-    next.push(createEmptyRow(companyId, defaults));
+    next.push(createEmptyRow(companyId));
   }
   return next;
 }

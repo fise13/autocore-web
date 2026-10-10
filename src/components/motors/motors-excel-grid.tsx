@@ -36,6 +36,7 @@ import { isMotorAvailableForSale, type MotorEntity } from "@/domain/motor";
 import {
   buildGridRows,
   buildSavedMotorRowFromCreate,
+  applyRowDefaults,
   createEmptyRow,
   growRows,
   hasSaveableContent,
@@ -301,7 +302,6 @@ function reconcileRowsWithRemote(
   incomingMotors: MotorEntity[],
   companyId: string,
   dirtyRowIds: Set<string>,
-  defaults?: MotorRowDefaults,
 ): MotorGridRow[] {
   const incomingById = new Map<string, MotorEntity>();
   const uniqueIncoming: MotorEntity[] = [];
@@ -315,7 +315,7 @@ function reconcileRowsWithRemote(
   const nextRows = currentRows.map<MotorGridRow>((row) => {
     if (row.rowKind === "saved") {
       const incoming = incomingById.get(row.id);
-      if (!incoming) return createEmptyRow(companyId, defaults);
+      if (!incoming) return createEmptyRow(companyId);
       claimedIds.add(incoming.id);
       return dirtyRowIds.has(row.rowId)
         ? row
@@ -356,7 +356,7 @@ function reconcileRowsWithRemote(
   }
 
   while (nextRows.length < MOTOR_GRID_EMPTY_ROWS_BASE) {
-    nextRows.push(createEmptyRow(companyId, defaults));
+    nextRows.push(createEmptyRow(companyId));
   }
   return nextRows;
 }
@@ -490,7 +490,7 @@ export function MotorsExcelGrid({
     return map;
   }, [brands, engines]);
 
-  const [rows, setRows] = useState<MotorGridRow[]>(() => buildGridRows(motors, companyId, undefined, rowDefaults));
+  const [rows, setRows] = useState<MotorGridRow[]>(() => buildGridRows(motors, companyId));
   const rowsRef = useRef(rows);
   useEffect(() => {
     rowsRef.current = rows;
@@ -524,12 +524,11 @@ export function MotorsExcelGrid({
         motors,
         companyId,
         dirtyRowsRef.current,
-        rowDefaults,
       );
       rowsRef.current = next;
       return next;
     });
-  }, [catalogBrands, catalogEngines, catalogMotors, companyId, motors, rowDefaults, brands, engines]);
+  }, [catalogBrands, catalogEngines, catalogMotors, companyId, motors, brands, engines]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -730,9 +729,9 @@ export function MotorsExcelGrid({
     setRows((current) => {
       const distance = current.length - lastVisibleRow - 1;
       if (distance > MOTOR_GRID_EMPTY_ROWS_THRESHOLD) return current;
-      return growRows(current, companyId, MOTOR_GRID_EMPTY_ROWS_EXPAND, rowDefaults);
+      return growRows(current, companyId, MOTOR_GRID_EMPTY_ROWS_EXPAND);
     });
-  }, [companyId, rowDefaults]);
+  }, [companyId]);
 
   const flushEditor = useCallback(() => {
     const currentEditor = editorRef.current;
@@ -780,7 +779,7 @@ export function MotorsExcelGrid({
             resolvedDirtyIds.add(rowId);
             continue;
           }
-          const emptyRow = row as MotorGridRow & { rowKind: "empty" };
+          const emptyRow = applyRowDefaults(row as MotorGridRow & { rowKind: "empty" }, rowDefaults);
           catalogRows.push(emptyRow);
           createTasks.push(async () => {
             const locationText = resolveItemLocationLabel(emptyRow);
@@ -981,7 +980,7 @@ export function MotorsExcelGrid({
       setSaveError(message);
       throw new Error(message);
     }
-  }, [brands, canEdit, catalogRepository, companyId, engines, flushEditor, repository, setSaveError, setSaveStatus, uid]);
+  }, [brands, canEdit, catalogRepository, companyId, engines, flushEditor, repository, rowDefaults, setSaveError, setSaveStatus, uid]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -1190,7 +1189,7 @@ export function MotorsExcelGrid({
     if (direction === "left") next.column = Math.max(gridBounds.editableStart, next.column - 1);
     next.column = Math.max(gridBounds.editableStart, Math.min(gridBounds.editableEnd, next.column));
     if (next.row >= rows.length) {
-      setRows((current) => growRows(current, companyId, MOTOR_GRID_EMPTY_ROWS_EXPAND, rowDefaults));
+      setRows((current) => growRows(current, companyId, MOTOR_GRID_EMPTY_ROWS_EXPAND));
     }
     setSelection({
       anchor: next,
@@ -1240,11 +1239,10 @@ export function MotorsExcelGrid({
           current,
           companyId,
           maxRowInclusive - current.length + MOTOR_GRID_EMPTY_ROWS_EXPAND + 1,
-          rowDefaults,
         ),
       );
     },
-    [companyId, rowDefaults, rows.length],
+    [companyId, rows.length],
   );
 
   const scrollByPage = useCallback((direction: 1 | -1) => {
