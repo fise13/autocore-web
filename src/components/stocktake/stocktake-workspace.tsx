@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, Loader2 } from "lucide-react";
+import { ClipboardCheck, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { commitStocktakeUseCase } from "@/application/use-cases/warehouse/commit-stocktake";
@@ -107,7 +107,7 @@ export function StocktakeWorkspace() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{copy.title}</h2>
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
         {workingLines.length === 0 ? (
@@ -125,7 +125,7 @@ export function StocktakeWorkspace() {
 
       {isLoading || isBootstrapping ? (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {copy.loading}
         </p>
       ) : workingLines.length === 0 ? (

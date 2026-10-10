@@ -705,7 +705,7 @@ export function MotorImportWizard({
                     </p>
                   ) : null}
                   {uncertainRows.length > 0 ? (
-                    <p className="mt-1 text-amber-700 dark:text-amber-300">
+                    <p className="mt-1 text-warning-on-subtle">
                       {userCopy.motors.importWizard.uncertainHint(uncertainRows.length)}
                     </p>
                   ) : null}
@@ -810,7 +810,7 @@ export function MotorImportWizard({
                   ) : null}
                 </div>
                 {hasSpecificSheets ? (
-                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
+                  <p className="rounded-lg border border-warning-border bg-warning-subtle p-3 text-warning-on-subtle">
                     {userCopy.motors.importWizard.catalogReplaceNote}
                   </p>
                 ) : null}
@@ -903,7 +903,7 @@ function StatCard({ label, value, hint }: { label: string; value: number; hint: 
     <div className="rounded-lg border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
+      <p className="mt-0.5 text-micro text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -972,7 +972,7 @@ function SheetMappingList({
                   <p className="truncate font-medium">{mapping.config.sheetName}</p>
                   <p className="text-xs text-muted-foreground">{rowHint}</p>
                   {hint ? (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{hint}</p>
+                    <p className="mt-0.5 line-clamp-2 text-micro text-muted-foreground">{hint}</p>
                   ) : null}
                 </div>
                 <ImportTypeBadge type={mapping.config.importType} />
@@ -1013,11 +1013,11 @@ function ImportTypeBadge({ type }: { type: SheetImportType }) {
     type === "engines"
       ? "bg-primary/10 text-primary"
       : type === "specific"
-        ? "bg-amber-500/10 text-amber-800 dark:text-amber-200"
+        ? "bg-warning-subtle text-warning-on-subtle"
         : "bg-muted text-muted-foreground";
 
   return (
-    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", className)}>
+    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-micro font-medium", className)}>
       {label}
     </span>
   );
@@ -1031,11 +1031,11 @@ function SpecificSheetsPreview({
   if (sheets.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-4">
-      <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+    <div className="rounded-lg border border-warning-border bg-warning-subtle p-4">
+      <p className="text-sm font-medium text-warning-on-subtle">
         {userCopy.motors.importWizard.inventoryCatalogs(sheets.length)}
       </p>
-      <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+      <p className="mt-1 text-xs text-warning-on-subtle">
         {userCopy.motors.importWizard.inventoryCatalogsHint}
       </p>
       <ul className="mt-3 space-y-2">
@@ -1044,14 +1044,14 @@ function SpecificSheetsPreview({
           return (
             <li
               key={sheet.configId}
-              className="rounded-md border border-amber-500/20 bg-background/60 px-3 py-2 text-sm"
+              className="rounded-md border border-warning-border bg-background/60 px-3 py-2 text-sm"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{sheet.sheetName}</p>
                   <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
                   {columns.length > 0 ? (
-                    <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 text-micro text-muted-foreground">
                       {userCopy.motors.importWizard.columns(columns.join(", "))}
                     </p>
                   ) : null}
@@ -1088,7 +1088,7 @@ function SheetMappingCard({
             {mapping.source === "ai" ? userCopy.motors.importWizard.sourceAi : mapping.source === "manual" ? userCopy.motors.importWizard.sourceManual : userCopy.motors.importWizard.sourceRules} ·{" "}
             {rowHint} · {mapping.reasoning}
           </p>
-          {hint ? <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">{hint}</p> : null}
+          {hint ? <p className="mt-1 text-xs text-warning-on-subtle">{hint}</p> : null}
         </div>
         <ConfidenceBadge confidence={mapping.confidence} />
       </div>
@@ -1152,7 +1152,7 @@ function SheetMappingCard({
           <div className="space-y-1">
             <Label>{userCopy.motors.importWizard.appSheet}</Label>
             {specificCategories.length === 0 ? (
-              <p className="text-xs text-amber-700 dark:text-amber-300">
+              <p className="text-xs text-warning-on-subtle">
                 {userCopy.specificSheets.selectSheetHint}
               </p>
             ) : (
@@ -1215,7 +1215,7 @@ function MotorPreviewTable({
                 className={cn(
                   "border-t transition-colors",
                   row.errors.length ? "bg-destructive/5" : "",
-                  uncertain ? "bg-amber-500/5" : "",
+                  uncertain ? "bg-warning-subtle" : "",
                 )}
               >
                 <td className="px-3 py-2">

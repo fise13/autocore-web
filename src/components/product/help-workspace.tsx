@@ -8,7 +8,7 @@ import {
   ClipboardList,
   ExternalLink,
   FileText,
-  HelpCircle,
+  CircleQuestionMark,
   LayoutGrid,
   Mail,
   Package,
@@ -370,7 +370,7 @@ export function HelpWorkspace() {
                         )}
                       >
                         <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background text-muted-foreground transition-colors group-hover:border-primary/20 group-hover:text-primary">
-                          <HelpCircle className="size-3.5" />
+                          <CircleQuestionMark className="size-3.5" />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-sm font-medium leading-snug">{article.q}</span>

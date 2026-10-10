@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   Bug,
   Check,
-  CircleHelp,
+  CircleQuestionMark,
   Lightbulb,
-  Loader2,
+  LoaderCircle,
   MessageSquare,
   Paperclip,
   Send,
@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 const KIND_ICONS: Record<FeedbackKind, LucideIcon> = {
   bug: Bug,
   idea: Lightbulb,
-  question: CircleHelp,
+  question: CircleQuestionMark,
   other: MessageSquare,
 };
 
@@ -208,7 +208,7 @@ export function HelpFeedbackForm({ supportEmail }: { supportEmail: string }) {
             transition={{ duration: 0.28, ease: EASE }}
             className="flex flex-col items-start gap-3 py-2"
           >
-            <span className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <span className="flex size-10 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle">
               <Check className="size-5" />
             </span>
             <div>
@@ -366,7 +366,7 @@ export function HelpFeedbackForm({ supportEmail }: { supportEmail: string }) {
 
               <Button type="submit" size="lg" disabled={sending || remaining < 0}>
                 {sending ? (
-                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                  <LoaderCircle className="animate-spin" data-icon="inline-start" />
                 ) : (
                   <Send data-icon="inline-start" />
                 )}

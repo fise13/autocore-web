@@ -63,7 +63,7 @@ export function MyEarningsWorkspace() {
   const body = (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{userCopy.myEarnings.title}</h1>
+        <h2 className="text-xl font-semibold tracking-tight">{userCopy.myEarnings.title}</h2>
         <p className="text-sm text-muted-foreground">{userCopy.myEarnings.subtitle}</p>
       </div>
 

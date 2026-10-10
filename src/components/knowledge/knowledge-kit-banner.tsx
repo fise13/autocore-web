@@ -32,13 +32,13 @@ export function KnowledgeKitBanner({
       )}
     >
       <div className="min-w-0">
-        <p className="text-[13px] font-medium">
+        <p className="text-grid font-medium">
           {userCopy.knowledge.kitFor(engineCode)}
-          <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+          <span className="ml-1.5 text-micro font-normal text-muted-foreground">
             {userCopy.knowledge.positionsConfidence(items.length, Math.round(confidence * 100))}
           </span>
         </p>
-        <p className="truncate text-[11px] text-muted-foreground">
+        <p className="truncate text-micro text-muted-foreground">
           {items[0]?.explanation ?? userCopy.knowledge.kitFallback}
         </p>
       </div>

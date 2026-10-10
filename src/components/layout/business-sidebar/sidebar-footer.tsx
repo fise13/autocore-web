@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Activity, HelpCircle, X } from "lucide-react";
+import { Activity, CircleQuestionMark, X } from "lucide-react";
 
 import {
   SidebarMenu,
@@ -26,8 +26,8 @@ type SidebarFooterProps = {
 };
 
 const statusDotClass: Record<SystemStatusLevel, string> = {
-  operational: "bg-emerald-500",
-  degraded: "bg-amber-500",
+  operational: "bg-success",
+  degraded: "bg-warning",
   outage: "bg-destructive",
 };
 
@@ -129,7 +129,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
           >
             <X className="size-3.5" />
           </Button>
-          <p className="pr-6 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="pr-6 text-micro font-semibold text-muted-foreground">
             {announcement.badge}
           </p>
           <p className="mt-1.5 text-sm font-semibold leading-snug text-sidebar-foreground">
@@ -152,7 +152,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         <FooterLink
           href={help.href}
           label={help.label}
-          icon={<HelpCircle className="size-4 shrink-0 opacity-90" />}
+          icon={<CircleQuestionMark className="size-4 shrink-0 opacity-90" />}
           external={help.external}
           collapsed={collapsed}
           onNavigate={onNavigate}

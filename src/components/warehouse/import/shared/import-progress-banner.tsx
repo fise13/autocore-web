@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Loader2, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 
 import { useWorkspace } from "@/components/layout/workspace-context";
 import { ImportProgressBar } from "@/components/warehouse/import/shared/import-progress-bar";
@@ -38,7 +38,7 @@ export function ImportProgressBanner({
           className="border-b bg-primary/5 px-4 py-2"
         >
           <div className="mx-auto flex max-w-3xl items-center gap-3">
-            <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+            <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-medium">
                 {progress.phase === "apply" ? titleApply : titleAnalyze}

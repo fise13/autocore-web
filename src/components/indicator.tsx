@@ -12,10 +12,10 @@ const statusIndicatorVariants = cva(
 	{
 		variants: {
 			color: {
-				emerald: "text-emerald-500",
-				rose: "text-rose-500",
-				amber: "text-amber-500",
-				sky: "text-sky-500",
+				emerald: "text-success-on-subtle",
+				rose: "text-danger-on-subtle",
+				amber: "text-warning-on-subtle",
+				sky: "text-primary-on-subtle",
 			},
 			pulse: {
 				true: "[&_[data-slot=indicator-ping]]:animate-ping",

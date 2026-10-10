@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Cloud, Download, Loader2, Sparkles, Upload, Users } from "lucide-react";
+import { Check, Cloud, Download, LoaderCircle, Sparkles, Upload, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,7 @@ export function ProActivationCelebration({ open, phase, onOpenChange }: ProActiv
                     transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
                   />
                   <span className="flex size-16 items-center justify-center rounded-full bg-primary/10">
-                    <Loader2 className="size-7 animate-spin text-primary" />
+                    <LoaderCircle className="size-7 animate-spin text-primary" />
                   </span>
                 </div>
                 <div className="space-y-1.5">
@@ -135,9 +135,9 @@ export function ProActivationCelebration({ open, phase, onOpenChange }: ProActiv
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ delay: 0.35 + index * 0.09, type: "spring", stiffness: 420, damping: 22 }}
-                          className="ml-auto mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          className="ml-auto mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle"
                         >
-                          <Check className="size-3.5" strokeWidth={2.5} />
+                          <Check className="size-3.5" strokeWidth={2} />
                         </motion.span>
                       </motion.li>
                     );

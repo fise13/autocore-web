@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChevronRightIcon, Minus } from "lucide-react";
+import { ChevronRight, Minus } from "lucide-react";
 
 import type {
   AutocoreNavGroup,
@@ -74,7 +74,7 @@ function EditRemoveButton({ onClick }: { onClick: () => void }) {
       className="absolute left-0 top-1/2 z-10 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
       title={userCopy.layout.hide}
     >
-      <Minus className="size-2.5" strokeWidth={2.5} />
+      <Minus className="size-2.5" strokeWidth={2} />
     </button>
   );
 }
@@ -238,7 +238,7 @@ function NavCollapsibleItem({
           {item.badge != null && item.badge > 0 ? (
             <NavItemCountBadge count={item.badge} />
           ) : null}
-          <ChevronRightIcon className="size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[panel-open]:rotate-90 motion-reduce:transition-none" />
+          <ChevronRight className="size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[panel-open]:rotate-90 motion-reduce:transition-none" />
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>

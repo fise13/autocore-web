@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 import Link from "next/link";
 
 import { PayrollTransaction } from "@/domain/payroll-transaction";
@@ -16,6 +15,8 @@ import { money } from "@/components/work-orders/work-order-utils";
 import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
+import { payrollStatusStyle, statusToneChipClass } from "@/lib/status/status-tones";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const STATUS_LABELS = {
   pending: userCopy.myEarnings.filters.pending,
@@ -66,15 +67,13 @@ export function MyEarningsTableSection({ rows, workOrders, isLoading }: MyEarnin
                     <div>
                       <p className="text-base font-semibold tabular-nums">{money(row.amount)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: enUS })}
+                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: dateFnsLocale() })}
                       </p>
                     </div>
                     <span
                       className={cn(
-                        "rounded-md px-2 py-0.5 text-xs font-medium",
-                        row.status === "paid" && "bg-emerald-500/10 text-emerald-700",
-                        row.status === "pending" && "bg-amber-500/10 text-amber-700",
-                        row.status === "cancelled" && "bg-muted text-muted-foreground",
+                        "rounded-sm border px-2 py-0.5 text-xs font-medium",
+                        statusToneChipClass[payrollStatusStyle[row.status].tone],
                       )}
                     >
                       {STATUS_LABELS[row.status]}

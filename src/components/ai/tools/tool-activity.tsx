@@ -63,7 +63,7 @@ export function ToolError({ reason, className }: { reason?: string; className?: 
       )}
     >
       <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-      <p className="min-w-0 text-[13px] leading-snug text-muted-foreground">
+      <p className="min-w-0 text-grid leading-snug text-muted-foreground">
         {reason?.trim() || userCopy.ai.tool.failed}
       </p>
     </div>

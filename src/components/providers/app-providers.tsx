@@ -1,5 +1,6 @@
 "use client";
 
+import { LucideProvider } from "lucide-react";
 import { ReactNode } from "react";
 
 import { PaddleProvider } from "@/components/billing/paddle-provider";
@@ -28,12 +29,15 @@ export function AppProviders({ children }: AppProvidersProps) {
           <AppLocaleProvider>
             <PageTransitionProvider>
               <WebVitalsReporter />
+              {/* One stroke for every icon; see docs/AUTOCORE_DESIGN_LANGUAGE.md §5. */}
+              <LucideProvider strokeWidth={1.75}>
               <ToastProvider>
                 {/* Renders nothing on web; wires up the native menu, deep links
                     and window title when running in the desktop shell. */}
                 <DesktopShellProvider />
                 <AppContextMenuProvider>{children}</AppContextMenuProvider>
               </ToastProvider>
+              </LucideProvider>
             </PageTransitionProvider>
           </AppLocaleProvider>
           </PaddleProvider>

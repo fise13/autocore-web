@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, LogOut, Settings, UserCircle } from "lucide-react";
+import { ChevronDown, LogOut, Settings, CircleUser } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -56,7 +56,7 @@ function AccountMenuPanel({
         <div className="min-w-0 flex-1">
           {displayName ? <p className="truncate text-sm font-semibold">{displayName}</p> : null}
           <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-micro text-muted-foreground">
             {accountInfo?.label ?? "—"} · {formatRole(profileRole)}
           </p>
         </div>
@@ -70,7 +70,7 @@ function AccountMenuPanel({
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
         onClick={onClose}
       >
-        <UserCircle className="size-4 text-muted-foreground" />
+        <CircleUser className="size-4 text-muted-foreground" />
         {userCopy.account.menuSettings}
       </Link>
       <Link

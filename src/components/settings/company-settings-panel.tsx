@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
-import { Building2, CreditCard, Loader2, Users } from "lucide-react";
+import { Building2, CreditCard, LoaderCircle, Users } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
@@ -94,7 +94,7 @@ export function CompanySettingsPanel({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 {userCopy.company.companyNameLabel}
               </p>
               <p className="mt-1 text-lg font-semibold tracking-tight">
@@ -109,7 +109,7 @@ export function CompanySettingsPanel({
                 className="max-w-sm"
               />
               <Button onClick={() => void updateCompanyName()} disabled={savingName || !companyNameDraft.trim()}>
-                {savingName ? <Loader2 className="size-4 animate-spin" /> : null}
+                {savingName ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {userCopy.settings.companyNameSave}
               </Button>
             </div>
@@ -193,7 +193,7 @@ export function CompanySettingsPanel({
                   disabled={pending !== null}
                   onClick={() => void openPortal()}
                 >
-                  {pending === "sync" ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {pending === "sync" ? <LoaderCircle className="size-4 animate-spin" /> : null}
                   {userCopy.billing.manageButton}
                 </Button>
               ) : null}

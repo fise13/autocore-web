@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Eye, FileText, Loader2, RefreshCw } from "lucide-react";
+import { Download, Eye, FileText, LoaderCircle, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -182,7 +182,7 @@ export function WorkOrderDocumentsPanel({
 
       {isGenerating ? (
         <p className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {labels.pdfGenerating}
         </p>
       ) : null}
@@ -222,11 +222,11 @@ export function WorkOrderDocumentsPanel({
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{title}</p>
                     {pending ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground">
                         {labels.pending}
                       </span>
                     ) : isReady || persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                      <span className="rounded-full bg-success-subtle px-2 py-0.5 text-micro font-medium text-success-on-subtle">
                         {labels.ready}
                       </span>
                     ) : null}

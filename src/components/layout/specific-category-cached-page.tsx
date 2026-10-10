@@ -44,7 +44,7 @@ export function SpecificCategoryCachedPage({ categoryId }: SpecificCategoryCache
   if (!category) {
     return (
       <div className="mx-auto flex max-w-lg flex-col gap-2 py-16 text-center">
-        <h1 className="text-lg font-semibold">{userCopy.layout.categoryNotFound}</h1>
+        <h2 className="text-lg font-semibold">{userCopy.layout.categoryNotFound}</h2>
         <p className="text-sm text-muted-foreground">{userCopy.layout.categoryNotFoundHint}</p>
       </div>
     );

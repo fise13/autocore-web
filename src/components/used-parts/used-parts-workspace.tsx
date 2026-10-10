@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, Puzzle } from "lucide-react";
+import { LoaderCircle, Plus, Puzzle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -148,7 +148,7 @@ export function UsedPartsWorkspace() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{copy.title}</h2>
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -176,7 +176,7 @@ export function UsedPartsWorkspace() {
 
       {isLoading ? (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {copy.loading}
         </p>
       ) : visible.length === 0 ? (

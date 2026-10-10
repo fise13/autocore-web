@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import { useEffect } from "react";
 import { userCopy } from "@/lib/user-copy";
 
@@ -64,10 +64,9 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.08, type: "spring", stiffness: 420, damping: 18 }}
-              className="relative mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600"
+              className="relative mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle"
             >
-              <CheckCircle2 className="size-9" />
-              <Sparkles className="absolute -right-1 -top-1 size-5 text-amber-500" />
+              <CircleCheck className="size-9" />
             </motion.div>
 
             <motion.p
@@ -90,7 +89,7 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.26 }}
-              className="mt-3 text-2xl font-semibold tabular-nums text-emerald-600"
+              className="mt-3 text-2xl font-semibold tabular-nums text-success-on-subtle"
             >
               +{amount.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })}
             </motion.p>

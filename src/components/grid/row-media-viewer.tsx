@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Film, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Film, LoaderCircle } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -253,7 +253,7 @@ export function RowMediaViewer() {
             onClick={() => void handleDownloadCurrent()}
             className="gap-1.5"
           >
-            {busy === "one" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {busy === "one" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
             <span className="hidden sm:inline">{copy.download}</span>
           </Button>
           {urls.length > 1 ? (
@@ -265,7 +265,7 @@ export function RowMediaViewer() {
               onClick={() => void handleDownloadAll()}
               className="gap-1.5"
             >
-              {busy === "all" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+              {busy === "all" ? <LoaderCircle className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
               <span className="hidden sm:inline">{copy.downloadAll}</span>
             </Button>
           ) : null}
@@ -280,7 +280,7 @@ export function RowMediaViewer() {
 
       <div className="relative flex min-h-0 flex-1 items-center justify-center bg-zinc-950">
         {loading ? (
-          <Loader2 className="size-8 animate-spin text-white/50" />
+          <LoaderCircle className="size-8 animate-spin text-white/50" />
         ) : current ? (
           isVideo ? (
             <video

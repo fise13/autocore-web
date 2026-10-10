@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Car,
-  CheckCircle2,
+  CircleCheck,
   Cog,
   Package,
   Save,
@@ -557,7 +557,7 @@ export function WorkOrderComposer({
                   className={cn(
                     "flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all duration-200",
                     active && "border-primary/40 bg-primary/5",
-                    done && "border-emerald-500/30 bg-emerald-500/5",
+                    done && "border-success-border bg-success-subtle",
                     !active && !done && "border-border/60 bg-muted/20",
                   )}
                 >
@@ -565,7 +565,7 @@ export function WorkOrderComposer({
                     className={cn(
                       "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                       active && "bg-primary text-primary-foreground",
-                      done && "bg-emerald-600 text-white",
+                      done && "bg-success text-success-foreground",
                       !active && !done && "bg-muted text-muted-foreground",
                     )}
                   >
@@ -585,7 +585,7 @@ export function WorkOrderComposer({
           <FadeIn key="composer-step-1" className="mx-auto max-w-2xl space-y-6">
             {clientPrefSuggestions.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-micro font-medium text-muted-foreground">
                   {c.clientPrefsHint}
                 </p>
                 <KnowledgeSuggestionChips
@@ -769,7 +769,7 @@ export function WorkOrderComposer({
             ) : null}
             {companionSuggestions.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-micro font-medium text-muted-foreground">
                   {c.hints}
                 </p>
                 <KnowledgeSuggestionChips
@@ -785,7 +785,7 @@ export function WorkOrderComposer({
                   <Wrench className="size-3.5" />
                   {c.tabLabor}
                   {form.laborLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {form.laborLines.length}
                     </span>
                   ) : null}
@@ -794,7 +794,7 @@ export function WorkOrderComposer({
                   <Package className="size-3.5" />
                   {c.tabParts}
                   {regularPartLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {regularPartLines.length}
                     </span>
                   ) : null}
@@ -803,7 +803,7 @@ export function WorkOrderComposer({
                   <Cog className="size-3.5" />
                   {c.tabMotors}
                   {form.motorLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {form.motorLines.length}
                     </span>
                   ) : null}
@@ -813,7 +813,7 @@ export function WorkOrderComposer({
                     <Package className="size-3.5" />
                     {c.tabCatalog}
                     {specificPartLines.length > 0 ? (
-                      <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                      <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                         {specificPartLines.length}
                       </span>
                     ) : null}
@@ -888,7 +888,7 @@ export function WorkOrderComposer({
                             placeholder={c.assigneePlaceholder}
                             emptyMessage={c.assigneeEmpty}
                             className={cn(
-                              form.laborDraft.assigneeId && "border-emerald-500/50 ring-emerald-500/10",
+                              form.laborDraft.assigneeId && "border-success-border ring-success-border",
                             )}
                           />
                         </div>
@@ -904,8 +904,8 @@ export function WorkOrderComposer({
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed pt-4">
                     <div className="min-w-0 space-y-1">
                       {form.laborDraft.assigneeId ? (
-                        <p className="flex items-center gap-1.5 text-xs text-emerald-700 animate-autocore-fade-in motion-reduce:animate-none">
-                          <CheckCircle2 className="size-3.5 shrink-0" />
+                        <p className="flex items-center gap-1.5 text-xs text-success-on-subtle animate-autocore-fade-in motion-reduce:animate-none">
+                          <CircleCheck className="size-3.5 shrink-0" />
                           <span>
                             {(() => {
                               const employee = employees.find((entry) => entry.uid === form.laborDraft.assigneeId);
@@ -918,7 +918,7 @@ export function WorkOrderComposer({
                           </span>
                         </p>
                       ) : employees.length === 0 ? (
-                        <p className="text-xs text-amber-600">
+                        <p className="text-xs text-warning-on-subtle">
                           {c.addEmployeesHint}
                         </p>
                       ) : form.laborDraft.assigneeName.trim() ? (
@@ -1257,7 +1257,7 @@ export function WorkOrderComposer({
 }
 
 const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring";
 
 function Section({
   icon: Icon,
@@ -1313,7 +1313,7 @@ function Field({
           {required ? <span className="text-destructive"> *</span> : null}
         </Label>
         {hint ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">{hint}</span>
+          <span className="shrink-0 text-micro tabular-nums text-muted-foreground/60">{hint}</span>
         ) : null}
       </div>
       {children}
@@ -1382,7 +1382,7 @@ function LineItems({
             transition={{ duration: 0.24, ease: WORK_ORDERS_MOTION_EASE }}
             className={cn(
               "flex items-center justify-between gap-3 border-b px-3 py-2.5 text-sm last:border-b-0",
-              item.highlight && "bg-emerald-500/10",
+              item.highlight && "bg-success-subtle",
             )}
           >
             <span className="min-w-0 truncate">{item.label}</span>
@@ -1411,7 +1411,7 @@ function SummaryCard({
 }) {
   return (
     <div className={cn("rounded-xl border bg-card p-4", className)}>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{title}</p>
       {children}
     </div>
   );

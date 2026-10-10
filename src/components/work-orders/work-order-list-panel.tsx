@@ -6,7 +6,6 @@ import { FilePenLine, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { WorkOrder } from "@/domain/work-order";
 import { CompanyEmployee } from "@/domain/rbac";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +18,9 @@ import type { PersistenceDraftRecord } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
-import { STATUS_LABELS, statusBadgeVariant } from "@/components/work-orders/work-order-copy";
+import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { workOrderStatusStyle } from "@/lib/status/status-tones";
 import { isOpenStatus, money } from "@/components/work-orders/work-order-utils";
 
 export type OrderListFilter = "all" | "open" | "done";
@@ -164,7 +165,7 @@ export function WorkOrderListPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {visibleDrafts.length > 0 ? (
           <div className="mb-3 space-y-1.5">
-            <p className="px-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            <p className="px-1.5 pt-1 text-micro font-semibold text-warning-on-subtle">
               {copy.unfinishedSection}
             </p>
             <ul className="space-y-1.5">
@@ -175,14 +176,14 @@ export function WorkOrderListPanel({
                   : copy.draftUntitled(when);
                 return (
                   <li key={draft.key}>
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
+                    <div className="rounded-xl border border-warning-border bg-warning-subtle px-3 py-2.5">
                       <button
                         type="button"
                         className="w-full text-left"
                         onClick={() => onRestoreDraft?.(draft)}
                       >
                         <div className="flex items-start gap-2">
-                          <FilePenLine className="mt-0.5 size-3.5 shrink-0 text-amber-700 dark:text-amber-400" />
+                          <FilePenLine className="mt-0.5 size-3.5 shrink-0 text-warning-on-subtle" />
                           <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium">{title}</p>
                         </div>
                       </button>
@@ -272,15 +273,17 @@ export function WorkOrderListPanel({
                             {order.clientName || "—"}
                           </p>
                           {assignees ? (
-                            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80">
+                            <p className="mt-0.5 line-clamp-1 text-micro text-muted-foreground/80">
                               <UserRound className="mr-1 inline size-3 -translate-y-px" />
                               {assignees}
                             </p>
                           ) : null}
                         </div>
-                        <Badge variant={statusBadgeVariant(order.status)} className="shrink-0">
-                          {STATUS_LABELS[order.status]}
-                        </Badge>
+                        <StatusBadge
+                          status={workOrderStatusStyle[order.status]}
+                          label={STATUS_LABELS[order.status]}
+                          showIcon
+                        />
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                         <span className="line-clamp-1 min-w-0 flex-1 text-muted-foreground">

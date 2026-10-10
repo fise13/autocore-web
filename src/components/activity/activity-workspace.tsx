@@ -15,10 +15,10 @@ import { useEmployeesRealtime } from "@/hooks/use-employees-realtime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ActivityIcon,
-  LayoutGridIcon,
-  ShieldIcon,
-  UsersIcon,
+  Activity,
+  LayoutGrid,
+  Shield,
+  Users,
 } from "lucide-react";
 import { formatEventCountLabel } from "@/lib/activity/activity-journal-utils";
 import { enrichActivityLogs } from "@/lib/overview/enrich-activity-logs";
@@ -27,10 +27,10 @@ import { normalizeCompanyId } from "@/lib/company-id";
 import { userCopy } from "@/lib/user-copy";
 
 const ACTIVITY_NAV = [
-  { id: "overview", label: userCopy.activity.navOnShift, icon: LayoutGridIcon, href: "/team" },
-  { id: "employees", label: userCopy.settings.employees, icon: UsersIcon, href: "/team?tab=employees" },
-  { id: "roles", label: userCopy.settings.roles, icon: ShieldIcon, href: "/team?tab=roles" },
-  { id: "activity", label: userCopy.activity.navActivity, icon: ActivityIcon },
+  { id: "overview", label: userCopy.activity.navOnShift, icon: LayoutGrid, href: "/team" },
+  { id: "employees", label: userCopy.settings.employees, icon: Users, href: "/team?tab=employees" },
+  { id: "roles", label: userCopy.settings.roles, icon: Shield, href: "/team?tab=roles" },
+  { id: "activity", label: userCopy.activity.navActivity, icon: Activity },
 ] as const;
 
 export function ActivityWorkspace() {

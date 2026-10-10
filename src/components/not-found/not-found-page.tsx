@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CompassIcon, HomeIcon } from "lucide-react";
+import { Compass, House } from "lucide-react";
 import { userCopy } from "@/lib/user-copy";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export function NotFoundPage() {
         <EmptyContent>
           <div className="flex gap-2">
             <Button render={<Link href="/" />} nativeButton={false}>
-              <HomeIcon data-icon="inline-start" />
+              <House data-icon="inline-start" />
               {userCopy.notFound.home}
             </Button>
             <Button
@@ -35,7 +35,7 @@ export function NotFoundPage() {
               render={<Link href={marketingRoutes.modules} />}
               nativeButton={false}
             >
-              <CompassIcon data-icon="inline-start" />
+              <Compass data-icon="inline-start" />
               {userCopy.notFound.modules}
             </Button>
           </div>

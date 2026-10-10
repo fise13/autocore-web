@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 import { getAuth } from "firebase/auth";
 import { motion } from "motion/react";
-import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import type { DocumentImportJob } from "@/domain/document-import";
 import { LastSavedHint } from "@/components/persistence/last-saved-hint";
@@ -72,7 +72,7 @@ function Field({
 }) {
   return (
     <label className="grid gap-1">
-      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      <span className="text-micro font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -306,7 +306,7 @@ export function DocumentImportDataPanel({
           <h2 className="text-lg font-semibold tracking-tight">{userCopy.documentImport.dataTitle}</h2>
           <p className="text-sm text-muted-foreground">{titleCopy}</p>
         </div>
-        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-medium">
+        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-micro font-medium">
           {aiStatus === "processing" ? userCopy.documentImport.aiBusy : dirty ? userCopy.documentImport.dirty : aiStatus === "done" ? userCopy.documentImport.ready : userCopy.documentImport.beta}
         </Badge>
       </div>
@@ -314,7 +314,7 @@ export function DocumentImportDataPanel({
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-0.5">
         {aiStatus === "processing" || busy ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 px-5 py-10 text-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
             <p className="text-sm font-medium">{userCopy.documentImport.recognizing}</p>
             <p className="text-xs text-muted-foreground">{userCopy.documentImport.recognizingHint}</p>
           </div>
@@ -453,7 +453,7 @@ export function DocumentImportDataPanel({
                 disabled={!dirty || saving || !job}
                 onClick={() => void saveEdits()}
               >
-                {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {saving ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
                 {userCopy.documentImport.saveChanges}
               </Button>
               <Button

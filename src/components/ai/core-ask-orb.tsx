@@ -74,7 +74,7 @@ export function CoreAskOrb() {
                 type="submit"
                 aria-label={userCopy.ai.send}
                 disabled={!text.trim() || busy}
-                className="core-run inline-flex h-7 items-center rounded-md bg-foreground px-3 text-[12px] font-medium text-background disabled:opacity-30"
+                className="core-run inline-flex h-7 items-center rounded-md bg-foreground px-3 text-xs font-medium text-background disabled:opacity-30"
               >
                 {userCopy.ai.send}
               </button>

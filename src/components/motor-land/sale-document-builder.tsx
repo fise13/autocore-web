@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FilePlus2, Loader2, Plus, Printer, Search, Trash2 } from "lucide-react";
+import { Download, FilePlusCorner, LoaderCircle, Plus, Printer, Search, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -576,7 +576,7 @@ export function SaleDocumentBuilder() {
             {/* The diagnostic sheet is printed, never handed over as a file. */}
             {kind === "waybill" && (
               <Button type="button" onClick={() => void handleIssue()} disabled={building}>
-                {building ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                {building ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Скачать Word
               </Button>
             )}
@@ -589,7 +589,7 @@ export function SaleDocumentBuilder() {
               Печать
             </Button>
             <Button type="button" variant="outline" onClick={() => void handleNewDocument()}>
-              <FilePlus2 className="size-4" />
+              <FilePlusCorner className="size-4" />
               Новый
             </Button>
           </div>

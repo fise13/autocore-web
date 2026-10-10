@@ -6,6 +6,7 @@ import type {
 } from "@autocore/engine-intake";
 
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
+import { userCopy } from "@/lib/user-copy";
 
 export function engineIntakeCommandId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -16,7 +17,7 @@ export async function sendEngineIntakeCommand(
   command: EngineIntakeCommand,
 ): Promise<EngineIntakeCommandResult> {
   const token = await getFirebaseAuth().currentUser?.getIdToken();
-  if (!token) throw new Error("Sign in to continue");
+  if (!token) throw new Error(userCopy.engineIntake.feedback.signInRequired);
 
   const response = await fetch("/api/engine-intake/commands", {
     method: "POST",
@@ -31,9 +32,9 @@ export async function sendEngineIntakeCommand(
     | (EngineIntakeCommandResult & { error?: string })
     | null;
   if (!response.ok) {
-    throw new Error(payload?.error || `Engine intake command failed (HTTP ${response.status})`);
+    throw new Error(payload?.error || userCopy.engineIntake.feedback.commandFailed(response.status));
   }
-  if (!payload?.ok) throw new Error("Engine intake command returned no result");
+  if (!payload?.ok) throw new Error(userCopy.engineIntake.feedback.commandNoResult);
   return payload;
 }
 
@@ -47,7 +48,7 @@ export async function setEngineIntakePhotoCategory(
   },
 ): Promise<{ ok: true; photoId: string; category: string }> {
   const token = await getFirebaseAuth().currentUser?.getIdToken();
-  if (!token) throw new Error("Sign in to continue");
+  if (!token) throw new Error(userCopy.engineIntake.feedback.signInRequired);
 
   const response = await fetch("/api/engine-intake/photos/category", {
     method: "POST",
@@ -65,7 +66,7 @@ export async function setEngineIntakePhotoCategory(
     error?: string;
   } | null;
   if (!response.ok) {
-    throw new Error(payload?.error || `Category update failed (HTTP ${response.status})`);
+    throw new Error(payload?.error || userCopy.engineIntake.feedback.categoryUpdateFailed(response.status));
   }
   return {
     ok: true,

@@ -134,6 +134,8 @@ export function DocumentImportViewer({
           size="icon-sm"
           variant="ghost"
           className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label={userCopy.documentImport.zoomInAria}
+          title={userCopy.documentImport.zoomInAria}
           onClick={() => setZoom((value) => Math.min(value + ZOOM_STEP, MAX_ZOOM))}
         >
           <ZoomIn className="size-4" />
@@ -143,6 +145,8 @@ export function DocumentImportViewer({
           size="icon-sm"
           variant="ghost"
           className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label={userCopy.documentImport.zoomOutAria}
+          title={userCopy.documentImport.zoomOutAria}
           onClick={() => setZoom((value) => Math.max(value - ZOOM_STEP, MIN_ZOOM))}
         >
           <ZoomOut className="size-4" />
@@ -152,6 +156,8 @@ export function DocumentImportViewer({
           size="icon-sm"
           variant="ghost"
           className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label={userCopy.documentImport.rotateLeftAria}
+          title={userCopy.documentImport.rotateLeftAria}
           onClick={() => setRotation((value) => value - 90)}
         >
           <RotateCcw className="size-4" />
@@ -161,6 +167,8 @@ export function DocumentImportViewer({
           size="icon-sm"
           variant="ghost"
           className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label={userCopy.documentImport.rotateRightAria}
+          title={userCopy.documentImport.rotateRightAria}
           onClick={() => setRotation((value) => value + 90)}
         >
           <RotateCw className="size-4" />
@@ -180,6 +188,8 @@ export function DocumentImportViewer({
           size="icon-sm"
           variant="ghost"
           className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label={fullscreen ? userCopy.documentImport.exitFullscreenAria : userCopy.documentImport.enterFullscreenAria}
+          aria-pressed={fullscreen}
           onClick={() => setFullscreen((value) => !value)}
         >
           {fullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}

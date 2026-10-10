@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { Bar, BarChart, Rectangle, XAxis } from "recharts";
 
@@ -114,7 +114,7 @@ export function OverviewMock({ className, layout = "full" }: OverviewMockProps) 
       <div className="flex items-center justify-between gap-3 px-0.5">
         <p className="text-sm font-medium">Overview</p>
         <Badge variant="outline" className="gap-1 font-normal text-xs">
-          <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
+          <TriangleAlert className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
           {chrome.overview.alerts}
         </Badge>
       </div>

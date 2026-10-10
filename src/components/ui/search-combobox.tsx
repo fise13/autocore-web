@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Combobox } from "@base-ui/react/combobox";
-import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 
 import { filterSearchOptions, type SearchOption } from "@/lib/search/filter-options";
 import { userCopy } from "@/lib/user-copy";
@@ -180,7 +180,7 @@ export function SearchCombobox({
     >
       <Combobox.InputGroup
         className={cn(
-          "relative flex h-9 w-full items-center rounded-md border border-input bg-background shadow-xs outline-none transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 [&>input]:pr-14",
+          "relative flex h-9 w-full items-center rounded-md border border-input bg-background shadow-xs outline-none transition-[color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>input]:pr-14",
           className,
         )}
       >
@@ -194,14 +194,14 @@ export function SearchCombobox({
               className="flex size-7 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
               aria-label={userCopy.searchCombobox.clearAria}
             >
-              <XIcon className="size-3.5" />
+              <X className="size-3.5" />
             </Combobox.Clear>
           ) : null}
           <Combobox.Trigger
             className="flex size-7 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
             aria-label={userCopy.searchCombobox.openAria}
           >
-            <ChevronDownIcon className="size-4 opacity-60" />
+            <ChevronDown className="size-4 opacity-60" />
           </Combobox.Trigger>
         </div>
       </Combobox.InputGroup>
@@ -222,7 +222,7 @@ export function SearchCombobox({
                       className="group relative flex cursor-default select-none items-start gap-2 rounded-sm px-2 py-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
                     >
                       <Combobox.ItemIndicator className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-                        <CheckIcon className="size-3.5" />
+                        <Check className="size-3.5" />
                       </Combobox.ItemIndicator>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate">{item.label}</span>

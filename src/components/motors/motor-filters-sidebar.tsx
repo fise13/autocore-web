@@ -38,7 +38,7 @@ export function MotorFiltersSidebar({
   return (
     <aside className="w-full shrink-0 space-y-4 lg:w-56">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.availability}</p>
+        <p className="text-xs font-medium text-muted-foreground">{userCopy.motors.filters.availability}</p>
         <div className="grid gap-1">
           {(
             [
@@ -66,7 +66,7 @@ export function MotorFiltersSidebar({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.brands}</p>
+        <p className="text-xs font-medium text-muted-foreground">{userCopy.motors.filters.brands}</p>
         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
           <button
             type="button"
@@ -101,7 +101,7 @@ export function MotorFiltersSidebar({
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{userCopy.motors.filters.engines}</p>
+        <p className="text-xs font-medium text-muted-foreground">{userCopy.motors.filters.engines}</p>
         <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
           <button
             type="button"

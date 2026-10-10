@@ -1,7 +1,7 @@
 "use client";
 
 import NumberFlow from "@number-flow/react";
-import { CheckCircleIcon } from "lucide-react";
+import { CircleCheckBig } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -108,7 +108,7 @@ export function PricingCard({ plan, frequency, footer, className, ...props }: Pr
       <ul className="flex flex-col gap-3 bg-transparent px-4 pt-6 pb-8 text-sm text-muted-foreground">
         {plan.features.map((feature) => (
           <li className="flex items-center gap-2" key={feature}>
-            <CheckCircleIcon className="size-3.5 shrink-0 text-foreground" />
+            <CircleCheckBig className="size-3.5 shrink-0 text-foreground" />
             <span>{feature}</span>
           </li>
         ))}

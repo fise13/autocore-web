@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { CircleCheck, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 
 import { CompanyAppConfigForm } from "@/components/company-config/company-app-config-form";
 import {
@@ -146,9 +146,9 @@ export function SetupWizard({ companyId, onCompleted, embedded = false }: SetupW
         ) : (
           <Button type="button" disabled={busy} onClick={() => void finishSetup()}>
             {busy ? (
-              <Loader2 className="animate-spin" aria-hidden />
+              <LoaderCircle className="animate-spin" aria-hidden />
             ) : (
-              <CheckCircle2 aria-hidden />
+              <CircleCheck aria-hidden />
             )}
             {busy ? SETUP_WIZARD_COPY.actions.saving : SETUP_WIZARD_COPY.actions.finish}
           </Button>

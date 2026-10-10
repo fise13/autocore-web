@@ -382,7 +382,7 @@ export function CoreComposer({
                 ) : (
                   <span className="core-attach-chip flex size-12 flex-col items-center justify-center gap-0.5 rounded-md border border-border px-1">
                     <FileText className="size-3.5 text-muted-foreground" aria-hidden />
-                    <span className="w-full truncate text-center text-[9px] leading-none text-muted-foreground">
+                    <span className="w-full truncate text-center text-micro leading-none text-muted-foreground">
                       {file.filename}
                     </span>
                   </span>
@@ -403,7 +403,7 @@ export function CoreComposer({
           </div>
         ) : null}
         {attachError ? (
-          <p className="px-3 pt-2 text-[11px] text-destructive">{attachError}</p>
+          <p className="px-3 pt-2 text-micro text-destructive">{attachError}</p>
         ) : null}
         <textarea
           ref={inputRef}
@@ -430,7 +430,7 @@ export function CoreComposer({
             onClick={() => photosRef.current?.click()}
             className="core-icon-btn inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
           >
-            <Plus className="size-4" strokeWidth={1.8} />
+            <Plus className="size-4" />
           </button>
           <button
             type="button"
@@ -442,10 +442,10 @@ export function CoreComposer({
               listening && "text-foreground",
             )}
           >
-            <Mic className="size-4" strokeWidth={1.8} />
+            <Mic className="size-4" />
           </button>
           <div className="ml-auto flex items-center gap-2">
-            <span className="core-composer-hint hidden text-[10px] text-muted-foreground sm:inline">
+            <span className="core-composer-hint hidden text-micro text-muted-foreground sm:inline">
               {userCopy.ai.composerHint}
               {" · "}
               {shortcut}
@@ -455,7 +455,7 @@ export function CoreComposer({
               aria-label={busy ? userCopy.ai.stop : userCopy.ai.send}
               disabled={!busy && !canSend}
               onClick={busy ? onStop : undefined}
-              className="core-run inline-flex h-7 items-center gap-1.5 rounded-md bg-foreground px-3 text-[12px] font-medium text-background disabled:opacity-30"
+              className="core-run inline-flex h-7 items-center gap-1.5 rounded-md bg-foreground px-3 text-xs font-medium text-background disabled:opacity-30"
             >
             {busy ? <Square className="size-3 fill-current" /> : null}
             <span>{busy ? userCopy.ai.stop : userCopy.ai.send}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { createMotorUseCase } from "@/application/use-cases/create-motor";
 import { pruneUnusedMotorCatalogUseCase } from "@/application/use-cases/motors/prune-unused-motor-catalog";
@@ -85,7 +85,9 @@ import {
   MOTOR_GRID_PINNED_COLUMN_IDS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
-import { pinnedColumnMetrics, stickyColumnLeft, unionVisibleColumnIndexes } from "@/lib/grid/pinned-columns";
+import { gridAriaColIndex, gridAriaRowIndex, gridCellDomId } from "@/lib/grid/grid-aria";
+import { pinnedColumnMetrics, unionVisibleColumnIndexes } from "@/lib/grid/pinned-columns";
+import { sameGridScroll, snapGridScroll, type GridScrollMetrics } from "@/lib/grid/scroll-window";
 import {
   motorQualityBadgeVariant,
   resolveMotorQualityTone,
@@ -409,7 +411,13 @@ export function MotorsExcelGrid({
   } = useWorkspace();
 
   const hideBrandColumn = Boolean(defaultBrandName?.trim());
-  const [scroll, setScroll] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const [scroll, setScroll] = useState<GridScrollMetrics>({
+    top: 0,
+    left: 0,
+    width: 0,
+    height: 0,
+    scrolledX: false,
+  });
   const { widthOverrides, isResizing, beginColumnResize } = useExcelColumnResize({
     storageKey: MOTOR_GRID_COLUMN_WIDTHS_STORAGE_KEY,
   });
@@ -438,6 +446,7 @@ export function MotorsExcelGrid({
   }, [hideBrandColumn]);
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const gridDomId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const motorsRef = useRef(motors);
@@ -1343,30 +1352,24 @@ export function MotorsExcelGrid({
     if (!viewport) return;
 
     const syncScrollMetrics = () => {
-      setScroll((current) => {
-        const next = {
+      const next = snapGridScroll(
+        {
           top: viewport.scrollTop,
           left: viewport.scrollLeft,
           width: viewport.clientWidth,
           height: viewport.clientHeight,
-        };
-        if (
-          current.top === next.top &&
-          current.left === next.left &&
-          current.width === next.width &&
-          current.height === next.height
-        ) {
-          return current;
-        }
-        return next;
-      });
+        },
+        layout.rowHeight,
+        layout.xOffsets,
+      );
+      setScroll((current) => (sameGridScroll(current, next) ? current : next));
     };
 
     syncScrollMetrics();
     const observer = new ResizeObserver(syncScrollMetrics);
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [rows.length]);
+  }, [layout.rowHeight, layout.xOffsets, rows.length]);
 
   const primary = primaryRange(selection);
   const fillHandleCell: GridCellAddress | null = useMemo(() => {
@@ -1375,11 +1378,300 @@ export function MotorsExcelGrid({
     return { row: primary.maxRow, column: col };
   }, [gridBounds.editableEnd, layoutColumns, primary.maxColumn, primary.maxRow]);
 
+  const renderHeaderCell = (colIdx: number) => {
+    const column = layout.columns[colIdx];
+    if (!column) return null;
+    const pinnedLeft = pinned.lefts.get(colIdx);
+    const isPinned = pinnedLeft != null;
+    return (
+      <ExcelGridHeaderCell
+        key={column.id}
+        ariaColIndex={gridAriaColIndex(colIdx)}
+        title={column.title}
+        width={column.width}
+        left={isPinned ? pinnedLeft : (layout.xOffsets[colIdx] ?? 0)}
+        height={layout.headerHeight}
+        fontSize={gridHeaderFontSizePx(gridZoom, layout.density.scale)}
+        align={column.align}
+        pinned={isPinned}
+        style={{
+          zIndex: isPinned ? 30 : undefined,
+          boxShadow:
+            isPinned && colIdx === pinned.lastIndex && scroll.scrolledX
+              ? "4px 0 10px rgba(0, 0, 0, 0.28)"
+              : undefined,
+        }}
+        buttonClassName=""
+        onSelectColumn={() => {
+          if (!isEditableColumn(colIdx, layoutColumns)) return;
+          setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
+        }}
+        onResizeMouseDown={(event) =>
+          beginColumnResize(
+            column.id,
+            column.width,
+            event,
+            motorColumnResizeBounds(column.id, gridZoom),
+          )
+        }
+      />
+    );
+  };
+
+  const renderBodyCell = (rowIdx: number, row: MotorGridRow, colIdx: number) => {
+    const column = layout.columns[colIdx];
+    if (!column) return null;
+    const selected = allRanges(selection).some((range) =>
+      isCellInsideRange({ row: rowIdx, column: colIdx }, range),
+    );
+    const focused = selection.head.row === rowIdx && selection.head.column === colIdx;
+    const cell = cellFrame(layout, { row: rowIdx, column: colIdx });
+    const pinnedLeft = pinned.lefts.get(colIdx);
+    const isPinned = pinnedLeft != null;
+    const displayValue =
+      column.id === "rowNumber"
+        ? String(rowIdx + 1)
+        : column.id === "arrivalDate"
+          ? (row.arrivalDate ? formatMotorDate(row.arrivalDate) : "")
+          : column.id === "soldDate"
+            ? (row.soldDate ? formatMotorDate(row.soldDate) : "")
+            : valueAtCell(row, colIdx, layoutColumns);
+    const qualityTone =
+      column.id === "quality" ? resolveMotorQualityTone(displayValue) : null;
+
+    return (
+      <div
+        key={`${row.rowId}-${column.id}`}
+        id={gridCellDomId(gridDomId, rowIdx, colIdx)}
+        role="gridcell"
+        aria-colindex={gridAriaColIndex(colIdx)}
+        aria-selected={selected}
+        className={cn(
+          "absolute flex border-r border-b px-2.5 text-grid leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+          motorGridCellClass(column.id),
+          column.align === "center" ? "items-center justify-center" : "items-center justify-start",
+          !isPinned && selected && "bg-grid-selection",
+          focused && !isPinned && "z-[2] ring-2 ring-inset",
+          saveFlashRows.has(row.rowId) && "bg-success-subtle",
+          isPinned && "bg-card",
+        )}
+        style={{
+          left: isPinned ? pinnedLeft : cell.x,
+          top: cell.y,
+          width: cell.width,
+          height: cell.height,
+          zIndex: isPinned ? (focused ? 6 : 4) : undefined,
+          backgroundColor: selected
+            ? isPinned
+              ? gridPalette.pinnedSelectionFill
+              : gridPalette.selectionFill
+            : isPinned
+              ? "var(--card)"
+              : undefined,
+          boxShadow: focused
+            ? `inset 0 0 0 2px ${gridPalette.activeBorder}`
+            : isPinned && colIdx === pinned.lastIndex && scroll.scrolledX
+              ? "4px 0 10px rgba(0, 0, 0, 0.28)"
+              : undefined,
+        }}
+        onPointerDown={(event) => {
+          if (isInteractiveGridTarget(event.target)) return;
+          event.preventDefault();
+          gridRef.current?.focus();
+          if (colIdx === 0) {
+            setSelection(selectWholeRowActiveStart(rowIdx, gridBounds.editableStart, gridBounds.editableEnd));
+            return;
+          }
+          const next = clickSelection(selectionRef.current, { row: rowIdx, column: colIdx }, {
+            shift: event.shiftKey,
+            meta: event.metaKey || event.ctrlKey,
+          });
+          selectionRef.current = next;
+          setSelection(next);
+          if (!event.shiftKey && !(event.metaKey || event.ctrlKey)) {
+            isDraggingSelectionRef.current = false;
+            pendingSelectionDragRef.current = {
+              clientX: event.clientX,
+              clientY: event.clientY,
+              pointerId: event.pointerId,
+              target: event.currentTarget,
+            };
+          }
+          if (event.detail === 2 && isEditableColumn(colIdx, layoutColumns)) {
+            beginEdit({ row: rowIdx, column: colIdx });
+          }
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          const clicked = { row: rowIdx, column: colIdx };
+          const nextSelection = isCellInsideRange(clicked, primaryRange(selection))
+            ? selection
+            : selectWholeRow(rowIdx, gridBounds.editableStart, gridBounds.editableEnd);
+          if (nextSelection !== selection) {
+            setSelection(nextSelection);
+          }
+          setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            cell: clicked,
+            selected: getContextSelectedMotors(rows, nextSelection),
+          });
+        }}
+      >
+        {column.id === "action" ? (
+          row.rowKind === "saved" &&
+          row.serialCode.trim() &&
+          canEdit &&
+          (row.soldDate || isMotorAvailableForSale(row)) &&
+          (!soldOnly || row.soldDate) ? (
+            <button
+              type="button"
+              className={cn(
+                row.soldDate
+                  ? "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  : "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle",
+              )}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (row.soldDate) onUnsell(row);
+                else onSell(row);
+              }}
+            >
+              {row.soldDate ? userCopy.motors.grid.return : userCopy.motors.grid.sell}
+            </button>
+          ) : null
+        ) : column.cellKind === "photo" ? (
+          row.rowKind === "saved" && canEdit ? (
+            <GridPhotoCell
+              urls={row.photoUrls ?? []}
+              companyId={companyId}
+              entityKind="motor"
+              entityId={row.id}
+              thumbSize={photoThumbSize}
+              onChange={(urls) => {
+                const photoCol = photoColumnIndex(layoutColumns);
+                if (photoCol < 0) return;
+                const oldValue = serializeGridPhotoUrls(row.photoUrls);
+                const newValue = serializeGridPhotoUrls(urls);
+                if (oldValue === newValue) return;
+                setCell(
+                  { row: rowIdx, column: photoCol },
+                  newValue,
+                  {
+                    label:
+                      urls.length < (row.photoUrls?.length ?? 0)
+                        ? "Remove Photos"
+                        : "Edit Photos",
+                  },
+                );
+              }}
+            />
+          ) : (
+            <GridPhotoCellDisabledHint thumbSize={photoThumbSize} />
+          )
+        ) : qualityTone ? (
+          <Badge
+            variant={motorQualityBadgeVariant(qualityTone)}
+            className="pointer-events-none h-5 min-w-5 justify-center px-1.5 font-semibold tabular-nums"
+          >
+            {displayValue.trim()}
+          </Badge>
+        ) : (
+          <span className="truncate">{displayValue}</span>
+        )}
+      </div>
+    );
+  };
+
+  const fillHandlePinnedLeft = fillHandleCell ? pinned.lefts.get(fillHandleCell.column) : undefined;
+  const fillHandleX = fillHandleCell
+    ? (fillHandlePinnedLeft ?? layout.xOffsets[fillHandleCell.column]) +
+      layout.columns[fillHandleCell.column].width -
+      7
+    : 0;
+  const fillHandleNode = fillHandleCell ? (
+      <GridFillHandle
+        x={fillHandleX}
+        y={fillHandleCell.row * layout.rowHeight + layout.rowHeight - 7}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          isDraggingFillRef.current = true;
+          fillSourceRef.current = primaryRange(selection);
+          fillTargetRef.current = primaryRange(selection);
+          setFillPreview(primaryRange(selection));
+        }}
+        onDoubleClick={() => {
+          if (!canEdit) return;
+          const source = primaryRange(selection);
+          const lastDataRow = rows.reduce((acc, row, index) => {
+            return hasSaveableContent(row) ? index : acc;
+          }, source.maxRow);
+          if (lastDataRow <= source.maxRow) return;
+          const target = {
+            minRow: source.minRow,
+            maxRow: lastDataRow,
+            minColumn: source.minColumn,
+            maxColumn: source.maxColumn,
+          };
+          const ops = buildFillOperations({
+            source,
+            target,
+            valueAt: (cell) => valueAtCell(rows[cell.row], cell.column, layoutColumns),
+            isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
+            isDateColumn: (column) => isDateColumn(column, layoutColumns),
+          });
+          applyCellWrites(
+            "Fill Series",
+            ops.map((operation) => ({
+              row: operation.cell.row,
+              column: operation.cell.column,
+              value: operation.value,
+            })),
+          );
+        }}
+      />
+  ) : null;
+
+  const renderEditor = (x: number) =>
+    editor ? (
+      <GridEditorOverlay
+        editorKey={`${editor.cell.row}-${editor.cell.column}`}
+        value={editor.value}
+        selectAll={editor.selectAll}
+        frame={{ ...cellFrame(layout, editor.cell), x }}
+        onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
+        onCommit={(direction, value) => commitEditor(direction, value)}
+        onCancel={() => {
+          setEditor(null);
+          focusGrid();
+        }}
+        autocompleteMatch={editorAutocompleteMatch}
+        columnSuggestions={editorSuggestionList}
+        domainCategory={layout.columns[editor.cell.column]?.domainCategory}
+      />
+    ) : null;
+
+  const activeCellDomId =
+    selection.head.row >= visible.rowStart &&
+    selection.head.row <= visible.rowEnd &&
+    visibleColumnIndexes.includes(selection.head.column)
+      ? gridCellDomId(gridDomId, selection.head.row, selection.head.column)
+      : undefined;
+  const editorPinnedLeft = editor ? pinned.lefts.get(editor.cell.column) : undefined;
+  const pinnedEditor = editor && editorPinnedLeft != null ? renderEditor(editorPinnedLeft) : null;
+
   return (
     <div className="animate-autocore-grid-enter relative flex h-full min-h-0 w-full min-w-0 flex-col bg-card">
       <div
         ref={gridRef}
         tabIndex={0}
+        role="grid"
+        aria-label={userCopy.grid.motorsAria}
+        aria-rowcount={rows.length + 1}
+        aria-colcount={layout.columns.length}
+        aria-multiselectable="true"
+        aria-activedescendant={activeCellDomId}
         data-grid-root
         data-context-menu-scope="local"
         className="relative min-h-0 w-full min-w-0 flex-1 overflow-hidden outline-none"
@@ -1395,23 +1687,19 @@ export function MotorsExcelGrid({
           ref={bodyRef}
           onScroll={(event) => {
             const target = event.currentTarget;
-            setScroll((current) => {
-              const next = {
+            // Only the visible row/column window drives rendering; pinned columns
+            // are position: sticky, so the browser keeps them in place without React.
+            const next = snapGridScroll(
+              {
                 top: target.scrollTop,
                 left: target.scrollLeft,
                 width: target.clientWidth,
                 height: target.clientHeight,
-              };
-              if (
-                current.top === next.top &&
-                current.left === next.left &&
-                current.width === next.width &&
-                current.height === next.height
-              ) {
-                return current;
-              }
-              return next;
-            });
+              },
+              layout.rowHeight,
+              layout.xOffsets,
+            );
+            setScroll((current) => (sameGridScroll(current, next) ? current : next));
             ensureExpanded(Math.floor((target.scrollTop + target.clientHeight) / layout.rowHeight));
           }}
           onMouseDown={(event) => {
@@ -1461,52 +1749,47 @@ export function MotorsExcelGrid({
             }}
           >
             <div
+              role="row"
+              aria-rowindex={1}
               className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight, width: Math.max(layout.totalWidth, scroll.width || 0) }}
             >
-              {layout.columns.map((column, colIdx) => {
-                if (!visibleColumnIndexes.includes(colIdx)) return null;
-                const pinnedLeft = pinned.lefts.get(colIdx);
-                const isPinned = pinnedLeft != null;
-                return (
-                  <ExcelGridHeaderCell
-                    key={column.id}
-                    title={column.title}
-                    width={column.width}
-                    left={stickyColumnLeft(colIdx, layout.xOffsets[colIdx] ?? 0, scroll.left, pinnedLeft)}
-                    height={layout.headerHeight}
-                    fontSize={gridHeaderFontSizePx(gridZoom, layout.density.scale)}
-                    align={column.align}
-                    pinned={isPinned}
-                    style={{
-                      zIndex: isPinned ? 30 : undefined,
-                      boxShadow:
-                        isPinned && colIdx === pinned.lastIndex && scroll.left > 0
-                          ? "4px 0 10px rgba(0, 0, 0, 0.28)"
-                          : undefined,
-                    }}
-                    buttonClassName="uppercase tracking-[0.06em]"
-                    onSelectColumn={() => {
-                      if (!isEditableColumn(colIdx, layoutColumns)) return;
-                      setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
-                    }}
-                    onResizeMouseDown={(event) =>
-                      beginColumnResize(
-                        column.id,
-                        column.width,
-                        event,
-                        motorColumnResizeBounds(column.id, gridZoom),
-                      )
-                    }
-                  />
-                );
-              })}
+              {pinned.indexes.length > 0 ? (
+                <div
+                  data-grid-pinned-layer
+                  className="sticky left-0"
+                  style={{ width: pinned.totalWidth, height: 0, zIndex: 30 }}
+                >
+                  {pinned.indexes.map(renderHeaderCell)}
+                </div>
+              ) : null}
+              {visibleColumnIndexes.map((colIdx) =>
+                pinned.lefts.has(colIdx) ? null : renderHeaderCell(colIdx),
+              )}
             </div>
 
             <div
               className="absolute left-0 right-0"
               style={{ top: layout.headerHeight }}
             >
+              {pinned.indexes.length > 0 ? (
+                // position: sticky lets the browser pin these columns on the compositor,
+                // in the same frame as the scroll. Never position them from scroll state.
+                <div
+                  data-grid-pinned-layer
+                  className="sticky left-0"
+                  style={{ width: pinned.totalWidth, height: 0, zIndex: 4 }}
+                >
+                  {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {
+                    const rowIdx = visible.rowStart + offset;
+                    const row = rows[rowIdx];
+                    if (!row) return null;
+                    return pinned.indexes.map((colIdx) => renderBodyCell(rowIdx, row, colIdx));
+                  })}
+                  {fillHandlePinnedLeft != null ? fillHandleNode : null}
+                  {pinnedEditor}
+                </div>
+              ) : null}
               {Array.from({ length: visible.rowEnd - visible.rowStart + 1 }, (_, offset) => {
                 const rowIdx = visible.rowStart + offset;
                 const row = rows[rowIdx];
@@ -1515,171 +1798,23 @@ export function MotorsExcelGrid({
                 return (
                   <div
                     key={row.rowId}
+                    role="row"
+                    aria-rowindex={gridAriaRowIndex(rowIdx)}
+                    // Pinned cells live in the sticky layer; list every cell so the
+                    // accessibility tree keeps visual column order.
+                    aria-owns={
+                      pinned.indexes.length > 0
+                        ? visibleColumnIndexes
+                            .map((colIdx) => gridCellDomId(gridDomId, rowIdx, colIdx))
+                            .join(" ")
+                        : undefined
+                    }
                     className="transition-[height] duration-200 ease-out"
                     style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
-                    {visibleColumnIndexes.map((colIdx) => {
-                      const column = layout.columns[colIdx];
-                      if (!column) return null;
-                      const selected = allRanges(selection).some((range) =>
-                        isCellInsideRange({ row: rowIdx, column: colIdx }, range),
-                      );
-                      const focused = selection.head.row === rowIdx && selection.head.column === colIdx;
-                      const cell = cellFrame(layout, { row: rowIdx, column: colIdx });
-                      const pinnedLeft = pinned.lefts.get(colIdx);
-                      const isPinned = pinnedLeft != null;
-                      const displayValue =
-                        column.id === "rowNumber"
-                          ? String(rowIdx + 1)
-                          : column.id === "arrivalDate"
-                            ? (row.arrivalDate ? formatMotorDate(row.arrivalDate) : "")
-                            : column.id === "soldDate"
-                              ? (row.soldDate ? formatMotorDate(row.soldDate) : "")
-                              : valueAtCell(row, colIdx, layoutColumns);
-                      const qualityTone =
-                        column.id === "quality" ? resolveMotorQualityTone(displayValue) : null;
-
-                      return (
-                        <div
-                          key={`${row.rowId}-${column.id}`}
-                          className={cn(
-                            "absolute flex border-r border-b px-2.5 text-[13px] leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
-                            motorGridCellClass(column.id),
-                            column.align === "center" ? "items-center justify-center" : "items-center justify-start",
-                            !isPinned && selected && "bg-emerald-500/12",
-                            focused && !isPinned && "z-[2] ring-2 ring-inset",
-                            saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
-                            isPinned && "bg-card",
-                          )}
-                          style={{
-                            left: stickyColumnLeft(colIdx, cell.x, scroll.left, pinnedLeft),
-                            top: cell.y,
-                            width: cell.width,
-                            height: cell.height,
-                            zIndex: isPinned ? (focused ? 6 : 4) : undefined,
-                            backgroundColor: selected
-                              ? isPinned
-                                ? "color-mix(in srgb, var(--card) 82%, rgb(22, 163, 74))"
-                                : gridPalette.selectionFill
-                              : isPinned
-                                ? "var(--card)"
-                                : undefined,
-                            boxShadow: focused
-                              ? `inset 0 0 0 2px ${gridPalette.activeBorder}`
-                              : isPinned && colIdx === pinned.lastIndex && scroll.left > 0
-                                ? "4px 0 10px rgba(0, 0, 0, 0.28)"
-                                : undefined,
-                          }}
-                          onPointerDown={(event) => {
-                            if (isInteractiveGridTarget(event.target)) return;
-                            event.preventDefault();
-                            gridRef.current?.focus();
-                            if (colIdx === 0) {
-                              setSelection(selectWholeRowActiveStart(rowIdx, gridBounds.editableStart, gridBounds.editableEnd));
-                              return;
-                            }
-                            const next = clickSelection(selectionRef.current, { row: rowIdx, column: colIdx }, {
-                              shift: event.shiftKey,
-                              meta: event.metaKey || event.ctrlKey,
-                            });
-                            selectionRef.current = next;
-                            setSelection(next);
-                            if (!event.shiftKey && !(event.metaKey || event.ctrlKey)) {
-                              isDraggingSelectionRef.current = false;
-                              pendingSelectionDragRef.current = {
-                                clientX: event.clientX,
-                                clientY: event.clientY,
-                                pointerId: event.pointerId,
-                                target: event.currentTarget,
-                              };
-                            }
-                            if (event.detail === 2 && isEditableColumn(colIdx, layoutColumns)) {
-                              beginEdit({ row: rowIdx, column: colIdx });
-                            }
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            const clicked = { row: rowIdx, column: colIdx };
-                            const nextSelection = isCellInsideRange(clicked, primaryRange(selection))
-                              ? selection
-                              : selectWholeRow(rowIdx, gridBounds.editableStart, gridBounds.editableEnd);
-                            if (nextSelection !== selection) {
-                              setSelection(nextSelection);
-                            }
-                            setContextMenu({
-                              x: event.clientX,
-                              y: event.clientY,
-                              cell: clicked,
-                              selected: getContextSelectedMotors(rows, nextSelection),
-                            });
-                          }}
-                        >
-                          {column.id === "action" ? (
-                            row.rowKind === "saved" &&
-                            row.serialCode.trim() &&
-                            canEdit &&
-                            (row.soldDate || isMotorAvailableForSale(row)) &&
-                            (!soldOnly || row.soldDate) ? (
-                              <button
-                                type="button"
-                                className={cn(
-                                  "rounded border px-2 py-0.5 text-[11px]",
-                                  row.soldDate
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
-                                )}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (row.soldDate) onUnsell(row);
-                                  else onSell(row);
-                                }}
-                              >
-                                {row.soldDate ? userCopy.motors.grid.return : userCopy.motors.grid.sell}
-                              </button>
-                            ) : null
-                          ) : column.cellKind === "photo" ? (
-                            row.rowKind === "saved" && canEdit ? (
-                              <GridPhotoCell
-                                urls={row.photoUrls ?? []}
-                                companyId={companyId}
-                                entityKind="motor"
-                                entityId={row.id}
-                                thumbSize={photoThumbSize}
-                                onChange={(urls) => {
-                                  const photoCol = photoColumnIndex(layoutColumns);
-                                  if (photoCol < 0) return;
-                                  const oldValue = serializeGridPhotoUrls(row.photoUrls);
-                                  const newValue = serializeGridPhotoUrls(urls);
-                                  if (oldValue === newValue) return;
-                                  setCell(
-                                    { row: rowIdx, column: photoCol },
-                                    newValue,
-                                    {
-                                      label:
-                                        urls.length < (row.photoUrls?.length ?? 0)
-                                          ? "Remove Photos"
-                                          : "Edit Photos",
-                                    },
-                                  );
-                                }}
-                              />
-                            ) : (
-                              <GridPhotoCellDisabledHint thumbSize={photoThumbSize} />
-                            )
-                          ) : qualityTone ? (
-                            <Badge
-                              variant={motorQualityBadgeVariant(qualityTone)}
-                              className="pointer-events-none h-5 min-w-5 justify-center px-1.5 font-semibold tabular-nums"
-                            >
-                              {displayValue.trim()}
-                            </Badge>
-                          ) : (
-                            <span className="truncate">{displayValue}</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {visibleColumnIndexes.map((colIdx) =>
+                      pinned.lefts.has(colIdx) ? null : renderBodyCell(rowIdx, row, colIdx),
+                    )}
                   </div>
                 );
               })}
@@ -1701,7 +1836,7 @@ export function MotorsExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );
@@ -1723,86 +1858,11 @@ export function MotorsExcelGrid({
                 />
               ) : null}
 
-              {fillHandleCell ? (
-                <GridFillHandle
-                  x={
-                    stickyColumnLeft(
-                      fillHandleCell.column,
-                      layout.xOffsets[fillHandleCell.column],
-                      scroll.left,
-                      pinned.lefts.get(fillHandleCell.column),
-                    ) +
-                    layout.columns[fillHandleCell.column].width -
-                    7
-                  }
-                  y={fillHandleCell.row * layout.rowHeight + layout.rowHeight - 7}
-                  onPointerDown={(event) => {
-                    event.stopPropagation();
-                    isDraggingFillRef.current = true;
-                    fillSourceRef.current = primaryRange(selection);
-                    fillTargetRef.current = primaryRange(selection);
-                    setFillPreview(primaryRange(selection));
-                  }}
-                  onDoubleClick={() => {
-                    if (!canEdit) return;
-                    const source = primaryRange(selection);
-                    const lastDataRow = rows.reduce((acc, row, index) => {
-                      return hasSaveableContent(row) ? index : acc;
-                    }, source.maxRow);
-                    if (lastDataRow <= source.maxRow) return;
-                    const target = {
-                      minRow: source.minRow,
-                      maxRow: lastDataRow,
-                      minColumn: source.minColumn,
-                      maxColumn: source.maxColumn,
-                    };
-                    const ops = buildFillOperations({
-                      source,
-                      target,
-                      valueAt: (cell) => valueAtCell(rows[cell.row], cell.column, layoutColumns),
-                      isEditableColumn: (column) => isEditableColumn(column, layoutColumns),
-                      isDateColumn: (column) => isDateColumn(column, layoutColumns),
-                    });
-                    applyCellWrites(
-                      "Fill Series",
-                      ops.map((operation) => ({
-                        row: operation.cell.row,
-                        column: operation.cell.column,
-                        value: operation.value,
-                      })),
-                    );
-                  }}
-                />
-              ) : null}
+              {fillHandlePinnedLeft == null ? fillHandleNode : null}
 
-              {editor ? (
-                <GridEditorOverlay
-                  editorKey={`${editor.cell.row}-${editor.cell.column}`}
-                  value={editor.value}
-                  selectAll={editor.selectAll}
-                  frame={(() => {
-                    const frame = cellFrame(layout, editor.cell);
-                    return {
-                      ...frame,
-                      x: stickyColumnLeft(
-                        editor.cell.column,
-                        frame.x,
-                        scroll.left,
-                        pinned.lefts.get(editor.cell.column),
-                      ),
-                    };
-                  })()}
-                  onChange={(value) => setEditor((current) => (current ? { ...current, value } : current))}
-                  onCommit={(direction, value) => commitEditor(direction, value)}
-                  onCancel={() => {
-                    setEditor(null);
-                    focusGrid();
-                  }}
-                  autocompleteMatch={editorAutocompleteMatch}
-                  columnSuggestions={editorSuggestionList}
-                  domainCategory={layout.columns[editor.cell.column]?.domainCategory}
-                />
-              ) : null}
+              {editor && editorPinnedLeft == null
+                ? renderEditor(cellFrame(layout, editor.cell).x)
+                : null}
             </div>
           </div>
         </div>

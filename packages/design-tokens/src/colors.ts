@@ -21,6 +21,8 @@
 export type ColorScheme = 'light' | 'dark';
 
 export type SemanticColors = {
+  /** Brand mark colour: logo, chart series 1, marketing. Not for text on white. */
+  brand: string;
   background: string;
   foreground: string;
   card: string;
@@ -38,6 +40,7 @@ export type SemanticColors = {
 
   secondary: string;
   secondaryForeground: string;
+  secondaryHover: string;
   muted: string;
   mutedForeground: string;
   accent: string;
@@ -74,6 +77,14 @@ export type SemanticColors = {
   dangerSubtle: string;
   dangerOnSubtle: string;
   dangerBorder: string;
+  dangerHover: string;
+
+  /** Closed or inactive state (draft, sold, cancelled). `offline*` mirrors these values. */
+  neutral: string;
+  neutralForeground: string;
+  neutralSubtle: string;
+  neutralOnSubtle: string;
+  neutralBorder: string;
 
   /** Calm AI state — cool teal, never neon. */
   ai: string;
@@ -104,11 +115,16 @@ export type SemanticColors = {
   sidebarBorder: string;
   sidebarRing: string;
 
+  /** Excel-grid range selection fill and active-cell border. */
+  gridSelection: string;
+  gridActiveBorder: string;
+
   overlay: string;
   glass: string;
 };
 
 const light: SemanticColors = {
+  brand: '#0a73f2',
   background: '#f5f7fb',
   foreground: '#11131a',
   card: '#ffffff',
@@ -116,28 +132,29 @@ const light: SemanticColors = {
   popover: '#ffffff',
   popoverForeground: '#11131a',
 
-  primary: '#0a73f2',
+  primary: '#0866d6',
   primaryForeground: '#ffffff',
-  primaryHover: '#0968db',
-  primaryPressed: '#085cc4',
+  primaryHover: '#0758bd',
+  primaryPressed: '#064ca3',
   primarySubtle: '#e2eefd',
   primaryOnSubtle: '#0a5fc4',
   primaryBorder: '#bad8fb',
 
   secondary: '#eef2f7',
   secondaryForeground: '#11131a',
+  secondaryHover: '#e3e8ef',
   muted: '#f1f4fa',
   mutedForeground: '#5a606c',
-  accent: '#0a73f2',
+  accent: '#0866d6',
   accentForeground: '#ffffff',
 
-  destructive: '#eb3838',
+  destructive: '#d4292e',
   destructiveForeground: '#ffffff',
 
   border: 'rgba(17, 19, 26, 0.1)',
   borderMuted: 'rgba(17, 19, 26, 0.06)',
-  input: 'rgba(17, 19, 26, 0.12)',
-  ring: '#66b8ff',
+  input: '#868b95',
+  ring: '#0866d6',
 
   surface: '#ffffff',
   surfaceSecondary: '#f1f4fa',
@@ -157,11 +174,18 @@ const light: SemanticColors = {
   warningOnSubtle: '#8a5a00',
   warningBorder: '#fbe6b8',
 
-  danger: '#eb3838',
+  danger: '#d4292e',
   dangerForeground: '#ffffff',
   dangerSubtle: '#fde7e7',
   dangerOnSubtle: '#c02626',
   dangerBorder: '#f9c7c7',
+  dangerHover: '#b92226',
+
+  neutral: '#5a606c',
+  neutralForeground: '#ffffff',
+  neutralSubtle: '#eef0f4',
+  neutralOnSubtle: '#3d424c',
+  neutralBorder: '#d5d8e0',
 
   ai: '#0f766e',
   aiForeground: '#ffffff',
@@ -176,30 +200,34 @@ const light: SemanticColors = {
   offlineBorder: '#d5d8e0',
 
   chart1: '#0a73f2',
-  chart2: '#26b34a',
-  chart3: '#f0a500',
+  chart2: '#1f9d42',
+  chart3: '#b77800',
   chart4: '#3390f0',
   chart5: '#5a606c',
 
   sidebar: '#eef2f7',
   sidebarForeground: '#11131a',
-  sidebarPrimary: '#0a73f2',
+  sidebarPrimary: '#0866d6',
   sidebarPrimaryForeground: '#ffffff',
   sidebarAccent: '#f1f4fa',
   sidebarAccentForeground: '#11131a',
   sidebarBorder: 'rgba(17, 19, 26, 0.1)',
-  sidebarRing: '#66b8ff',
+  sidebarRing: '#0866d6',
+
+  gridSelection: '#e7f1fe',
+  gridActiveBorder: '#0866d6',
 
   overlay: 'rgba(17, 19, 26, 0.45)',
   glass: 'rgba(255, 255, 255, 0.72)',
 };
 
 const dark: SemanticColors = {
+  brand: '#4d96ff',
   background: '#0d0e12',
   foreground: '#f5f5f7',
   card: '#1a1c24',
   cardForeground: '#f5f5f7',
-  popover: '#1a1c24',
+  popover: '#22242e',
   popoverForeground: '#f5f5f7',
 
   primary: '#4d96ff',
@@ -210,9 +238,10 @@ const dark: SemanticColors = {
   primaryOnSubtle: '#4d96ff',
   primaryBorder: '#2a436a',
 
-  secondary: '#14161e',
+  secondary: '#22242e',
   secondaryForeground: '#f5f5f7',
-  muted: '#1a1c24',
+  secondaryHover: '#2a2d38',
+  muted: '#20222b',
   mutedForeground: '#a8acb8',
   accent: '#4d96ff',
   accentForeground: '#0d0e12',
@@ -222,7 +251,7 @@ const dark: SemanticColors = {
 
   border: 'rgba(255, 255, 255, 0.08)',
   borderMuted: 'rgba(255, 255, 255, 0.04)',
-  input: 'rgba(255, 255, 255, 0.14)',
+  input: '#6b7080',
   ring: '#66b8ff',
 
   surface: '#1a1c24',
@@ -248,6 +277,13 @@ const dark: SemanticColors = {
   dangerSubtle: '#35242c',
   dangerOnSubtle: '#ff6166',
   dangerBorder: '#633239',
+  dangerHover: '#ff7a7e',
+
+  neutral: '#9498a4',
+  neutralForeground: '#0d0e12',
+  neutralSubtle: '#22242e',
+  neutralOnSubtle: '#c4c7d0',
+  neutralBorder: '#3a3d48',
 
   ai: '#2dd4bf',
   aiForeground: '#0d0e12',
@@ -276,6 +312,9 @@ const dark: SemanticColors = {
   sidebarBorder: 'rgba(255, 255, 255, 0.08)',
   sidebarRing: '#66b8ff',
 
+  gridSelection: '#23324a',
+  gridActiveBorder: '#4d96ff',
+
   overlay: 'rgba(0, 0, 0, 0.55)',
   glass: 'rgba(22, 24, 32, 0.72)',
 };
@@ -290,12 +329,14 @@ export const colorSchemes: readonly ColorScheme[] = ['light', 'dark'];
 
 /**
  * Tone contract pairs asserted by `npm run tokens:check`.
- * Each entry must clear WCAG AA (4.5:1) in both schemes.
+ * Each entry must clear its minimum (WCAG AA 4.5:1 for text, 3:1 for non-text) in both schemes.
  */
 export const contrastContract: ReadonlyArray<{
   name: string;
   foreground: keyof SemanticColors;
   background: keyof SemanticColors;
+  /** Required ratio. Defaults to 4.5 (text); 3 is for non-text UI (borders, focus, icons, chart marks). */
+  minimum?: 3 | 4.5;
 }> = [
   { name: 'body text on background', foreground: 'foreground', background: 'background' },
   { name: 'body text on card', foreground: 'cardForeground', background: 'card' },
@@ -314,4 +355,33 @@ export const contrastContract: ReadonlyArray<{
   { name: 'ai content on fill', foreground: 'aiForeground', background: 'ai' },
   { name: 'offline content on fill', foreground: 'offlineForeground', background: 'offline' },
   { name: 'sidebar text on sidebar', foreground: 'sidebarForeground', background: 'sidebar' },
+  { name: 'link on card', foreground: 'primary', background: 'card' },
+  { name: 'link on background', foreground: 'primary', background: 'background' },
+  { name: 'muted text on muted', foreground: 'mutedForeground', background: 'muted' },
+  { name: 'text on popover', foreground: 'popoverForeground', background: 'popover' },
+  { name: 'muted text on popover', foreground: 'mutedForeground', background: 'popover' },
+  { name: 'secondary text on secondary', foreground: 'secondaryForeground', background: 'secondary' },
+  { name: 'secondary text on secondary hover', foreground: 'secondaryForeground', background: 'secondaryHover' },
+  { name: 'primary content on hover', foreground: 'primaryForeground', background: 'primaryHover' },
+  { name: 'primary content on pressed', foreground: 'primaryForeground', background: 'primaryPressed' },
+  { name: 'danger content on hover', foreground: 'dangerForeground', background: 'dangerHover' },
+  { name: 'destructive content on fill', foreground: 'destructiveForeground', background: 'destructive' },
+  { name: 'nav active text', foreground: 'primaryOnSubtle', background: 'primarySubtle' },
+  { name: 'neutral tone on subtle', foreground: 'neutralOnSubtle', background: 'neutralSubtle' },
+  { name: 'neutral content on fill', foreground: 'neutralForeground', background: 'neutral' },
+  { name: 'text on grid selection', foreground: 'foreground', background: 'gridSelection' },
+  { name: 'muted text on grid selection', foreground: 'mutedForeground', background: 'gridSelection' },
+  { name: 'success text on card', foreground: 'successOnSubtle', background: 'card' },
+  { name: 'warning text on card', foreground: 'warningOnSubtle', background: 'card' },
+  { name: 'danger text on card', foreground: 'dangerOnSubtle', background: 'card' },
+  { name: 'focus ring on card', foreground: 'ring', background: 'card', minimum: 3 },
+  { name: 'focus ring on background', foreground: 'ring', background: 'background', minimum: 3 },
+  { name: 'focus ring on sidebar', foreground: 'ring', background: 'sidebar', minimum: 3 },
+  { name: 'input border on card', foreground: 'input', background: 'card', minimum: 3 },
+  { name: 'input border on background', foreground: 'input', background: 'background', minimum: 3 },
+  { name: 'active cell on selection', foreground: 'gridActiveBorder', background: 'gridSelection', minimum: 3 },
+  { name: 'nav indicator on sidebar', foreground: 'sidebarPrimary', background: 'sidebar', minimum: 3 },
+  { name: 'chart 1 on card', foreground: 'chart1', background: 'card', minimum: 3 },
+  { name: 'chart 2 on card', foreground: 'chart2', background: 'card', minimum: 3 },
+  { name: 'chart 3 on card', foreground: 'chart3', background: 'card', minimum: 3 },
 ];

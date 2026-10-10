@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { TriangleAlert, ArrowRight, CircleCheck, Info, Sparkles } from "lucide-react";
 
 import type { PlanPresentation } from "@/lib/import/business/plan-summary";
 import { cn } from "@/lib/utils";
@@ -48,8 +48,8 @@ export function PlanPreview({
         </div>
         {plan.ai.degraded ? (
           <div className="flex flex-col gap-0.5">
-            <p className="inline-flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-500">
-              <AlertTriangle className="size-3.5" aria-hidden />
+            <p className="inline-flex items-center gap-1.5 text-sm text-warning-on-subtle">
+              <TriangleAlert className="size-3.5" aria-hidden />
               ИИ-анализ недоступен — использован разбор по правилам
             </p>
             {plan.ai.reason ? (
@@ -78,7 +78,7 @@ export function PlanPreview({
               {line.create > 0 ? <span>новых: {line.create}</span> : null}
               {line.update > 0 ? <span>обновится: {line.update}</span> : null}
               {line.review > 0 ? (
-                <span className="text-amber-600 dark:text-amber-500">на проверку: {line.review}</span>
+                <span className="text-warning-on-subtle">на проверку: {line.review}</span>
               ) : null}
             </div>
           </div>
@@ -123,7 +123,7 @@ export function PlanPreview({
           {plan.reviewItems.slice(0, 20).map((item) => (
             <div
               key={item.entityId}
-              className="flex flex-col gap-1 rounded-xl border border-amber-500/30 bg-amber-500/[0.04] px-4 py-3"
+              className="flex flex-col gap-1 rounded-xl border border-warning-border bg-warning/[0.04] px-4 py-3"
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-sm font-medium">{item.title}</span>
@@ -152,13 +152,13 @@ export function PlanPreview({
         </section>
       ) : (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-500" aria-hidden />
+          <CircleCheck className="size-4 text-success-on-subtle" aria-hidden />
           Неоднозначных записей нет — можно импортировать
         </p>
       )}
 
       {blockedByMerges && blockedByMerges > 0 ? (
-        <p className="text-sm text-amber-600 dark:text-amber-500">
+        <p className="text-sm text-warning-on-subtle">
           Ответьте на {blockedByMerges}{" "}
           {blockedByMerges === 1 ? "предложение об объединении" : "предложения об объединении"} —
           объединение необратимо, поэтому без ответа оно не выполняется.

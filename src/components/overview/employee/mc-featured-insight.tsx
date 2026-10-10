@@ -18,8 +18,8 @@ type McFeaturedInsightProps = {
 
 const toneClass: Record<NonNullable<EmployeeInsight>["tone"], string> = {
   neutral: "border-border bg-muted/30",
-  positive: "border-emerald-500/25 bg-emerald-500/5",
-  warning: "border-amber-500/25 bg-amber-500/5",
+  positive: "border-success-border bg-success-subtle",
+  warning: "border-warning-border bg-warning-subtle",
 };
 
 export function McFeaturedInsight({ insight, className }: McFeaturedInsightProps) {

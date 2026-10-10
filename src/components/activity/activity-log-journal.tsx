@@ -2,14 +2,13 @@
 
 import { memo, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import {
-  ClipboardListIcon,
-  FolderIcon,
-  PackageIcon,
-  SearchIcon,
-  SettingsIcon,
-  UsersRoundIcon,
+  ClipboardList,
+  Folder,
+  Package,
+  Search,
+  Settings,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -59,6 +58,7 @@ import {
 import { moduleLabel, resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 type ActivityLogJournalProps = {
   entries: ActivityLogEntry[];
@@ -74,12 +74,12 @@ const severityBadgeClass: Record<ActivitySeverity, string> = {
 };
 
 const moduleIcons: Record<string, LucideIcon> = {
-  inventory: PackageIcon,
-  accounting: FolderIcon,
-  employees: UsersRoundIcon,
-  work_orders: ClipboardListIcon,
-  settings: SettingsIcon,
-  system: SettingsIcon,
+  inventory: Package,
+  accounting: Folder,
+  employees: UsersRound,
+  work_orders: ClipboardList,
+  settings: Settings,
+  system: Settings,
 };
 
 function ActivityJournalFiltersBar({
@@ -101,7 +101,7 @@ function ActivityJournalFiltersBar({
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="min-w-[min(100%,14rem)] flex-1">
           <InputGroupAddon align="inline-start">
-            <SearchIcon className="size-4" aria-hidden />
+            <Search className="size-4" aria-hidden />
           </InputGroupAddon>
           <InputGroupInput
             value={filters.search}
@@ -186,9 +186,9 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
   const severity = entry.severity ?? resolved.severity;
   const targetName = formatActivityTargetName(entry, entryModule);
   const when = entry.timestamp
-    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
+    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateFnsLocale() })
     : userCopy.activity.now;
-  const ModuleIcon = moduleIcons[entryModule] ?? SettingsIcon;
+  const ModuleIcon = moduleIcons[entryModule] ?? Settings;
 
   return (
     <article
@@ -199,7 +199,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
     >
       <Avatar size="default" className="row-span-2 sm:row-span-1">
         {entry.actorPhotoURL ? <AvatarImage alt={actorName} src={entry.actorPhotoURL} /> : null}
-        <GradientAvatarFallback seed={entry.actor || actorName} className="text-[11px] font-semibold text-white/90">
+        <GradientAvatarFallback seed={entry.actor || actorName} className="text-micro font-semibold text-white/90">
           {actorInitials(actorName)}
         </GradientAvatarFallback>
         {severity !== "info" ? <AvatarBadge className={severityBadgeClass[severity]} /> : null}
@@ -314,7 +314,7 @@ export function ActivityLogJournal({
           <Empty className="m-4 min-h-[16rem] border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <SearchIcon />
+                <Search />
               </EmptyMedia>
               <EmptyTitle>
                 {entries.length === 0 ? userCopy.activity.empty : userCopy.activity.nothingFound}
@@ -328,7 +328,7 @@ export function ActivityLogJournal({
           </Empty>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-            <div className="sticky top-0 z-10 hidden border-b bg-muted/80 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur-sm sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4">
+            <div className="sticky top-0 z-10 hidden border-b bg-muted/80 px-4 py-2 text-micro font-medium text-muted-foreground backdrop-blur-sm sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4">
               <span className="w-6" aria-hidden />
               <span>{userCopy.activity.colEvent}</span>
               <span className="w-[5.5rem]">{userCopy.activity.colModule}</span>
@@ -340,7 +340,7 @@ export function ActivityLogJournal({
                 <div className="sticky top-0 z-[1] flex items-center gap-3 bg-background/95 px-4 py-2.5 backdrop-blur-sm sm:top-[2.125rem]">
                   <p className="text-xs font-semibold tracking-tight text-foreground">{group.label}</p>
                   <Separator className="min-w-0 flex-1" />
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-micro tabular-nums text-muted-foreground">
                     {group.entries.length}
                   </span>
                 </div>

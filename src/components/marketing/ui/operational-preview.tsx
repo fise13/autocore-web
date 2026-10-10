@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import {
   Activity,
-  AlertTriangle,
+  TriangleAlert,
   Banknote,
   ClipboardList,
   Package,
@@ -64,7 +64,7 @@ export function OperationalPreview({
         {
           label: chrome.operational.lowStock,
           value: "3",
-          icon: AlertTriangle,
+          icon: TriangleAlert,
           tone: "text-amber-500",
         },
         {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleHelp, CircleX, Clock3 } from "lucide-react";
+import { Check, CircleQuestionMark, CircleX, Clock3 } from "lucide-react";
 import type {
   DocumentationChecklistGroup,
   DocumentationChecklistItem,
@@ -11,10 +11,11 @@ import {
   checklistStateMark,
 } from "@/components/engine-intake/engine-intake-format";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 function StateIcon({ state }: { state: DocumentationChecklistItemState }) {
   if (state === "completed") return <Check className="size-3.5 text-success" />;
-  if (state === "uncertain") return <CircleHelp className="size-3.5 text-warning" />;
+  if (state === "uncertain") return <CircleQuestionMark className="size-3.5 text-warning" />;
   if (state === "not_applicable") return <CircleX className="size-3.5 text-muted-foreground" />;
   return <Clock3 className="size-3.5 text-destructive" />;
 }
@@ -39,7 +40,7 @@ export function EngineIntakeChecklistPane({
       <div className="flex flex-col gap-4 pb-4">
         {activeGroups.map(({ group, label, items }) => (
           <section key={group} className="flex flex-col gap-1">
-            <h4 className="px-1 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+            <h4 className="px-1 text-micro font-semibold text-muted-foreground">
               {label}
             </h4>
             <div className="flex flex-col gap-0.5">
@@ -77,17 +78,17 @@ export function EngineIntakeChecklistPane({
                       {showHint ? (
                         <p
                           className={cn(
-                            "truncate text-[11px]",
+                            "truncate text-micro",
                             selected
                               ? "text-primary-on-subtle/65"
                               : "text-muted-foreground",
                           )}
                         >
                           {item.state === "uncertain"
-                            ? "Needs a glance"
+                            ? userCopy.engineIntake.detailUi.checklistNeedsGlance
                             : item.source === "manager_override"
-                              ? "Manager override"
-                              : "Sale gate"}
+                              ? userCopy.engineIntake.detailUi.checklistManagerOverride
+                              : userCopy.engineIntake.detailUi.checklistSaleGate}
                         </p>
                       ) : null}
                     </div>
@@ -115,7 +116,7 @@ export function EngineIntakeChecklistPane({
                   )}
                 >
                   <span className="truncate">{item.label}</span>
-                  <span className="truncate text-[11px] text-muted-foreground">
+                  <span className="truncate text-micro text-muted-foreground">
                     {item.rationale || "Doesn’t apply"}
                   </span>
                 </button>

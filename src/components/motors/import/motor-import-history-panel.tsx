@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,8 @@ import { useMotorImportJobsRealtime } from "@/hooks/use-motor-import-jobs-realti
 import { MotorImportPreviewResult } from "@/lib/motors/import/types";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
+import { ConfirmDialog } from "@/components/ui/alert-dialog";
 
 type MotorImportHistoryPanelProps = {
   open: boolean;
@@ -75,8 +76,15 @@ export function MotorImportHistoryPanel({
     }
   }
 
-  async function handleRollback(job: MotorImportJob) {
-    if (!confirm(userCopy.motors.importHistory.rollbackConfirm(job.sourceFileName ?? job.id))) return;
+  const [pendingRollback, setPendingRollback] = useState<MotorImportJob | null>(null);
+
+  function handleRollback(job: MotorImportJob) {
+    setPendingRollback(job);
+  }
+
+  async function confirmRollback() {
+    const job = pendingRollback;
+    if (!job) return;
     setBusyJobId(job.id);
     try {
       await importRepository.markRolledBack(job.id, companyId, job.createdByUserId);
@@ -84,6 +92,7 @@ export function MotorImportHistoryPanel({
       setActionError(error instanceof Error ? error.message : userCopy.motors.importHistory.rollbackFailed);
     } finally {
       setBusyJobId(null);
+      setPendingRollback(null);
     }
   }
 
@@ -107,7 +116,7 @@ export function MotorImportHistoryPanel({
                 <div>
                   <p className="text-sm font-medium">{job.sourceFileName ?? userCopy.motors.importHistory.fallback}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: enUS })} · {statusLabels()[job.status]}
+                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: dateFnsLocale() })} · {statusLabels()[job.status]}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {userCopy.motors.importHistory.stats(job.stats.totalEngineRows, job.stats.validEngineRows)}
@@ -123,7 +132,7 @@ export function MotorImportHistoryPanel({
                     </Button>
                   ) : null}
                   {job.status === "completed" ? (
-                    <Button size="sm" variant="outline" disabled={busyJobId === job.id} onClick={() => void handleRollback(job)}>
+                    <Button size="sm" variant="outline" disabled={busyJobId === job.id} onClick={() => handleRollback(job)}>
                       {userCopy.motors.importHistory.rollback}
                     </Button>
                   ) : null}
@@ -132,6 +141,20 @@ export function MotorImportHistoryPanel({
             </div>
           ))}
         </div>
+        <ConfirmDialog
+          open={pendingRollback !== null}
+          onOpenChange={(next) => {
+            if (!next) setPendingRollback(null);
+          }}
+          title={userCopy.motors.importHistory.rollbackConfirmTitle(
+            pendingRollback?.sourceFileName ?? pendingRollback?.id ?? "",
+          )}
+          description={userCopy.motors.importHistory.rollbackConfirmDescription}
+          confirmLabel={userCopy.motors.importHistory.rollbackConfirmAction}
+          busy={pendingRollback !== null && busyJobId === pendingRollback.id}
+          onConfirm={confirmRollback}
+          layerClassName="z-[110]"
+        />
       </DialogContent>
     </Dialog>
   );

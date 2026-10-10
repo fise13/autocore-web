@@ -52,18 +52,18 @@ export function ToolCardShell({
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border/80 px-3 py-2">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium leading-none">
+        <span className="min-w-0 flex-1 truncate text-grid font-medium leading-none">
           {title}
         </span>
         {meta ? (
-          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-none tabular-nums text-muted-foreground">
+          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-micro leading-none tabular-nums text-muted-foreground">
             {meta}
           </span>
         ) : null}
       </div>
 
       {empty ? (
-        <p className="px-3 py-4 text-center text-[13px] text-muted-foreground">
+        <p className="px-3 py-4 text-center text-grid text-muted-foreground">
           {userCopy.ai.tool.empty}
         </p>
       ) : (
@@ -71,7 +71,7 @@ export function ToolCardShell({
       )}
 
       {notice ? (
-        <p className="border-t border-border/70 px-3 py-1.5 text-[11px] leading-snug text-muted-foreground">
+        <p className="border-t border-border/70 px-3 py-1.5 text-micro leading-snug text-muted-foreground">
           {notice}
         </p>
       ) : null}
@@ -81,7 +81,7 @@ export function ToolCardShell({
           href={href}
           className={cn(
             "flex min-h-11 items-center justify-between gap-2 border-t border-border/70 px-3",
-            "text-[13px] font-medium transition-colors hover:bg-muted sm:min-h-9",
+            "text-grid font-medium transition-colors hover:bg-muted sm:min-h-9",
           )}
         >
           {footerLabel ?? userCopy.ai.tool.openInAutocore}
@@ -135,9 +135,9 @@ export function ToolCardLines({
 }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-[13px] font-medium leading-tight">{title}</span>
+      <span className="block truncate text-grid font-medium leading-tight">{title}</span>
       {subtitle ? (
-        <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+        <span className="block truncate text-micro leading-tight text-muted-foreground">
           {subtitle}
         </span>
       ) : null}

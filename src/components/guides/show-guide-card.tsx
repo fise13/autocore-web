@@ -19,8 +19,8 @@ export function ShowGuideCard({ data }: { data: Ok<ShowGuideOutput> }) {
 
   return (
     <div className="max-w-lg rounded-xl border border-border bg-card px-3 py-2.5">
-      <p className="text-[13px] font-medium text-foreground">{display.title}</p>
-      <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{display.summary}</p>
+      <p className="text-grid font-medium text-foreground">{display.title}</p>
+      <p className="mt-0.5 text-grid leading-snug text-muted-foreground">{display.summary}</p>
       {canStart ? (
         <Button
           type="button"

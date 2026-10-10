@@ -172,7 +172,7 @@ export function GridPhotoCell({
             <ImagePlus className="size-3.5" />
           )}
           {urls.length > 1 ? (
-            <span className="absolute right-0 bottom-0 rounded-tl bg-background/90 px-0.5 text-[9px] leading-none text-foreground">
+            <span className="absolute right-0 bottom-0 rounded-tl bg-background/90 px-0.5 text-micro leading-none text-foreground">
               {urls.length}
             </span>
           ) : null}
@@ -255,7 +255,7 @@ export function GridPhotoCell({
       {urls.length > 0 ? (
         <button
           type="button"
-          className="rounded border border-border/70 bg-background/80 px-1 py-0.5 text-[10px] font-medium text-foreground/80 hover:bg-muted"
+          className="rounded border border-border/70 bg-background/80 px-1 py-0.5 text-micro font-medium text-foreground/80 hover:bg-muted"
           onClick={() => openViewer(0)}
           title={copy.viewAll}
         >

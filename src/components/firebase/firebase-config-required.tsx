@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { userCopy } from "@/lib/user-copy";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,7 @@ export function FirebaseConfigRequired({ compact = false }: FirebaseConfigRequir
     <Card className={compact ? undefined : "max-w-3xl"}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="size-4 text-destructive" />
+          <TriangleAlert className="size-4 text-destructive" />
           {userCopy.firebase.notConfigured}
         </CardTitle>
         <CardDescription>{userCopy.firebase.setupHint}</CardDescription>

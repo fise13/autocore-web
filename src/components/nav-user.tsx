@@ -14,7 +14,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserIcon, BellIcon, CommandIcon, LifeBuoyIcon, BookOpenIcon, CreditCardIcon, LogOutIcon } from "lucide-react";
+import { User, Bell, Command, LifeBuoy, BookOpen, CreditCard, LogOut } from "lucide-react";
 
 const user = {
 	name: "Shaban Haider",
@@ -39,7 +39,7 @@ export function NavUser() {
 							<div className="max-w-full overflow-hidden overflow-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 								{user.email}
 							</div>
-							<div className="mt-0.5 text-[10px] text-muted-foreground">
+							<div className="mt-0.5 text-micro text-muted-foreground">
 								Store owner
 							</div>
 						</div>
@@ -48,7 +48,7 @@ export function NavUser() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<UserIcon
+						<User
 						/>
 						Profile
 					</DropdownMenuItem>
@@ -56,12 +56,12 @@ export function NavUser() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<BellIcon
+						<Bell
 						/>
 						Notifications
 					</DropdownMenuItem>
 					<DropdownMenuItem>
-						<CommandIcon
+						<Command
 						/>
 						Keyboard shortcuts
 					</DropdownMenuItem>
@@ -69,12 +69,12 @@ export function NavUser() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<LifeBuoyIcon
+						<LifeBuoy
 						/>
 						Seller help
 					</DropdownMenuItem>
 					<DropdownMenuItem>
-						<BookOpenIcon
+						<BookOpen
 						/>
 						Seller guides
 					</DropdownMenuItem>
@@ -82,7 +82,7 @@ export function NavUser() {
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
-						<CreditCardIcon
+						<CreditCard
 						/>
 						Plan & billing
 					</DropdownMenuItem>
@@ -93,7 +93,7 @@ export function NavUser() {
 						className="w-full cursor-pointer"
 						variant="destructive"
 					>
-						<LogOutIcon
+						<LogOut
 						/>
 						Log out
 					</DropdownMenuItem>

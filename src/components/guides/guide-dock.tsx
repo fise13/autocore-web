@@ -45,7 +45,7 @@ export function GuideDock({
         role="status"
         aria-live="polite"
       >
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-micro font-medium text-muted-foreground">
           {completed ? userCopy.guides.completeTitle : stepLabel}
         </p>
         <p className="mt-1 text-sm font-medium">{completed ? userCopy.guides.completeBody : title}</p>

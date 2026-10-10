@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, MessageSquarePlus, Pencil, Search, Settings2, Trash2, X } from "lucide-react";
+import { LayoutGrid, MessageSquarePlus, Pencil, Search, Settings, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 
@@ -89,7 +89,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
             <LayoutGrid className="size-4" />
           </button>
           <button type="button" className="core-icon-btn" aria-label={userCopy.ai.settings} onClick={goSettings}>
-            <Settings2 className="size-4" />
+            <Settings className="size-4" />
           </button>
         </div>
       </div>
@@ -107,7 +107,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={userCopy.ai.searchChatsPlaceholder}
-              className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 bg-transparent text-grid outline-none placeholder:text-muted-foreground"
             />
             <button
               type="button"
@@ -145,7 +145,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-1">
         {grouped.length === 0 ? (
-          <p className="px-1 py-2 text-[12px] text-muted-foreground">{userCopy.ai.emptyChats}</p>
+          <p className="px-1 py-2 text-xs text-muted-foreground">{userCopy.ai.emptyChats}</p>
         ) : (
           grouped.map((group) => (
             <section key={group.id} className="mb-4">
@@ -176,7 +176,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
                               setEditingId(null);
                               setDraft("");
                             }}
-                            className="w-full bg-transparent text-[13px] outline-none"
+                            className="w-full bg-transparent text-grid outline-none"
                           />
                         </form>
                       ) : (
@@ -248,7 +248,7 @@ export function CoreChatSidebar({ collapsed = false, onNavigate }: CoreChatSideb
           {userCopy.ai.workspace}
         </button>
         <button type="button" className="core-nav-row flex w-full min-h-8 items-center gap-2" onClick={goSettings}>
-          <Settings2 className="size-3.5 shrink-0" />
+          <Settings className="size-3.5 shrink-0" />
           {userCopy.ai.settings}
         </button>
       </div>

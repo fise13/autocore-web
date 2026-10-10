@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, Loader2, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { Car, LoaderCircle, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -213,7 +213,7 @@ export function DonorsWorkspace() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{copy.title}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{copy.title}</h2>
           <p className="text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -234,7 +234,7 @@ export function DonorsWorkspace() {
 
       {isLoading ? (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {copy.loading}
         </p>
       ) : rows.length === 0 ? (
@@ -289,7 +289,7 @@ export function DonorsWorkspace() {
                     {formatMoney(pnl.soldRevenue)}
                     {pnl.unvaluedSoldMotorCount > 0 ? (
                       <span
-                        className="ml-1 inline-flex align-middle text-amber-600 dark:text-amber-500"
+                        className="ml-1 inline-flex align-middle text-warning-on-subtle"
                         title={copy.unvaluedMotors(pnl.unvaluedSoldMotorCount)}
                       >
                         <TriangleAlert className="size-3.5" aria-hidden />

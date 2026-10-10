@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,7 +92,7 @@ export function McRecentOperations({ operations, isLoading, className }: McRecen
         <div className="flex justify-center border-t py-3">
           <Button size="sm" variant="ghost" render={<Link href="/accounting" />} nativeButton={false}>
             {copy.viewAll}
-            <ArrowRightIcon aria-hidden data-icon="inline-end" />
+            <ArrowRight aria-hidden data-icon="inline-end" />
           </Button>
         </div>
       </McPanelBody>

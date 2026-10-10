@@ -140,7 +140,7 @@ export function WorkOrderFinancePanel({
                   <span
                     className={cn(
                       "font-semibold tabular-nums",
-                      operation.type === "expense" ? "text-red-600" : "text-emerald-700",
+                      operation.type === "expense" ? "text-danger-on-subtle" : "text-success-on-subtle",
                     )}
                   >
                     {operation.type === "expense" ? "−" : "+"}
@@ -187,8 +187,8 @@ function MetricCard({
       <p
         className={cn(
           "text-lg font-semibold tabular-nums",
-          tone === "positive" && "text-emerald-700",
-          tone === "negative" && "text-red-600",
+          tone === "positive" && "text-success-on-subtle",
+          tone === "negative" && "text-danger-on-subtle",
         )}
       >
         {value}

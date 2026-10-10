@@ -8,7 +8,7 @@ import {
   Receipt,
   Sparkles,
   Tag,
-  UserCircle,
+  CircleUser,
   Users,
   Wallet,
   type LucideIcon,
@@ -81,7 +81,7 @@ export const SIDEBAR_BLOCK_META: Record<
       team: Users,
       specific: FileText,
       brands: Tag,
-      profile: UserCircle,
+      profile: CircleUser,
     };
     if (!(id in icons)) return undefined;
     const copy = userCopy.nav.sidebarBlocks[id];

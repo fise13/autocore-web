@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils"
-import { Loader2Icon } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
+import { userCopy } from "@/lib/user-copy"
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
-    <Loader2Icon data-slot="spinner" role="status" aria-label="Loading" className={cn("size-4 animate-spin", className)} {...props} />
+    <LoaderCircle data-slot="spinner" role="status" aria-label={userCopy.commonUi.loading} className={cn("size-4 animate-spin", className)} {...props} />
   )
 }
 

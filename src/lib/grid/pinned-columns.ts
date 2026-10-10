@@ -47,13 +47,3 @@ export function unionVisibleColumnIndexes(
   }
   return [...set].sort((a, b) => a - b);
 }
-
-export function stickyColumnLeft(
-  columnIndex: number,
-  xOffset: number,
-  scrollLeft: number,
-  pinnedLeft: number | undefined,
-): number {
-  if (pinnedLeft == null) return xOffset;
-  return scrollLeft + pinnedLeft;
-}

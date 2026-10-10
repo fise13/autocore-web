@@ -20,7 +20,7 @@ export function McEmployeeHeader({ profile }: McEmployeeHeaderProps) {
     <div className="col-span-full flex items-center justify-between gap-4 rounded-xl border bg-card/80 p-4 md:p-5">
       <div className="min-w-0">
         <p className="text-sm text-muted-foreground">{greeting},</p>
-        <h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">{headline}</h1>
+        <h2 className="truncate text-xl font-semibold tracking-tight md:text-2xl">{headline}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {roleLabel} · {userCopy.overview.employee.subtitle}
         </p>

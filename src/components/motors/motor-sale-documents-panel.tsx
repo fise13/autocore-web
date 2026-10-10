@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import {
-  AlertCircle,
+  CircleAlert,
   CalendarDays,
   ChevronRight,
   Download,
   FileStack,
-  Loader2,
+  LoaderCircle,
   Printer,
   Receipt,
   ShieldCheck,
@@ -85,7 +85,7 @@ function DocumentActionRow({
           tone === "primary" ? "bg-primary/10 text-primary" : "bg-muted/60 text-muted-foreground",
         )}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Icon className="size-4" aria-hidden />}
+        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Icon className="size-4" aria-hidden />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{title}</span>
@@ -119,11 +119,11 @@ function MotorSaleSummary({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {serialCode ? (
-              <Badge variant="secondary" className="font-mono text-[11px]">
+              <Badge variant="secondary" className="font-mono text-micro">
                 {serialCode}
               </Badge>
             ) : null}
-            <span className="text-xs font-medium tracking-wide text-primary uppercase">{userCopy.motors.saleDocuments.eyebrow}</span>
+            <span className="text-xs font-medium text-primary">{userCopy.motors.saleDocuments.eyebrow}</span>
           </div>
           <p className="mt-1.5 text-sm font-semibold tracking-tight">{motorLabel}</p>
           {amount != null || saleDate ? (
@@ -235,7 +235,7 @@ export function MotorSaleDocumentsPanel({
           role="alert"
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{userCopy.motors.saleDocuments.motorNotFound}</p>
         </div>
       ) : null}
@@ -246,7 +246,7 @@ export function MotorSaleDocumentsPanel({
           className="flex items-start justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
           <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <p>{errorMessage}</p>
           </div>
           {onRetry ? (
@@ -262,7 +262,7 @@ export function MotorSaleDocumentsPanel({
           role="alert"
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{actionError}</p>
         </div>
       ) : null}
@@ -280,11 +280,11 @@ export function MotorSaleDocumentsPanel({
             className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-muted/10 px-3.5 py-3 text-sm text-muted-foreground"
             aria-live="polite"
           >
-            <Loader2 className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
+            <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
             <span>{userCopy.motors.saleDocuments.preparing}</span>
           </div>
         ) : isReady ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="flex items-center gap-2 rounded-xl border border-success-border bg-success-subtle px-3.5 py-2.5 text-sm text-success-on-subtle">
             <ShieldCheck className="size-4 shrink-0" aria-hidden />
             <span>{userCopy.motors.saleDocuments.ready}</span>
           </div>
@@ -293,7 +293,7 @@ export function MotorSaleDocumentsPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.warranty}</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">{userCopy.motors.saleDocuments.warranty}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (
@@ -330,7 +330,7 @@ export function MotorSaleDocumentsPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <Receipt className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.invoice}</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">{userCopy.motors.saleDocuments.invoice}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (

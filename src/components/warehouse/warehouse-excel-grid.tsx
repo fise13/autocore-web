@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin, PackagePlus, SlidersHorizontal } from "lucide-react";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { syncWarehouseGridRowUseCase } from "@/application/use-cases/warehouse/sync-warehouse-grid-row";
 import { DomainDictionaryContext } from "@/components/domain/domain-dictionary-provider";
@@ -41,7 +41,7 @@ import {
   selectWholeRow,
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
-import { GridCellAddress, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
+import { GridCellAddress, GridRange, gridCellAlignClass, isCellInsideRange } from "@/lib/grid/grid-types";
 import type { DomainCategory } from "@/lib/domain/types";
 import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
@@ -93,6 +93,7 @@ import { InventoryStockLevelRepository } from "@/infrastructure/firestore/invent
 import { FinancialOperationRepository } from "@/infrastructure/firestore/financial-operation-repository";
 import { WarehouseRepository } from "@/infrastructure/firestore/warehouse-repository";
 import { formatGroupedNumber, parseGroupedNumber } from "@/lib/money/format-number";
+import { gridAriaColIndex, gridAriaRowIndex, gridCellDomId } from "@/lib/grid/grid-aria";
 import { mapAuthError, mapGridSaveError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 
@@ -401,6 +402,7 @@ export function WarehouseExcelGrid({
   );
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const gridDomId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const itemsRef = useRef(items);
@@ -1456,11 +1458,25 @@ export function WarehouseExcelGrid({
     return { row: primary.maxRow, column: col };
   }, [primary.maxColumn, primary.maxRow]);
 
+  const activeCellDomId =
+    selection.head.row >= visible.rowStart &&
+    selection.head.row <= visible.rowEnd &&
+    selection.head.column >= visible.colStart &&
+    selection.head.column <= visible.colEnd
+      ? gridCellDomId(gridDomId, selection.head.row, selection.head.column)
+      : undefined;
+
   return (
     <div className="animate-autocore-grid-enter relative flex h-full min-h-0 flex-col bg-card">
       <div
         ref={gridRef}
         tabIndex={0}
+        role="grid"
+        aria-label={userCopy.grid.warehouseAria}
+        aria-rowcount={rows.length + 1}
+        aria-colcount={layout.columns.length}
+        aria-multiselectable="true"
+        aria-activedescendant={activeCellDomId}
         data-grid-root
         data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
@@ -1514,6 +1530,8 @@ export function WarehouseExcelGrid({
             }}
           >
             <div
+              role="row"
+              aria-rowindex={1}
               className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight }}
             >
@@ -1522,6 +1540,7 @@ export function WarehouseExcelGrid({
                 return (
                   <ExcelGridHeaderCell
                     key={column.id}
+                    ariaColIndex={gridAriaColIndex(colIdx)}
                     title={column.title}
                     width={column.width}
                     left={layout.xOffsets[colIdx] ?? 0}
@@ -1551,6 +1570,8 @@ export function WarehouseExcelGrid({
                 return (
                   <div
                     key={row.rowId}
+                    role="row"
+                    aria-rowindex={gridAriaRowIndex(rowIdx)}
                     className="transition-[height] duration-200 ease-out"
                     style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
@@ -1572,20 +1593,24 @@ export function WarehouseExcelGrid({
                       return (
                         <div
                           key={`${row.rowId}-${column.id}`}
+                          id={gridCellDomId(gridDomId, rowIdx, colIdx)}
+                          role="gridcell"
+                          aria-colindex={gridAriaColIndex(colIdx)}
+                          aria-selected={selected}
                           className={cn(
-                            "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
-                            column.align === "center" ? "items-center justify-center" : "items-center justify-start",
+                            "absolute flex border-r border-b px-2 text-grid leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+                            gridCellAlignClass(column.align),
                             outOfStock && "bg-destructive/18 text-destructive",
-                            selected && !outOfStock && "bg-emerald-500/12",
+                            selected && !outOfStock && "bg-grid-selection",
                             focused && "z-[2] ring-2 ring-inset",
-                            isDirtyRow && !outOfStock && !selected && "bg-amber-500/8",
-                            saveFlashRows.has(row.rowId) && !outOfStock && "bg-emerald-400/20",
+                            isDirtyRow && !outOfStock && !selected && "bg-warning-subtle",
+                            saveFlashRows.has(row.rowId) && !outOfStock && "bg-success-subtle",
                             scanFlashRows.has(row.rowId) &&
                               !outOfStock &&
                               "bg-primary/12 ring-2 ring-inset ring-primary/40",
-                            lowStock && (colIdx === 5 || colIdx === 7) && "text-amber-700 dark:text-amber-300",
+                            lowStock && (colIdx === 5 || colIdx === 7) && "font-medium text-warning-on-subtle",
                             colIdx === 6 && !outOfStock && "text-muted-foreground",
-                            colIdx === 16 && "text-muted-foreground text-[11px]",
+                            colIdx === 16 && "text-muted-foreground text-micro",
                           )}
                           style={{
                             left: cell.x,
@@ -1593,7 +1618,7 @@ export function WarehouseExcelGrid({
                             width: cell.width,
                             height: cell.height,
                             ...(isDirtyRow && colIdx === 1
-                              ? { boxShadow: "inset 3px 0 0 0 color-mix(in oklab, var(--color-amber-500) 70%, transparent)" }
+                              ? { boxShadow: "inset 3px 0 0 0 var(--warning)" }
                               : {}),
                             ...(outOfStock
                               ? { backgroundColor: "color-mix(in oklab, var(--destructive) 16%, transparent)" }
@@ -1660,7 +1685,7 @@ export function WarehouseExcelGrid({
                             row.rowKind === "saved" && row.sku.trim() && canEdit ? (
                               <button
                                 type="button"
-                                className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-700"
+                                className="rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle"
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -1745,7 +1770,7 @@ export function WarehouseExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );

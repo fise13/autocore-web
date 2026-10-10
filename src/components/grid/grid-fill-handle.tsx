@@ -17,7 +17,7 @@ export function GridFillHandle({ x, y, size = 8, onPointerDown, onDoubleClick }:
       role="button"
       tabIndex={-1}
       aria-label={userCopy.grid.autofillAria}
-      className="absolute z-20 cursor-crosshair rounded-[2px] border border-white bg-emerald-600 shadow-[0_0_0_1px_rgba(0,0,0,0.08)] transition-transform duration-150 hover:scale-125 motion-reduce:transition-none motion-reduce:hover:scale-100"
+      className="absolute z-20 cursor-crosshair rounded-[2px] border border-card bg-grid-active-border shadow-[0_0_0_1px_rgba(0,0,0,0.08)] transition-transform duration-150 hover:scale-125 motion-reduce:transition-none motion-reduce:hover:scale-100"
       style={{
         left: x,
         top: y,

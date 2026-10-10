@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { WorkspaceActivityFeed } from "@/components/activity/workspace-activity-feed";
 import {
@@ -62,7 +62,7 @@ export function McDashboardActivity({
         <div className="flex items-center justify-center border-t py-3">
           <Button size="sm" variant="ghost" render={<Link href="/activity" />} nativeButton={false}>
             {copy.viewAll}
-            <ArrowRightIcon aria-hidden data-icon="inline-end" />
+            <ArrowRight aria-hidden data-icon="inline-end" />
           </Button>
         </div>
       </McPanelBody>

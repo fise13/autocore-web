@@ -100,7 +100,7 @@ export function EngineIntakeSideRail({
       <section className="flex shrink-0 flex-col gap-2.5 rounded-lg border bg-card p-3">
         <div className="flex items-center gap-2">
           <Smartphone className="size-3.5 text-muted-foreground" />
-          <h3 className="font-heading text-xs font-semibold tracking-wide uppercase">
+          <h3 className="font-heading text-xs font-semibold">
             {copy.fieldSession}
           </h3>
         </div>
@@ -151,7 +151,7 @@ export function EngineIntakeSideRail({
       <section className="flex shrink-0 flex-col gap-2.5 rounded-lg border bg-card p-3">
         <div className="flex items-center gap-2">
           <MapPin className="size-3.5 text-muted-foreground" />
-          <h3 className="font-heading text-xs font-semibold tracking-wide uppercase">
+          <h3 className="font-heading text-xs font-semibold">
             {copy.release}
           </h3>
         </div>
@@ -188,7 +188,7 @@ export function EngineIntakeSideRail({
               </Button>
             </div>
             {!canApprove ? (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-micro text-muted-foreground">
                 {copy.needSerialPhoto}
               </p>
             ) : null}
@@ -233,7 +233,7 @@ export function EngineIntakeSideRail({
                     <p className="text-xs font-medium leading-snug">
                       {formatIntakeEventLabel(event.type)}
                     </p>
-                    <p className="text-[10px] leading-snug text-muted-foreground">
+                    <p className="text-micro leading-snug text-muted-foreground">
                       {event.actorName || event.actorRole} ·{" "}
                       {formatIntakeDate(event.serverAt)}
                     </p>
@@ -242,7 +242,7 @@ export function EngineIntakeSideRail({
               ))}
             </ul>
           ) : (
-            <p className="py-3 text-center text-xs text-muted-foreground">No events yet</p>
+            <p className="py-3 text-center text-xs text-muted-foreground">{userCopy.engineIntake.detailUi.noEvents}</p>
           )}
         </TabsContent>
         <TabsContent
@@ -259,7 +259,7 @@ export function EngineIntakeSideRail({
                   <p className="truncate text-xs font-medium">
                     {session.userName || "Worker"}
                   </p>
-                  <p className="truncate text-[10px] text-muted-foreground">
+                  <p className="truncate text-micro text-muted-foreground">
                     {session.deviceName || session.deviceId}
                   </p>
                 </div>
@@ -269,7 +269,7 @@ export function EngineIntakeSideRail({
               </div>
             ))
           ) : (
-            <p className="py-3 text-center text-xs text-muted-foreground">No sessions</p>
+            <p className="py-3 text-center text-xs text-muted-foreground">{userCopy.engineIntake.detailUi.noSessions}</p>
           )}
         </TabsContent>
       </Tabs>

@@ -3,6 +3,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { gridCellAlignClass, type GridColumnAlign } from "@/lib/grid/grid-types";
 
 type ExcelColumnResizerProps = {
   onMouseDown: (event: ReactMouseEvent) => void;
@@ -27,11 +28,13 @@ type ExcelGridHeaderCellProps = {
   left: number;
   height: number;
   fontSize: number;
-  align?: "left" | "center";
+  align?: GridColumnAlign;
   buttonClassName?: string;
   className?: string;
   style?: CSSProperties;
   pinned?: boolean;
+  /** 1-based column index for the ARIA grid pattern. */
+  ariaColIndex?: number;
   onSelectColumn?: () => void;
   onResizeMouseDown: (event: ReactMouseEvent) => void;
   children?: ReactNode;
@@ -48,12 +51,15 @@ export function ExcelGridHeaderCell({
   className,
   style,
   pinned = false,
+  ariaColIndex,
   onSelectColumn,
   onResizeMouseDown,
   children,
 }: ExcelGridHeaderCellProps) {
   return (
     <div
+      role={ariaColIndex != null ? "columnheader" : undefined}
+      aria-colindex={ariaColIndex}
       className={cn("group absolute top-0", pinned && "bg-muted", className)}
       style={{ left, width, height, ...style }}
     >
@@ -61,7 +67,7 @@ export function ExcelGridHeaderCell({
         type="button"
         className={cn(
           "flex h-full w-full border-r px-2.5 font-semibold text-muted-foreground",
-          align === "center" ? "items-center justify-center" : "items-center justify-start",
+          gridCellAlignClass(align),
           buttonClassName,
         )}
         style={{ fontSize }}

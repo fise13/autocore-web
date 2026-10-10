@@ -3,11 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
-import { ArrowDownIcon, DownloadIcon } from "lucide-react";
+import { ArrowDown, Download } from "lucide-react";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { saveFile } from "@/platform";
+import { userCopy } from "@/lib/user-copy"
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
@@ -89,13 +90,14 @@ export const ConversationScrollButton = ({
           "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted",
           className
         )}
+        aria-label={userCopy.commonUi.scrollToBottom}
         onClick={handleScrollToBottom}
         size="icon"
         type="button"
         variant="outline"
         {...props}
       >
-        <ArrowDownIcon className="size-4" />
+        <ArrowDown className="size-4" />
       </Button>
     )
   );
@@ -160,7 +162,7 @@ export const ConversationDownload = ({
       variant="outline"
       {...props}
     >
-      {children ?? <DownloadIcon className="size-4" />}
+      {children ?? <Download className="size-4" />}
     </Button>
   );
 };

@@ -15,6 +15,7 @@
 | [`autocore-mobile/DESIGN.md`](../autocore-mobile/DESIGN.md) | Prior mobile DL v3 notes — **superseded where this doc conflicts** |
 | [`docs/MOBILE-UX-AUDIT.md`](./MOBILE-UX-AUDIT.md) | Historical trust/IA audit (July 2026) — still useful for trust gaps; routes partially stale |
 | [`docs/WEB-DESIGN.md`](./WEB-DESIGN.md) | Web/marketing — do not copy Geist/web chrome into mobile |
+| [`docs/AUTOCORE_DESIGN_LANGUAGE.md`](./AUTOCORE_DESIGN_LANGUAGE.md) | Web dashboard design language (proposal). Shares this colour package; its token proposals in [`AUTOCORE_DESIGN_TOKENS.md`](./AUTOCORE_DESIGN_TOKENS.md) would also change mobile colours |
 
 This document is grounded in the **current codebase** (theme, navigation, screens, components). Target guidance that changes existing patterns is labeled **Target** and listed in **Existing → Target**.
 

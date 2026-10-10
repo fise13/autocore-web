@@ -7,14 +7,14 @@ import {
   ClipboardList,
   Globe,
   Layers,
-  LineChart,
+  ChartLine,
   Monitor,
   ScanLine,
   Search,
   ShieldCheck,
   Smartphone,
   Wrench,
-  CheckCircle2,
+  CircleCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,8 +30,8 @@ const STEP_ICONS: Record<string, LucideIcon> = {
   quote: Search,
   order: ClipboardList,
   floor: Wrench,
-  close: CheckCircle2,
-  cash: LineChart,
+  close: CircleCheck,
+  cash: ChartLine,
 };
 
 const SURFACE_ICONS = [Smartphone, Monitor, Globe] as const;

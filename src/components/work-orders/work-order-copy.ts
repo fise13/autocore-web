@@ -92,26 +92,6 @@ export function transitionLabel(from: WorkOrderStatus, to: WorkOrderStatus): str
   return TRANSITION_LABELS[to] ?? STATUS_LABELS[to];
 }
 
-export function statusTone(status: WorkOrderStatus): string {
-  if (status === "completed" || status === "delivered") return "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20";
-  if (status === "cancelled") return "bg-destructive/10 text-destructive ring-destructive/20";
-  if (status === "in_progress") return "bg-blue-500/10 text-blue-700 ring-blue-500/20";
-  if (status === "waiting_parts") return "bg-amber-500/10 text-amber-700 ring-amber-500/20";
-  if (status === "confirmed") return "bg-violet-500/10 text-violet-700 ring-violet-500/20";
-  return "bg-muted text-muted-foreground ring-border/60";
-}
-
-export function statusBadgeVariant(
-  status: WorkOrderStatus,
-): "success" | "destructive" | "info" | "warning" | "outline" {
-  if (status === "completed" || status === "delivered") return "success";
-  if (status === "cancelled") return "destructive";
-  if (status === "in_progress") return "info";
-  if (status === "waiting_parts") return "warning";
-  if (status === "confirmed") return "info";
-  return "outline";
-}
-
 export function eventTypeLabel(type: string): string {
   const events = userCopy.workOrders.events as Record<string, string>;
   return events[type] ?? type;

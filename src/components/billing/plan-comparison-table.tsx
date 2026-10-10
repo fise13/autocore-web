@@ -33,7 +33,7 @@ function FeatureMark({ included, emphasize }: { included: boolean; emphasize?: b
         )}
         aria-label={userCopy.billing.planComparison.yes}
       >
-        <Check className="size-3.5" strokeWidth={2.5} />
+        <Check className="size-3.5" strokeWidth={2} />
       </span>
     );
   }
@@ -163,7 +163,7 @@ export function PlanComparisonTable({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="relative mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                className="relative mt-2 text-xs font-medium text-success-on-subtle"
               >
                 {copy.yearlyHint}
               </motion.p>
@@ -220,7 +220,7 @@ export function PlanComparisonTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/15">
-                <th className="px-5 py-2.5 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                <th className="px-5 py-2.5 text-left text-xs font-medium text-muted-foreground">
                   {copy.featureColumn}
                 </th>
                 <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">

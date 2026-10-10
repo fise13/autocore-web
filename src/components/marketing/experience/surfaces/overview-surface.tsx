@@ -56,7 +56,7 @@ import {
   landingDemoWorkOrders,
 } from "@/lib/marketing/landing-demo-snapshot";
 import { cn } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 const mc = landingDemoOverview;
@@ -317,7 +317,7 @@ export function OverviewSurface({ className, full = false }: OverviewSurfaceProp
         {full && attentionItems.length > 0 ? (
           <div className="exp-outcome-mc-span-full rounded-xl border bg-card/60 p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-              <AlertTriangle className="size-4 text-amber-500" aria-hidden />
+              <TriangleAlert className="size-4 text-amber-500" aria-hidden />
               {t("attention.title")}
             </p>
             <div className="flex flex-wrap gap-2">

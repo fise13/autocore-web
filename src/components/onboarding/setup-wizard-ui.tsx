@@ -243,7 +243,7 @@ export function SetupWizardLayout({
           <div className="border-b border-border/60 bg-muted/15 px-4 py-4 sm:px-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
-                <p className="text-xs font-medium tracking-wide text-primary uppercase lg:hidden">
+                <p className="text-xs font-medium text-primary lg:hidden">
                   {SETUP_WIZARD_COPY.actions.stepCounter(active.id, steps.length)}
                 </p>
                 <h2 className="text-lg font-semibold tracking-tight">{active.title}</h2>
@@ -570,7 +570,7 @@ export function CategoryGridTile({
                 exit={{ scale: 0.4, opacity: 0 }}
                 transition={{ duration: 0.18, ease: authJourneyEase }}
               >
-                <Check className="size-2.5" strokeWidth={3} />
+                <Check className="size-2.5" strokeWidth={2} />
               </motion.span>
             ) : null}
           </AnimatePresence>
@@ -597,7 +597,7 @@ export function CategoryGridTile({
               aria-pressed={active}
               onClick={() => onModeChange(option.id)}
               className={cn(
-                "inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors duration-200",
+                "inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-micro font-medium transition-colors duration-200",
                 active
                   ? "border-primary/25 bg-primary text-primary-foreground"
                   : "border-border/50 bg-background/50 text-muted-foreground hover:text-foreground",
@@ -772,7 +772,7 @@ export function SetupWizardSuccess({ onDone, embedded = false }: SetupWizardSucc
       transition={{ duration: 0.35, ease }}
     >
       <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Check className="size-7" strokeWidth={2.5} aria-hidden />
+        <Check className="size-7" aria-hidden />
       </span>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">{SETUP_WIZARD_COPY.success.title}</h2>

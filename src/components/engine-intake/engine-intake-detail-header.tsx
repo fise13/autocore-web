@@ -80,10 +80,10 @@ export function EngineIntakeDetailHeader({
           {job.priority !== "normal" ? (
             <Badge variant="warning">{intakePriorityLabel(job.priority)}</Badge>
           ) : null}
-          {activeClaimStale ? <Badge variant="destructive">Session stale</Badge> : null}
+          {activeClaimStale ? <Badge variant="destructive">{userCopy.engineIntake.detailUi.sessionStale}</Badge> : null}
           {job.verificationLock ? (
             <Badge variant="info">
-              Reviewing: {job.verificationLock.reviewerName || "Verifier"}
+              {userCopy.engineIntake.detailUi.reviewing(job.verificationLock.reviewerName || userCopy.engineIntake.detailUi.verifier)}
             </Badge>
           ) : null}
         </div>
@@ -99,7 +99,7 @@ export function EngineIntakeDetailHeader({
             {jobChecklistStatusLabel(job)}
           </span>
         </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+        <p className="mt-0.5 text-micro text-muted-foreground/70">
           {job.sourceReference || intakeSourceLabel(job.source)} · Created{" "}
           {formatIntakeDate(job.createdAt)}
         </p>
@@ -126,7 +126,7 @@ export function EngineIntakeDetailHeader({
                   variant="outline"
                   size="icon-sm"
                   disabled={busy}
-                  aria-label="More actions"
+                  aria-label={userCopy.engineIntake.detailUi.moreActions}
                 />
               }
             >

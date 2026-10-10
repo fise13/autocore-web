@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
-import { FileTextIcon, Maximize2Icon } from "lucide-react";
+import { FileText, Maximize2 } from "lucide-react";
 import { userCopy } from "@/lib/user-copy";
 
 import {
@@ -57,9 +57,9 @@ export function DocumentPreviewDialog({
           <DocumentScaledPreviewFrame scale={scale}>{children}</DocumentScaledPreviewFrame>
         </div>
         <div className="flex items-center gap-2 border-t bg-muted/20 px-5 py-2.5 text-[11px] text-muted-foreground">
-          <FileTextIcon className="size-3.5 shrink-0 opacity-70" />
+          <FileText className="size-3.5 shrink-0 opacity-70" />
           <span className="min-w-0 flex-1 truncate">{userCopy.documents.preview.demoBanner}</span>
-          <Maximize2Icon className="size-3.5 shrink-0 opacity-70" />
+          <Maximize2 className="size-3.5 shrink-0 opacity-70" />
         </div>
       </DialogContent>
     </Dialog>

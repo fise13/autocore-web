@@ -1,6 +1,6 @@
 "use client";
 
-import { XIcon } from "lucide-react";
+import { X } from "lucide-react";
 import { userCopy } from "@/lib/user-copy";
 
 import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
@@ -27,7 +27,7 @@ export function KnowledgeSuggestionChips({
 }: KnowledgeSuggestionChipsProps) {
   if (suggestions.length === 0) {
     if (!emptyLabel) return null;
-    return <p className="text-[11px] text-muted-foreground">{emptyLabel}</p>;
+    return <p className="text-micro text-muted-foreground">{emptyLabel}</p>;
   }
 
   return (
@@ -35,7 +35,7 @@ export function KnowledgeSuggestionChips({
       {suggestions.map((suggestion) => (
         <div
           key={suggestion.id}
-          className="group inline-flex max-w-full items-center gap-1 rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[12px]"
+          className="group inline-flex max-w-full items-center gap-1 rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 text-xs"
           title={suggestion.explanation}
         >
           <button
@@ -44,7 +44,7 @@ export function KnowledgeSuggestionChips({
             onClick={() => onAccept(suggestion)}
           >
             <span className="font-medium">{suggestion.title}</span>
-            <span className="ml-1 text-[10px] text-muted-foreground">
+            <span className="ml-1 text-micro text-muted-foreground">
               {formatConfidence(suggestion.confidence)}
             </span>
           </button>
@@ -55,7 +55,7 @@ export function KnowledgeSuggestionChips({
               className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-background hover:opacity-100"
               onClick={() => onDismiss(suggestion)}
             >
-              <XIcon className="size-3" />
+              <X className="size-3" />
             </button>
           ) : null}
         </div>

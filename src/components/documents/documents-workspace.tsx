@@ -5,14 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
-  CarIcon,
-  EyeIcon,
-  FileStackIcon,
-  FileTextIcon,
-  HistoryIcon,
-  PaletteIcon,
-  ReceiptIcon,
-  WrenchIcon,
+  Car,
+  Eye,
+  FileStack,
+  FileText,
+  History,
+  Palette,
+  Receipt,
+  Wrench,
 } from "lucide-react";
 
 import { DocumentsHistoryPanel } from "@/components/documents/documents-history-panel";
@@ -40,31 +40,31 @@ type DocumentCategory = "all" | "service" | "sales" | "engine" | "history";
 
 const CATEGORY_NAV: {
   id: DocumentCategory;
-  icon: typeof FileStackIcon;
+  icon: typeof FileStack;
   match?: (doc: DocumentDefinition) => boolean;
 }[] = [
-  { id: "all", icon: FileStackIcon, match: () => true },
+  { id: "all", icon: FileStack, match: () => true },
   {
     id: "service",
-    icon: WrenchIcon,
+    icon: Wrench,
     match: (doc) =>
       ["work-order", "service-act", "vehicle-intake-act"].includes(doc.slug),
   },
   {
     id: "sales",
-    icon: ReceiptIcon,
+    icon: Receipt,
     match: (doc) =>
       ["invoice", "sales-receipt", "commercial-proposal"].includes(doc.slug),
   },
   {
     id: "engine",
-    icon: CarIcon,
+    icon: Car,
     match: (doc) =>
       ["engine-warranty", "engine-waybill", "service-tag"].includes(doc.slug),
   },
   {
     id: "history",
-    icon: HistoryIcon,
+    icon: History,
   },
 ];
 
@@ -130,7 +130,7 @@ function DocumentsWorkspaceContent() {
       action={
         canManage ? (
           <Button variant="outline" render={<Link href="/settings?section=branding" />} nativeButton={false}>
-            <PaletteIcon data-icon="inline-start" />
+            <Palette data-icon="inline-start" />
             {userCopy.settings.branding}
           </Button>
         ) : null
@@ -174,7 +174,7 @@ function DocumentsWorkspaceContent() {
                     <CardHeader className="border-b bg-muted/15 pb-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex size-11 items-center justify-center rounded-xl border bg-background shadow-sm transition-[border-color,box-shadow] duration-200 group-hover:border-primary/25 group-hover:shadow-md">
-                          <FileTextIcon className="size-4 text-muted-foreground transition-colors duration-200 group-hover:text-foreground" />
+                          <FileText className="size-4 text-muted-foreground transition-colors duration-200 group-hover:text-foreground" />
                         </div>
                         <Badge variant="secondary" className="tabular-nums">
                           {document.pageSize === "A4" ? "A4" : "70×100"}
@@ -194,7 +194,7 @@ function DocumentsWorkspaceContent() {
                           openPreview(document.slug);
                         }}
                       >
-                        <EyeIcon data-icon="inline-start" />
+                        <Eye data-icon="inline-start" />
                         {userCopy.documents.preview.open}
                       </Button>
                     </CardContent>

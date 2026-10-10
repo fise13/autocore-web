@@ -133,7 +133,7 @@ export function MotorsImportEmptyLanding({
               {progress.message ? (
                 <p className="mt-2 text-left text-xs text-muted-foreground">{progress.message}</p>
               ) : null}
-              <p className="mt-3 text-left text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-3 text-left text-micro leading-relaxed text-muted-foreground">
                 {userCopy.motors.emptyImportProgressHint}
               </p>
             </LandingCard>
@@ -230,7 +230,7 @@ export function MotorsImportEmptyLanding({
                   aria-hidden
                 />
                 <p className="mt-2 text-sm font-medium">{userCopy.motors.emptyImport}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{userCopy.motors.emptyImportDropHint}</p>
+                <p className="mt-1 text-micro text-muted-foreground">{userCopy.motors.emptyImportDropHint}</p>
               </div>
 
               <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -256,7 +256,7 @@ export function MotorsImportEmptyLanding({
                 </Button>
               </div>
 
-              <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground/80">
+              <p className="mt-3 text-center text-micro leading-relaxed text-muted-foreground/80">
                 {userCopy.motors.emptyImportAiHint}
               </p>
 

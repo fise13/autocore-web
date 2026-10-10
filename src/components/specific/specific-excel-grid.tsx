@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { deleteSpecificRecordUseCase } from "@/application/use-cases/specific/delete-specific-record";
 import { assignAssetLocation } from "@/application/use-cases/warehouse/assign-asset-location";
@@ -89,6 +89,7 @@ import {
   SpecificCategoryRepository,
   SpecificRecordEntity,
 } from "@/infrastructure/firestore/specific-category-repository";
+import { gridAriaColIndex, gridAriaRowIndex, gridCellDomId } from "@/lib/grid/grid-aria";
 import { mapAuthError, userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/infrastructure/firebase/client";
@@ -259,6 +260,7 @@ export function SpecificExcelGrid({
   );
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const gridDomId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const recordsRef = useRef(records);
@@ -1174,6 +1176,14 @@ export function SpecificExcelGrid({
     valueAtCell,
   ]);
 
+  const activeCellDomId = displayRows
+    .slice(visible.rowStart, visible.rowEnd + 1)
+    .some((displayRow) => displayRow.sourceIndex === selection.head.row) &&
+    selection.head.column >= visible.colStart &&
+    selection.head.column <= visible.colEnd
+    ? gridCellDomId(gridDomId, selection.head.row, selection.head.column)
+    : undefined;
+
   return (
     <div className="animate-autocore-grid-enter relative flex h-full min-h-0 flex-col bg-card">
       {activeActionLabel ? (
@@ -1185,6 +1195,12 @@ export function SpecificExcelGrid({
       <div
         ref={gridRef}
         tabIndex={0}
+        role="grid"
+        aria-label={userCopy.grid.specificAria}
+        aria-rowcount={displayRows.length + 1}
+        aria-colcount={layout.columns.length}
+        aria-multiselectable="true"
+        aria-activedescendant={activeCellDomId}
         data-grid-root
         data-context-menu-scope="local"
         className="relative min-h-0 flex-1 overflow-hidden outline-none"
@@ -1245,6 +1261,8 @@ export function SpecificExcelGrid({
             }}
           >
             <div
+              role="row"
+              aria-rowindex={1}
               className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight }}
             >
@@ -1253,6 +1271,7 @@ export function SpecificExcelGrid({
                 return (
                   <ExcelGridHeaderCell
                     key={column.id}
+                    ariaColIndex={gridAriaColIndex(colIdx)}
                     title={column.title}
                     width={column.width}
                     left={layout.xOffsets[colIdx] ?? 0}
@@ -1286,6 +1305,8 @@ export function SpecificExcelGrid({
                 return (
                   <div
                     key={row.rowId}
+                    role="row"
+                    aria-rowindex={gridAriaRowIndex(displayIndex)}
                     className="transition-[height] duration-200 ease-out"
                     style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
@@ -1308,14 +1329,18 @@ export function SpecificExcelGrid({
                       return (
                         <div
                           key={`${row.rowId}-${column.id}`}
+                          id={gridCellDomId(gridDomId, rowIdx, colIdx)}
+                          role="gridcell"
+                          aria-colindex={gridAriaColIndex(colIdx)}
+                          aria-selected={selected}
                           className={cn(
-                            "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+                            "absolute flex border-r border-b px-2 text-grid leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
                             column.align === "center"
                               ? "items-center justify-center"
                               : "items-center justify-start",
-                            selected && "bg-emerald-500/12",
+                            selected && "bg-grid-selection",
                             focused && "z-[2] ring-2 ring-inset",
-                            saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
+                            saveFlashRows.has(row.rowId) && "bg-success-subtle",
                           )}
                           style={{
                             left: cell.x,
@@ -1383,10 +1408,9 @@ export function SpecificExcelGrid({
                               <button
                                 type="button"
                                 className={cn(
-                                  "rounded border px-2 py-0.5 text-[11px]",
                                   sold
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+                                    ? "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    : "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle",
                                 )}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={(event) => {
@@ -1456,7 +1480,7 @@ export function SpecificExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );

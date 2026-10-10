@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 export function EngineIntakeEvidencePane({
   item,
@@ -109,7 +110,7 @@ export function EngineIntakeEvidencePane({
                 size="sm"
                 disabled={busy}
                 onClick={() =>
-                  onOverride(item, "completed", "Manager accepted uncertain evidence")
+                  onOverride(item, "completed", userCopy.engineIntake.defaultReasons.evidenceAccepted)
                 }
               >
                 Accept
@@ -119,7 +120,7 @@ export function EngineIntakeEvidencePane({
                 variant="outline"
                 disabled={busy}
                 onClick={() =>
-                  onOverride(item, "missing", "Manager rejected uncertain evidence")
+                  onOverride(item, "missing", userCopy.engineIntake.defaultReasons.evidenceRejected)
                 }
               >
                 Reject
@@ -129,7 +130,7 @@ export function EngineIntakeEvidencePane({
                 variant="outline"
                 disabled={busy}
                 onClick={() =>
-                  onOverride(item, "not_applicable", "Manager marked not applicable")
+                  onOverride(item, "not_applicable", userCopy.engineIntake.defaultReasons.markedNotApplicable)
                 }
               >
                 Mark NA
@@ -141,7 +142,7 @@ export function EngineIntakeEvidencePane({
               size="sm"
               variant="outline"
               disabled={busy}
-              onClick={() => onOverride(item, "missing", "Manager made item required")}
+              onClick={() => onOverride(item, "missing", userCopy.engineIntake.defaultReasons.madeRequired)}
             >
               Make required
             </Button>
@@ -153,7 +154,7 @@ export function EngineIntakeEvidencePane({
                   size="sm"
                   disabled={busy}
                   onClick={() =>
-                    onOverride(item, "completed", "Manager forced completed")
+                    onOverride(item, "completed", userCopy.engineIntake.defaultReasons.forcedCompleted)
                   }
                 >
                   Force complete
@@ -163,7 +164,7 @@ export function EngineIntakeEvidencePane({
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => onOverride(item, "missing", "Manager reopened item")}
+                  onClick={() => onOverride(item, "missing", userCopy.engineIntake.defaultReasons.reopened)}
                 >
                   Mark missing
                 </Button>
@@ -173,7 +174,7 @@ export function EngineIntakeEvidencePane({
                 variant="outline"
                 disabled={busy}
                 onClick={() =>
-                  onOverride(item, "not_applicable", "Manager marked not applicable")
+                  onOverride(item, "not_applicable", userCopy.engineIntake.defaultReasons.markedNotApplicable)
                 }
               >
                 Mark NA

@@ -34,7 +34,7 @@ export type GridColumnDefinition = {
   title: string;
   width: number;
   editable: boolean;
-  align?: "left" | "center";
+  align?: GridColumnAlign;
   modelField?: "serialCode" | "configuration" | "notes" | "quality" | "photoUrls" | "imageUrls" | "quantity" | "transmission" | "arrivalDate" | "soldDate" | string;
   /** When set, the cell editor opens the Domain autocomplete for this category. */
   domainCategory?: import("@/lib/domain/types").DomainCategory;
@@ -67,4 +67,13 @@ export function isCellInsideRange(cell: GridCellAddress, range: GridRange): bool
     cell.column >= range.minColumn &&
     cell.column <= range.maxColumn
   );
+}
+
+/** Numbers (quantities, prices) are right-aligned so digits line up down a column. */
+export type GridColumnAlign = "left" | "center" | "right";
+
+export function gridCellAlignClass(align: GridColumnAlign | undefined): string {
+  if (align === "center") return "items-center justify-center";
+  if (align === "right") return "items-center justify-end text-right tabular-nums";
+  return "items-center justify-start";
 }

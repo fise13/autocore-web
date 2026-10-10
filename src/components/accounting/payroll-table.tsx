@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 import Link from "next/link";
 
 import { PayrollTransaction, PayrollTransactionStatus } from "@/domain/payroll-transaction";
@@ -19,6 +18,8 @@ import {
 } from "@/lib/work-order/work-order-display";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { payrollStatusStyle, statusToneChipClass } from "@/lib/status/status-tones";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 type PayrollTableProps = {
   rows: PayrollTransaction[];
@@ -90,11 +91,9 @@ export function PayrollTable({
             const statusControl = (
               <span
                 className={cn(
-                  "inline-flex rounded-md px-2 py-0.5 text-xs font-medium transition-all duration-200",
-                  row.status === "paid" && "bg-emerald-500/10 text-emerald-700",
-                  row.status === "pending" && "bg-amber-500/10 text-amber-700",
-                  row.status === "cancelled" && "bg-muted text-muted-foreground",
-                  canEdit && onStatusChange && "cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.98]",
+                  "inline-flex rounded-sm border px-2 py-0.5 text-xs font-medium transition-colors",
+                  statusToneChipClass[payrollStatusStyle[row.status].tone],
+                  canEdit && onStatusChange && "cursor-pointer hover:border-foreground/30",
                   isUpdating && "opacity-60",
                 )}
               >
@@ -105,7 +104,7 @@ export function PayrollTable({
             return (
               <TableRow key={row.id} className="animate-autocore-fade-in-up motion-reduce:animate-none">
                 <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {format(row.createdAt, "dd.MM.yyyy", { locale: enUS })}
+                  {format(row.createdAt, "dd.MM.yyyy", { locale: dateFnsLocale() })}
                 </TableCell>
                 <TableCell className="font-medium">
                   {resolveEmployeeName(row.employeeId, employees) ?? cols.employeeFallback}
@@ -135,7 +134,7 @@ export function PayrollTable({
                       title={cols.statusCycleHint}
                       disabled={isUpdating}
                       onClick={() => onStatusChange(row.id, nextPayrollStatus(row.status))}
-                      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {statusControl}
                     </button>

@@ -2,14 +2,14 @@
 
 import type { ChatStatus, FileUIPart } from "ai"
 import {
-  CornerDownLeftIcon,
-  ImageIcon,
-  Loader2Icon,
-  MicIcon,
-  PaperclipIcon,
-  PlusIcon,
-  SquareIcon,
-  XIcon,
+  CornerDownLeft,
+  Image,
+  LoaderCircle,
+  Mic,
+  Paperclip,
+  Plus,
+  Square,
+  X,
 } from "lucide-react"
 import { nanoid } from "nanoid"
 import {
@@ -65,6 +65,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { userCopy } from "@/lib/user-copy"
 
 // ============================================================================
 // Provider Context & Types
@@ -293,12 +294,12 @@ export function PromptInputAttachment({ data, className, ...props }: PromptInput
                           />
                         ) : (
                           <div className="flex size-5 items-center justify-center text-muted-foreground">
-                            <PaperclipIcon className="size-3" />
+                            <Paperclip className="size-3" />
                           </div>
                         )}
                       </div>
                       <Button
-                        aria-label="Remove attachment"
+                        aria-label={userCopy.ai.removeAttachment}
                         className="absolute inset-0 size-5 cursor-pointer rounded p-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 [&>svg]:size-2.5"
                         onClick={e => {
                           e.stopPropagation()
@@ -307,7 +308,7 @@ export function PromptInputAttachment({ data, className, ...props }: PromptInput
                         type="button"
                         variant="ghost"
                       >
-                        <XIcon />
+                        <X />
                         <span className="sr-only">Remove</span>
                       </Button>
                     </div><span className="flex-1 truncate">{attachmentLabel}</span></HoverCardTrigger>
@@ -382,7 +383,7 @@ export const PromptInputActionAddAttachments = ({
         attachments.openFileDialog()
       }}
     >
-      <ImageIcon className="mr-2 size-4" /> {label}
+      <Image className="mr-2 size-4" /> {label}
     </DropdownMenuItem>
   )
 }
@@ -728,12 +729,12 @@ export const PromptInput = ({
     <>
       <input
         accept={accept}
-        aria-label="Upload files"
+        aria-label={userCopy.ai.uploadFiles}
         className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
-        title="Upload files"
+        title={userCopy.ai.uploadFiles}
         type="file"
       />
       <form className="w-full" onSubmit={handleSubmit} ref={formRef} {...props}>
@@ -916,7 +917,7 @@ export const PromptInputActionMenuTrigger = ({
   children,
   ...props
 }: PromptInputActionMenuTriggerProps) => (
-  <DropdownMenuTrigger render={<PromptInputButton className={className} {...props} />}>{children ?? <PlusIcon className="size-4" />}</DropdownMenuTrigger>
+  <DropdownMenuTrigger render={<PromptInputButton className={className} {...props} />}>{children ?? <Plus className="size-4" />}</DropdownMenuTrigger>
 )
 
 export type PromptInputActionMenuContentProps = ComponentProps<typeof DropdownMenuContent>
@@ -952,14 +953,14 @@ export const PromptInputSubmit = ({
   ...props
 }: PromptInputSubmitProps) => {
   const isGenerating = status === "submitted" || status === "streaming"
-  let Icon = <CornerDownLeftIcon className="size-4" />
+  let Icon = <CornerDownLeft className="size-4" />
 
   if (status === "submitted") {
-    Icon = <Loader2Icon className="size-4 animate-spin" />
+    Icon = <LoaderCircle className="size-4 animate-spin" />
   } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />
+    Icon = <Square className="size-4" />
   } else if (status === "error") {
-    Icon = <XIcon className="size-4" />
+    Icon = <X className="size-4" />
   }
 
   return (
@@ -1129,7 +1130,7 @@ export const PromptInputSpeechButton = ({
       onClick={toggleListening}
       {...props}
     >
-      <MicIcon className="size-4" />
+      <Mic className="size-4" />
     </PromptInputButton>
   )
 }

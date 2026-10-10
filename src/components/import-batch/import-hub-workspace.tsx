@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import { FileUp, Plus, Smartphone, Sparkles } from "lucide-react";
 
 import type { ImportBatch, ImportBatchStatus } from "@/domain/import-batch";
@@ -22,6 +21,7 @@ import {
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const STATUS_LABELS: Record<ImportBatchStatus, string> = {
   collecting: userCopy.importBatch.status.collecting,
@@ -88,7 +88,7 @@ export function ImportHubWorkspace() {
     <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col gap-8 overflow-y-auto p-4 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.importBatch.hubTitle}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{userCopy.importBatch.hubTitle}</h2>
           <p className="max-w-xl text-sm text-muted-foreground">
             {userCopy.importBatch.hubDescription}
           </p>
@@ -226,10 +226,10 @@ function BatchListRow({ batch }: { batch: ImportBatch }) {
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {userCopy.importBatch.toastFilesRows(batch.counts.files, batch.counts.rows)} ·{" "}
-          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: enUS })}
+          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: dateFnsLocale() })}
         </p>
       </div>
-      <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium">
+      <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-micro font-medium">
         {STATUS_LABELS[batch.status]}
       </span>
     </Link>

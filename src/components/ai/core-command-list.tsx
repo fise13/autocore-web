@@ -51,7 +51,7 @@ export function CoreCommandList({
                     }}
                   >
                     <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-left text-[13px] leading-tight">
+                    <span className="min-w-0 flex-1 truncate text-left text-grid leading-tight">
                       {item.title}
                     </span>
                     {item.shortcut ? (

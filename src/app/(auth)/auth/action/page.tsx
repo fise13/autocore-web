@@ -6,10 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { applyActionCode, confirmPasswordReset, getAuth } from "firebase/auth";
 import {
   ArrowRight,
-  CheckCircle2,
+  CircleCheck,
   ChevronLeft,
   KeyRound,
-  Loader2,
+  LoaderCircle,
   MailCheck,
   ShieldAlert,
 } from "lucide-react";
@@ -146,7 +146,7 @@ function AuthActionContent() {
         status={status}
         icon={
           status === "success" ? (
-            <CheckCircle2 className="size-6" aria-hidden />
+            <CircleCheck className="size-6" aria-hidden />
           ) : status === "error" ? (
             <ShieldAlert className="size-6" aria-hidden />
           ) : (
@@ -240,7 +240,7 @@ function AuthActionContent() {
                     </p>
                   ) : null}
                   <Button type="submit" className="h-11 w-full" disabled={status === "working"}>
-                    {status === "working" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                    {status === "working" ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
                     {userCopy.auth.passwordResetSubmit}
                   </Button>
                 </form>
@@ -287,7 +287,7 @@ function AuthActionShell({
 }: AuthActionShellProps) {
   const iconTone =
     status === "success"
-      ? "bg-emerald-500/10 text-emerald-600 ring-emerald-500/20"
+      ? "bg-success-subtle text-success-on-subtle ring-success-border"
       : status === "error"
         ? "bg-destructive/10 text-destructive ring-destructive/20"
         : "bg-primary/10 text-primary ring-primary/15";
@@ -307,7 +307,7 @@ function AuthActionShell({
           <AppLogo size={32} className="h-8 w-auto" />
         </div>
         <Card className="overflow-hidden border-border/80 shadow-xl shadow-black/5">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-sky-400" />
+          <div className="h-1 bg-primary" />
           <CardHeader className="space-y-4 text-center">
             <div
               className={cn(
@@ -316,7 +316,7 @@ function AuthActionShell({
               )}
             >
               {busy && status !== "success" ? (
-                <Loader2 className="size-6 animate-spin" aria-hidden />
+                <LoaderCircle className="size-6 animate-spin" aria-hidden />
               ) : (
                 icon
               )}
@@ -334,7 +334,7 @@ function AuthActionShell({
                 disabled={busy}
                 onClick={onAction}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
                 {actionLabel}
                 {status === "success" ? <ArrowRight className="size-4" data-icon="inline-end" aria-hidden /> : null}
               </Button>

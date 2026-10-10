@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { subDays } from "date-fns";
-import { BarChart3, PieChart, Tags } from "lucide-react";
+import { ChartColumn, ChartPie, Tags } from "lucide-react";
 
 import { FinancialOperation } from "@/domain/financial-operation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,7 +125,7 @@ export function OverviewInsights({
       <Card className="lg:col-span-2 overflow-hidden">
         <CardHeader className="border-b border-border/50 bg-muted/20">
           <div className="flex items-center gap-2">
-            <BarChart3 className="size-4 text-primary" />
+            <ChartColumn className="size-4 text-primary" />
             <div>
               <CardTitle>{labels.weeklyTitle}</CardTitle>
               <CardDescription>{labels.weeklyDescription}</CardDescription>
@@ -142,10 +142,8 @@ export function OverviewInsights({
                   <div className="relative flex h-[132px] w-full items-end justify-center">
                     <div
                       className={cn(
-                        "w-full max-w-10 rounded-md shadow-sm transition-[height] duration-700 ease-out",
-                        positive
-                          ? "bg-gradient-to-t from-emerald-600/90 to-emerald-400/75"
-                          : "bg-gradient-to-t from-red-600/90 to-red-400/75",
+                        "w-full max-w-10 rounded-md transition-[height] duration-700 ease-out",
+                        positive ? "bg-success" : "bg-danger",
                         mounted && "animate-autocore-bar-grow",
                       )}
                       style={{
@@ -155,7 +153,7 @@ export function OverviewInsights({
                       title={`${item.label}: ${formatMoney(item.net)}`}
                     />
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
+                  <span className="text-micro font-medium text-muted-foreground">{item.label}</span>
                 </div>
               );
             })}
@@ -210,7 +208,7 @@ export function OverviewInsights({
       <Card className="lg:col-span-3 overflow-hidden">
         <CardHeader className="border-b border-border/50 bg-muted/20">
           <div className="flex items-center gap-2">
-            <PieChart className="size-4 text-primary" />
+            <ChartPie className="size-4 text-primary" />
             <div>
               <CardTitle>{labels.typeDistributionTitle}</CardTitle>
               <CardDescription>{labels.typeDistributionDescription}</CardDescription>

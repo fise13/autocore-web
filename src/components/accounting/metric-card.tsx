@@ -19,10 +19,10 @@ type MetricCardProps = {
 
 const toneClasses: Record<NonNullable<MetricCardProps["tone"]>, string> = {
   default: "text-foreground",
-  green: "text-emerald-600 dark:text-emerald-400",
-  blue: "text-blue-600 dark:text-blue-400",
-  amber: "text-amber-600 dark:text-amber-400",
-  red: "text-red-600 dark:text-red-400",
+  green: "text-success-on-subtle",
+  blue: "text-primary-on-subtle",
+  amber: "text-warning-on-subtle",
+  red: "text-danger-on-subtle",
 };
 
 export function MetricCard({
@@ -45,7 +45,7 @@ export function MetricCard({
       style={{ animationDelay: motionStagger(index) }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+        <p className="text-micro font-medium text-muted-foreground">{label}</p>
         {Icon ? <Icon className={cn("size-3.5 opacity-70", toneClasses[tone])} /> : null}
       </div>
       <p className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>

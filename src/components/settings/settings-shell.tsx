@@ -2,7 +2,7 @@
 
 import { ReactNode, useMemo, useState } from "react";
 import { LayoutGroup, motion } from "motion/react";
-import { Building2, CircleDollarSign, Palette, Settings2, Sparkles, Trash2, UserCircle } from "lucide-react";
+import { Archive, Building2, CircleUser, Coins, Palette, Settings, SlidersHorizontal } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { can } from "@/lib/auth/permissions";
@@ -33,12 +33,12 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
   const allSections = useMemo(
     () =>
       [
-        { id: "account" as const, label: userCopy.settings.account, icon: UserCircle },
+        { id: "account" as const, label: userCopy.settings.account, icon: CircleUser },
         { id: "company" as const, label: userCopy.settings.company, icon: Building2 },
-        { id: "appConfig" as const, label: userCopy.settings.appConfig, icon: Sparkles },
+        { id: "appConfig" as const, label: userCopy.settings.appConfig, icon: SlidersHorizontal },
         { id: "branding" as const, label: userCopy.settings.branding, icon: Palette },
-        { id: "accounting" as const, label: userCopy.settings.accounting, icon: CircleDollarSign },
-        { id: "dataCleanup" as const, label: userCopy.settings.dataCleanup, icon: Trash2 },
+        { id: "accounting" as const, label: userCopy.settings.accounting, icon: Coins },
+        { id: "dataCleanup" as const, label: userCopy.settings.dataCleanup, icon: Archive },
       ] as const,
     [],
   );
@@ -129,7 +129,7 @@ export function SettingsShell({ children, initialSection = "account" }: Settings
       <div className="min-w-0 flex-1 space-y-5">
         <header className="space-y-1">
           <div className="flex items-center gap-2">
-            <Settings2 className="size-5 text-primary" />
+            <Settings className="size-5 text-primary" />
             <h2 className="text-2xl font-semibold tracking-tight">{userCopy.settings.title}</h2>
           </div>
           <motion.p

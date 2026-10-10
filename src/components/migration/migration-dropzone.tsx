@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { FileSpreadsheet, FileText, FolderArchive, UploadCloud } from "lucide-react";
+import { FileSpreadsheet, FileText, FolderArchive, CloudUpload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { userCopy } from "@/lib/user-copy";
@@ -56,17 +56,17 @@ export function MigrationDropzone({ onFiles }: { onFiles: (files: File[]) => voi
         className={cn(
           "group relative flex min-h-[260px] w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed bg-card p-10 text-center transition-colors",
           dragging
-            ? "border-emerald-500 bg-emerald-500/5"
-            : "border-border hover:border-emerald-500/60 hover:bg-muted/40",
+            ? "border-success bg-success-subtle"
+            : "border-border hover:border-success-border hover:bg-muted/40",
         )}
       >
         <span
           className={cn(
-            "flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 transition-transform",
+            "flex size-14 items-center justify-center rounded-2xl bg-success-subtle text-success-on-subtle transition-transform",
             dragging && "scale-110",
           )}
         >
-          <UploadCloud className="size-7" />
+          <CloudUpload className="size-7" />
         </span>
         <div className="flex flex-col gap-1">
           <span className="text-base font-medium">

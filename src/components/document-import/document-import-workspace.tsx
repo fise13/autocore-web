@@ -56,7 +56,7 @@ export function DocumentImportWorkspace({ jobId }: DocumentImportWorkspaceProps)
           {userCopy.documentImport.title}
         </Link>
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold tracking-tight">{title}</h1>
+          <h2 className="truncate text-base font-semibold tracking-tight">{title}</h2>
         </div>
       </div>
 

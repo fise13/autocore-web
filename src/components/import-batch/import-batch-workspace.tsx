@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   Check,
   FileUp,
-  Loader2,
+  LoaderCircle,
   RefreshCw,
   Smartphone,
   Trash2,
@@ -239,9 +239,9 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
           <ArrowLeft className="size-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold tracking-tight">
+          <h2 className="truncate text-lg font-semibold tracking-tight">
             {batch.title || userCopy.importBatch.motorsFallback}
-          </h1>
+          </h2>
           <p className="text-xs text-muted-foreground">
             {userCopy.importBatch.filesRowsSelected(batch.counts.files, batch.counts.rows, selectedCount)}
             {batch.aiStatus === "processing" ? userCopy.importBatch.aiWorking : null}
@@ -277,7 +277,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
             </Button>
           ) : (
             <Button type="button" size="sm" disabled={!canCommit || busy} onClick={() => void commit()}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
               {userCopy.importBatch.importSelected(selectedCount || "")}
             </Button>
           )}
@@ -292,7 +292,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
 
       <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[220px_1fr]">
         <aside className="border-b border-border/80 p-3 lg:border-b-0 lg:border-r">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
             {userCopy.importBatch.files}
           </p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
@@ -312,14 +312,14 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                       className="aspect-video w-full rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-[10px] text-muted-foreground">
+                    <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-micro text-muted-foreground">
                       {file.kind}
                     </div>
                   )}
-                  <p className="truncate text-[11px] font-medium">{file.fileName || file.kind}</p>
-                  <p className="text-[10px] text-muted-foreground">{file.status}</p>
+                  <p className="truncate text-micro font-medium">{file.fileName || file.kind}</p>
+                  <p className="text-micro text-muted-foreground">{file.status}</p>
                   {file.error ? (
-                    <p className="text-[10px] text-destructive line-clamp-2">{file.error}</p>
+                    <p className="text-micro text-destructive line-clamp-2">{file.error}</p>
                   ) : null}
                 </div>
               ))
@@ -339,7 +339,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                   disabled={busy}
                   onClick={() => void retryProcessing()}
                 >
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  {busy ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   {userCopy.importBatch.retryParse}
                 </Button>
               ) : null}
@@ -368,7 +368,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
             <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
               {batch.aiStatus === "processing" ? (
                 <>
-                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
                   <p className="text-sm font-medium">{userCopy.importBatch.aiParsing}</p>
                 </>
               ) : (
@@ -436,7 +436,7 @@ function ReviewRow({
       className={cn(
         "border-b last:border-0",
         !row.selected && "opacity-50",
-        low && "bg-amber-500/5",
+        low && "bg-warning-subtle",
       )}
     >
       <td className="px-3 py-2">

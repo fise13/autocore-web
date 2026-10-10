@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { AlertTriangle, BarChart3, Clock, Package, TrendingUp } from "lucide-react";
+import { TriangleAlert, ChartColumn, Clock, Package, TrendingUp } from "lucide-react";
 
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { McModuleHeader } from "@/components/overview/mc-module-header";
@@ -26,11 +26,11 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
 }: InventoryAnalyticsModuleProps) {
   const hasSales = analytics.motorSaleCount > 0;
   const staleTone =
-    analytics.staleMotorCount > 0 ? "text-amber-500 dark:text-amber-400" : "text-emerald-500 dark:text-emerald-400";
+    analytics.staleMotorCount > 0 ? "text-warning-on-subtle" : "text-success-on-subtle";
 
   return (
     <article className="mc-module-card">
-      <McModuleHeader icon={BarChart3} title={copy.title} href="/motors" accent="green" />
+      <McModuleHeader icon={ChartColumn} title={copy.title} href="/motors" accent="green" />
       <div className="mc-module-body space-y-3.5">
         {isLoading ? (
           <AnalyticsSkeleton />
@@ -52,10 +52,10 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
                     ? copy.avgDaysHintSold(analytics.soldCount)
                     : copy.avgDaysHintEmpty
                 }
-                tone="text-blue-500 dark:text-blue-400"
+                tone="text-primary-on-subtle"
               />
               <MetricTile
-                icon={AlertTriangle}
+                icon={TriangleAlert}
                 label={copy.staleLabel}
                 value={String(analytics.staleMotorCount)}
                 hint={copy.staleHint}
@@ -121,24 +121,17 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
       className={cn(
         "relative overflow-hidden rounded-xl border p-3.5",
         hasRevenue
-          ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background/40 to-background/20"
+          ? "border-success-border bg-success-subtle"
           : "border-border/50 bg-background/30",
       )}
     >
-      {hasRevenue ? (
-        <div
-          className="pointer-events-none absolute -top-8 -right-8 size-24 rounded-full bg-emerald-500/10 blur-2xl"
-          aria-hidden
-        />
-      ) : null}
-
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingUp className="size-3.5 text-emerald-500" aria-hidden />
+            <TrendingUp className="size-3.5 text-success-on-subtle" aria-hidden />
             <span>{copy.revenueLabel}</span>
           </div>
-          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
+          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-success-on-subtle">
             {hasRevenue ? (
               <AnimatedNumber
                 value={analytics.motorSaleRevenue}
@@ -151,12 +144,12 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-micro font-semibold text-muted-foreground">
             {copy.salesCount}
           </p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums">{analytics.motorSaleCount}</p>
           {analytics.motorSaleAvgAmount > 0 ? (
-            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+            <p className="mt-0.5 text-micro tabular-nums text-muted-foreground">
               {copy.avgCheckPrefix} {"$" + analytics.motorSaleAvgAmount.toLocaleString(numberLocaleTag())}
             </p>
           ) : null}
@@ -186,7 +179,7 @@ function MetricTile({
         <span className="leading-tight">{label}</span>
       </div>
       <p className={cn("text-xl font-semibold tabular-nums tracking-tight", tone)}>{value}</p>
-      <p className="text-[10px] leading-snug text-muted-foreground">{hint}</p>
+      <p className="text-micro leading-snug text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -218,27 +211,27 @@ function InventoryHealthBar({
         <>
           <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/80">
             <div
-              className="h-full bg-emerald-500/75 transition-all duration-500"
+              className="h-full bg-success transition-all duration-500"
               style={{ width: `${freshShare}%` }}
               title={`${copy.inStock}: ${fresh}`}
             />
             <div
               className={cn(
                 "h-full transition-all duration-500",
-                stale > 0 ? "bg-amber-500/80" : "bg-transparent",
+                stale > 0 ? "bg-warning" : "bg-transparent",
               )}
               style={{ width: `${staleShare}%` }}
               title={`${copy.staleShort}: ${stale}`}
             />
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-micro text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-emerald-500/75" aria-hidden />
+              <span className="size-2 rounded-full bg-success" aria-hidden />
               {copy.inStock} · {fresh}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-amber-500/80" aria-hidden />
+              <span className="size-2 rounded-full bg-warning" aria-hidden />
               {copy.staleShort} · {stale}
               {` (${staleShare}%)`}
             </span>
@@ -275,13 +268,13 @@ function RankPanel({
         <div className="space-y-1.5">
           {items.map((item, index) => (
             <div key={item.label} className="mc-list-row flex items-center gap-2.5 py-2">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-micro font-semibold tabular-nums text-muted-foreground">
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-medium">{item.label}</p>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-primary">
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-micro font-medium tabular-nums text-primary">
                     {item.count}
                   </span>
                 </div>

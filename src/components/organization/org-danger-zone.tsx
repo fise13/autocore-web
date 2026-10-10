@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Loader2, LogOut, Trash2 } from "lucide-react";
+import { TriangleAlert, LoaderCircle, LogOut, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -181,7 +181,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base text-destructive">
           <span className="flex size-7 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/10">
-            <AlertTriangle className="size-3.5" />
+            <TriangleAlert className="size-3.5" />
           </span>
           {userCopy.organization.danger.title}
         </CardTitle>
@@ -248,7 +248,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
                 onClick={() => void handleLeave()}
                 disabled={busy}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.leaveAction}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : userCopy.organization.danger.leaveAction}
               </Button>
             )}
           </DialogFooter>
@@ -284,7 +284,7 @@ export function OrgDangerZone({ companyId, companyName, isOwner }: OrgDangerZone
                 className="bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
                 disabled={busy || confirmName.trim() !== companyName}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.danger.deleteForever}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : userCopy.organization.danger.deleteForever}
               </Button>
             </DialogFooter>
           </form>

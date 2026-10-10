@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EllipsisIcon, UsersIcon } from "lucide-react";
+import { Ellipsis, Users } from "lucide-react";
 
 import { UserAvatar } from "@/components/account/user-avatar";
 import { EmployeeProfileSheet } from "@/components/employees/employee-profile-sheet";
@@ -79,7 +79,7 @@ export function TeamOnDutyList({
   if (teammates.length === 0) {
     return (
       <EmptyState
-        icon={UsersIcon}
+        icon={Users}
         title={userCopy.team.onDutyEmptyTitle}
         description={userCopy.team.onDutyEmptyDescription}
         className="m-4 border-none bg-transparent py-8"
@@ -128,7 +128,7 @@ export function TeamOnDutyList({
                 />
                 <div className="min-w-0 flex-1 pr-1">
                   <p className="truncate text-sm font-medium leading-snug">{employee.fullName}</p>
-                  <p className="mt-0.5 flex items-center gap-2 text-[11px] leading-snug text-muted-foreground">
+                  <p className="mt-0.5 flex items-center gap-2 text-micro leading-snug text-muted-foreground">
                     <span className="flex shrink-0 items-center gap-1">
                       <StatusIndicator color={online ? "emerald" : "amber"} pulse={online} />
                       {online ? userCopy.team.online : userCopy.team.offline}
@@ -150,7 +150,7 @@ export function TeamOnDutyList({
                       />
                     }
                   >
-                    <EllipsisIcon />
+                    <Ellipsis />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-52">
                     <DropdownMenuGroup>

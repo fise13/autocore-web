@@ -34,9 +34,9 @@ export function MyEarningsHero({ summary, className }: MyEarningsHeroProps) {
           </div>
         ) : null}
       </div>
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+      <div className="rounded-lg border border-warning-border bg-warning-subtle p-4">
         <p className="text-sm text-muted-foreground">{userCopy.myEarnings.heroPending}</p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-300">
+        <p className="mt-1 text-2xl font-semibold tabular-nums text-warning-on-subtle">
           <McAnimatedValue value={summary.pending} format="currency" />
         </p>
       </div>

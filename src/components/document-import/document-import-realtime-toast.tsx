@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ImageIcon, Smartphone, X } from "lucide-react";
+import { Image, Smartphone, X } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { userCopy } from "@/lib/user-copy";
 
@@ -40,7 +40,7 @@ function DocumentImportToastCard({
           <img src={preview} alt="" className="size-full object-cover" />
         ) : (
           <div className="flex size-full items-center justify-center text-muted-foreground">
-            {isImage ? <ImageIcon className="size-5" aria-hidden /> : <Smartphone className="size-5" aria-hidden />}
+            {isImage ? <Image className="size-5" aria-hidden /> : <Smartphone className="size-5" aria-hidden />}
           </div>
         )}
       </div>
@@ -54,7 +54,7 @@ function DocumentImportToastCard({
             onOpen();
             sonnerToast.dismiss(toastId);
           }}
-          className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3.5 text-xs font-semibold text-white transition hover:bg-sky-600/90 dark:bg-sky-500"
+          className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover"
         >
           {userCopy.documentImport.open}
         </button>
