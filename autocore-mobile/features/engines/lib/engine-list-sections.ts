@@ -73,3 +73,33 @@ export function groupEngineRowsIntoSections(
   // A heading with nothing under it is a filter artefact, not a group.
   return sections.filter((section) => section.units.length > 0);
 }
+
+/** Rows the iOS list mounts up front, and how many more each time its end comes into view. */
+export const ENGINE_LIST_PAGE = 60;
+
+/**
+ * Keep only the first `limit` units, cutting a section short where needed.
+ *
+ * The SwiftUI list is lazy natively, but React still builds every child it is
+ * handed: 1,000+ engines meant 1,000+ rows — each a context menu, swipe action
+ * and thumbnail load — created the moment Engines opened, which froze the app.
+ * The screen hands over one page and asks for the next when the end appears.
+ */
+export function limitEngineSections(
+  sections: readonly EngineListSection[],
+  limit: number,
+): { sections: EngineListSection[]; hasMore: boolean } {
+  const out: EngineListSection[] = [];
+  let left = Math.max(0, limit);
+  for (const section of sections) {
+    if (left === 0) return { sections: out, hasMore: true };
+    if (section.units.length <= left) {
+      out.push(section);
+      left -= section.units.length;
+    } else {
+      out.push({ ...section, units: section.units.slice(0, left) });
+      return { sections: out, hasMore: true };
+    }
+  }
+  return { sections: out, hasMore: false };
+}

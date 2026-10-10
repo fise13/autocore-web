@@ -278,7 +278,10 @@ export function createMotorRepository() {
       const groupQuery = query(
         collectionGroup(db, 'motors'),
         where('companyId', '==', companyId),
-        limit(500),
+        // Was 500: a yard of 1,100+ engines silently lost every motor past the
+        // 500th. ponytail: one company-wide listener; page by status if a yard
+        // ever outgrows this.
+        limit(5000),
       );
       const unsubGroup = listenQuery(
         groupQuery,

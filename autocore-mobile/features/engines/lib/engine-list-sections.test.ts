@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { groupEngineRowsIntoSections, type EngineRow } from './engine-list-sections';
+import {
+  groupEngineRowsIntoSections,
+  limitEngineSections,
+  type EngineRow,
+} from './engine-list-sections';
 
 function unit(id: string, lane: 'incoming' | 'yard' = 'yard'): EngineRow {
   return {
@@ -83,5 +87,33 @@ describe('groupEngineRowsIntoSections', () => {
       unit('b'),
     ]);
     assert.equal(new Set(sections.map((section) => section.key)).size, sections.length);
+  });
+});
+
+describe('limitEngineSections', () => {
+  const sections = groupEngineRowsIntoSections([
+    header('a'),
+    unit('a1'),
+    unit('a2'),
+    header('b'),
+    unit('b1'),
+    unit('b2'),
+    unit('b3'),
+  ]);
+
+  it('cuts a section short at the limit and says more remain', () => {
+    const page = limitEngineSections(sections, 3);
+    assert.deepEqual(
+      page.sections.map((section) => section.units.map((u) => u.motor.id)),
+      [['a1', 'a2'], ['b1']],
+    );
+    assert.equal(page.hasMore, true);
+  });
+
+  it('returns everything when the limit covers it', () => {
+    const page = limitEngineSections(sections, 5);
+    assert.equal(page.sections.length, 2);
+    assert.equal(page.hasMore, false);
+    assert.equal(limitEngineSections(sections, 2).sections.length, 1);
   });
 });

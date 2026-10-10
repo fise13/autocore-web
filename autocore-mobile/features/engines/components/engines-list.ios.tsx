@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import {
   Button,
@@ -34,6 +34,7 @@ import {
   listSectionMargins,
   listStyle,
   monospacedDigit,
+  onAppear,
   onTapGesture,
   padding,
   onSubmit,
@@ -60,7 +61,12 @@ import type { MotorEntity } from '@/types/motor';
 import { ENGINE_THUMB_SIZE } from './engine-thumbnail';
 import type { EngineListHeader, EnginesListProps } from './engines-list.types';
 import { eng } from '../layout';
-import { groupEngineRowsIntoSections, type EngineUnitRow } from '../lib/engine-list-sections';
+import {
+  ENGINE_LIST_PAGE,
+  groupEngineRowsIntoSections,
+  limitEngineSections,
+  type EngineUnitRow,
+} from '../lib/engine-list-sections';
 import { engineQualityLabel } from '../lib/engine-quality';
 import {
   engineRowActions,
@@ -452,6 +458,16 @@ export function EnginesList({
   const { can } = useSession();
   const sections = useMemo(() => groupEngineRowsIntoSections(rows), [rows]);
 
+  // One page at a time; a new search, lane or grade starts again from the top page.
+  const [limit, setLimit] = useState(ENGINE_LIST_PAGE);
+  const filterKey = `${header.lane}|${header.quality}|${header.query}`;
+  const [pagedFor, setPagedFor] = useState(filterKey);
+  if (pagedFor !== filterKey) {
+    setPagedFor(filterKey);
+    setLimit(ENGINE_LIST_PAGE);
+  }
+  const page = useMemo(() => limitEngineSections(sections, limit), [sections, limit]);
+
   const permissions = useMemo(
     () => ({
       canInventoryEdit: can('inventory_edit'),
@@ -565,7 +581,7 @@ export function EnginesList({
           </Section>
         ) : null}
 
-        {sections.map((section) => (
+        {page.sections.map((section) => (
           <Section
             key={section.key}
             header={
@@ -615,6 +631,26 @@ export function EnginesList({
             })}
           </Section>
         ))}
+
+        {/* Lazy native rows: this one is only created when scrolled near, and
+            asks for the next page. Keyed by the limit so each page gets a
+            fresh onAppear instead of SwiftUI reusing the fired one. */}
+        {page.hasMore ? (
+          <Section key={`more-${limit}`}>
+            <HStack
+              modifiers={[
+                frame({ height: 44 }),
+                listRowBackground('transparent'),
+                listRowSeparator('hidden'),
+                onAppear(() => setLimit((current) => current + ENGINE_LIST_PAGE)),
+              ]}
+            >
+              <Spacer />
+              <ProgressView />
+              <Spacer />
+            </HStack>
+          </Section>
+        ) : null}
 
         {/* The floating tab bar sits over the list, and SwiftUI exposes no
             `contentMargins` binding here — so the inset is a last row made
