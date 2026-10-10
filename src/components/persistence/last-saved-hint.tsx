@@ -56,7 +56,7 @@ export function LastSavedHint({
   return (
     <p
       className={cn(
-        "text-[11px] text-muted-foreground",
+        "text-micro text-muted-foreground",
         dirty && "text-warning-on-subtle",
         saving && "text-primary-on-subtle",
         className,

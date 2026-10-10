@@ -94,7 +94,7 @@ export function CompanySettingsPanel({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 {userCopy.company.companyNameLabel}
               </p>
               <p className="mt-1 text-lg font-semibold tracking-tight">

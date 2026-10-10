@@ -119,11 +119,11 @@ function MotorSaleSummary({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {serialCode ? (
-              <Badge variant="secondary" className="font-mono text-[11px]">
+              <Badge variant="secondary" className="font-mono text-micro">
                 {serialCode}
               </Badge>
             ) : null}
-            <span className="text-xs font-medium tracking-wide text-primary uppercase">{userCopy.motors.saleDocuments.eyebrow}</span>
+            <span className="text-xs font-medium text-primary">{userCopy.motors.saleDocuments.eyebrow}</span>
           </div>
           <p className="mt-1.5 text-sm font-semibold tracking-tight">{motorLabel}</p>
           {amount != null || saleDate ? (
@@ -293,7 +293,7 @@ export function MotorSaleDocumentsPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <ShieldCheck className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.warranty}</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">{userCopy.motors.saleDocuments.warranty}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (
@@ -330,7 +330,7 @@ export function MotorSaleDocumentsPanel({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 px-0.5">
             <Receipt className="size-3.5 text-primary" aria-hidden />
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{userCopy.motors.saleDocuments.invoice}</h3>
+            <h3 className="text-xs font-semibold text-muted-foreground">{userCopy.motors.saleDocuments.invoice}</h3>
           </div>
           <div className="flex flex-col gap-2">
             {isLoading ? (

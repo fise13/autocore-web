@@ -903,7 +903,7 @@ function StatCard({ label, value, hint }: { label: string; value: number; hint: 
     <div className="rounded-lg border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
+      <p className="mt-0.5 text-micro text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -972,7 +972,7 @@ function SheetMappingList({
                   <p className="truncate font-medium">{mapping.config.sheetName}</p>
                   <p className="text-xs text-muted-foreground">{rowHint}</p>
                   {hint ? (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{hint}</p>
+                    <p className="mt-0.5 line-clamp-2 text-micro text-muted-foreground">{hint}</p>
                   ) : null}
                 </div>
                 <ImportTypeBadge type={mapping.config.importType} />
@@ -1017,7 +1017,7 @@ function ImportTypeBadge({ type }: { type: SheetImportType }) {
         : "bg-muted text-muted-foreground";
 
   return (
-    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", className)}>
+    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-micro font-medium", className)}>
       {label}
     </span>
   );
@@ -1051,7 +1051,7 @@ function SpecificSheetsPreview({
                   <p className="truncate font-medium">{sheet.sheetName}</p>
                   <p className="text-xs text-muted-foreground">→ {sheet.categoryName}</p>
                   {columns.length > 0 ? (
-                    <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                    <p className="mt-1 line-clamp-2 text-micro text-muted-foreground">
                       {userCopy.motors.importWizard.columns(columns.join(", "))}
                     </p>
                   ) : null}

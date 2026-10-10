@@ -144,12 +144,12 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-micro font-semibold text-muted-foreground">
             {copy.salesCount}
           </p>
           <p className="mt-0.5 text-lg font-semibold tabular-nums">{analytics.motorSaleCount}</p>
           {analytics.motorSaleAvgAmount > 0 ? (
-            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+            <p className="mt-0.5 text-micro tabular-nums text-muted-foreground">
               {copy.avgCheckPrefix} {"$" + analytics.motorSaleAvgAmount.toLocaleString(numberLocaleTag())}
             </p>
           ) : null}
@@ -179,7 +179,7 @@ function MetricTile({
         <span className="leading-tight">{label}</span>
       </div>
       <p className={cn("text-xl font-semibold tabular-nums tracking-tight", tone)}>{value}</p>
-      <p className="text-[10px] leading-snug text-muted-foreground">{hint}</p>
+      <p className="text-micro leading-snug text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function InventoryHealthBar({
             />
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-micro text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-success" aria-hidden />
               {copy.inStock} · {fresh}
@@ -268,13 +268,13 @@ function RankPanel({
         <div className="space-y-1.5">
           {items.map((item, index) => (
             <div key={item.label} className="mc-list-row flex items-center gap-2.5 py-2">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-micro font-semibold tabular-nums text-muted-foreground">
                 {index + 1}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-medium">{item.label}</p>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-primary">
+                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-micro font-medium tabular-nums text-primary">
                     {item.count}
                   </span>
                 </div>

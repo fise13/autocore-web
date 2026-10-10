@@ -86,10 +86,10 @@ function MobileImportIslandShell({
             {icon}
           </span>
           <span className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate text-[11px] font-semibold tracking-[-0.01em] text-foreground">
+            <span className="truncate text-micro font-semibold tracking-[-0.01em] text-foreground">
               {title}
             </span>
-            <span className="truncate text-[10px] text-muted-foreground">{subtitle}</span>
+            <span className="truncate text-micro text-muted-foreground">{subtitle}</span>
           </span>
         </button>
         <button

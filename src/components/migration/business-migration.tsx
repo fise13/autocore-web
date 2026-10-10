@@ -145,7 +145,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               <motion.div key="idle" {...fade} className="flex flex-col">
                 {isOnboarding ? (
                   <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 pb-6 pt-8 text-center">
-                    <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-success-border bg-success-subtle px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-success-on-subtle">
+                    <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-success-border bg-success-subtle px-3 py-1 text-micro font-medium text-success-on-subtle">
                       <Sparkles className="size-3.5" aria-hidden />
                       {mCopy.finalStep}
                     </div>

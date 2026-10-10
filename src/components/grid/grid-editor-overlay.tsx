@@ -374,7 +374,7 @@ export function GridEditorOverlay({
                   <li key={result.entry.id}>
                     <button
                       type="button"
-                      className={`flex min-h-9 w-full rounded-md px-3 py-1.5 text-left text-[13px] leading-5 ${
+                      className={`flex min-h-9 w-full rounded-md px-3 py-1.5 text-left text-grid leading-5 ${
                         index === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted/60"
                       }`}
                       onMouseEnter={() => {
@@ -393,7 +393,7 @@ export function GridEditorOverlay({
               </ul>
             )}
             {showSuggestionFooter ? (
-              <div className="border-t border-border/70 px-3 py-1.5 text-[11px] text-muted-foreground">
+              <div className="border-t border-border/70 px-3 py-1.5 text-micro text-muted-foreground">
                 {userCopy.grid.editorHint}
               </div>
             ) : null}
@@ -411,7 +411,7 @@ export function GridEditorOverlay({
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-1 text-[13px] leading-5 whitespace-pre-wrap break-words"
+            className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-1 text-grid leading-5 whitespace-pre-wrap break-words"
           >
             <span className="invisible">{value}</span>
             {autocompleteSuffix ? (
@@ -436,7 +436,7 @@ export function GridEditorOverlay({
             }}
             onBlur={scheduleBlurCommit}
             onKeyDown={handleKeyDown}
-            className="relative z-10 h-full w-full resize-none bg-card px-2 py-1 text-[13px] leading-5 text-foreground caret-foreground outline-none"
+            className="relative z-10 h-full w-full resize-none bg-card px-2 py-1 text-grid leading-5 text-foreground caret-foreground outline-none"
             style={{ minHeight: frame.height + 1 }}
           />
         </div>

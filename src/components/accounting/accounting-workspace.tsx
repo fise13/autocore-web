@@ -390,7 +390,7 @@ export function AccountingWorkspace() {
                 <CardContent className="space-y-4 pt-4">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border bg-success-subtle px-3 py-2">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="text-micro font-medium text-muted-foreground">
                         {userCopy.accounting.workOrderFinance.income}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums text-success-on-subtle">
@@ -398,7 +398,7 @@ export function AccountingWorkspace() {
                       </p>
                     </div>
                     <div className="rounded-lg border bg-danger-subtle px-3 py-2">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="text-micro font-medium text-muted-foreground">
                         {userCopy.accounting.workOrderFinance.expense}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums text-danger-on-subtle">
@@ -406,7 +406,7 @@ export function AccountingWorkspace() {
                       </p>
                     </div>
                     <div className="rounded-lg border bg-muted/30 px-3 py-2">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="text-micro font-medium text-muted-foreground">
                         {userCopy.accounting.total}
                       </p>
                       <p className="mt-0.5 text-sm font-semibold tabular-nums">

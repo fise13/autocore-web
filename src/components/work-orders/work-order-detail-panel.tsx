@@ -316,7 +316,7 @@ export function WorkOrderDetailPanel({
               <Banknote className="size-3.5" />
               {labels.tabFinance}
               {operations.length > 0 ? (
-                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                   {operations.length}
                 </span>
               ) : null}
@@ -325,7 +325,7 @@ export function WorkOrderDetailPanel({
               <FileText className="size-3.5" />
               {labels.tabDocuments}
               {documents.length > 0 ? (
-                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                   {documents.length}
                 </span>
               ) : null}

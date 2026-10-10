@@ -45,7 +45,7 @@ export function MetricCard({
       style={{ animationDelay: motionStagger(index) }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+        <p className="text-micro font-medium text-muted-foreground">{label}</p>
         {Icon ? <Icon className={cn("size-3.5 opacity-70", toneClasses[tone])} /> : null}
       </div>
       <p className={cn("text-xl font-semibold tabular-nums tracking-tight", toneClasses[tone])}>

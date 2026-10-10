@@ -39,7 +39,7 @@ export function NavUser() {
 							<div className="max-w-full overflow-hidden overflow-ellipsis whitespace-nowrap text-muted-foreground text-xs">
 								{user.email}
 							</div>
-							<div className="mt-0.5 text-[10px] text-muted-foreground">
+							<div className="mt-0.5 text-micro text-muted-foreground">
 								Store owner
 							</div>
 						</div>

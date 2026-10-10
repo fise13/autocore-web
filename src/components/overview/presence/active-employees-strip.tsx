@@ -46,7 +46,7 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
             <div
               key={employee.uid}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition-colors",
+                "flex items-center gap-1.5 rounded-full border px-2 py-1 text-micro transition-colors",
                 onlineNow
                   ? "border-success-border bg-success-subtle"
                   : "border-border/50 bg-background/40",
@@ -65,7 +65,7 @@ export const ActiveEmployeesStrip = memo(function ActiveEmployeesStrip({
                 ) : null}
               </span>
               <span className="max-w-[72px] truncate font-medium">{employee.fullName || employee.email}</span>
-              <span className="hidden text-[10px] text-muted-foreground sm:inline">{formatRole(employee.role)}</span>
+              <span className="hidden text-micro text-muted-foreground sm:inline">{formatRole(employee.role)}</span>
             </div>
           );
         })}

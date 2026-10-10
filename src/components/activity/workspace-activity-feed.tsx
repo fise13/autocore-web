@@ -71,7 +71,7 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
             </span>
             <div className="min-w-0 flex-1 flex flex-col gap-1">
               <p className="line-clamp-2 text-pretty text-xs leading-snug">{title}</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">{when}</p>
+              <p className="text-micro tabular-nums text-muted-foreground">{when}</p>
             </div>
           </li>
         );

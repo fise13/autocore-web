@@ -66,7 +66,7 @@ export const ActivityItem = memo(function ActivityItem({ entry, isNew }: Activit
     >
       <div className="flex gap-2.5">
         <div className="relative shrink-0">
-          <div className="flex size-7 items-center justify-center rounded-full border border-border/50 bg-muted/50 text-[10px] font-semibold">
+          <div className="flex size-7 items-center justify-center rounded-full border border-border/50 bg-muted/50 text-micro font-semibold">
             {initials(actorName)}
           </div>
           <span
@@ -85,13 +85,13 @@ export const ActivityItem = memo(function ActivityItem({ entry, isNew }: Activit
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
-                "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
+                "inline-flex items-center rounded-full border px-1.5 py-0.5 text-micro font-medium",
                 moduleChip[entryModule] ?? moduleChip.system,
               )}
             >
               {moduleLabel(entryModule)}
             </span>
-            <time className="text-[10px] text-muted-foreground" dateTime={entry.timestamp?.toISOString()}>
+            <time className="text-micro text-muted-foreground" dateTime={entry.timestamp?.toISOString()}>
               {when}
             </time>
           </div>

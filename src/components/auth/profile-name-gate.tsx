@@ -141,7 +141,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                       <div className="flex flex-col items-center gap-4 text-center">
                         <AppLogo size={32} className="h-8 w-auto" />
                         <div className="flex flex-col gap-1.5">
-                          <div className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-border/60 bg-background px-2.5 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                          <div className="inline-flex items-center justify-center gap-1.5 self-center rounded-full border border-border/60 bg-background px-2.5 py-1 text-micro font-medium text-muted-foreground">
                             <Sparkles className="size-3 text-primary" />
                             {userCopy.auth.profileName.step1of2}
                           </div>

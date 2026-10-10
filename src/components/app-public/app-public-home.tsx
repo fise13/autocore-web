@@ -24,7 +24,7 @@ export function AppPublicHome() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-6 py-16">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="text-sm font-medium text-muted-foreground">
         AutoCore
       </p>
       <h1 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">

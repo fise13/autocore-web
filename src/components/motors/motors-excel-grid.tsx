@@ -1400,7 +1400,7 @@ export function MotorsExcelGrid({
               ? "4px 0 10px rgba(0, 0, 0, 0.28)"
               : undefined,
         }}
-        buttonClassName="uppercase tracking-[0.06em]"
+        buttonClassName=""
         onSelectColumn={() => {
           if (!isEditableColumn(colIdx, layoutColumns)) return;
           setSelection(selectWholeColumnActiveTop(colIdx, rows.length - 1));
@@ -1442,7 +1442,7 @@ export function MotorsExcelGrid({
       <div
         key={`${row.rowId}-${column.id}`}
         className={cn(
-          "absolute flex border-r border-b px-2.5 text-[13px] leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+          "absolute flex border-r border-b px-2.5 text-grid leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
           motorGridCellClass(column.id),
           column.align === "center" ? "items-center justify-center" : "items-center justify-start",
           !isPinned && selected && "bg-grid-selection",

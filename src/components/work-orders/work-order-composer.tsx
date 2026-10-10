@@ -585,7 +585,7 @@ export function WorkOrderComposer({
           <FadeIn key="composer-step-1" className="mx-auto max-w-2xl space-y-6">
             {clientPrefSuggestions.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-micro font-medium text-muted-foreground">
                   {c.clientPrefsHint}
                 </p>
                 <KnowledgeSuggestionChips
@@ -769,7 +769,7 @@ export function WorkOrderComposer({
             ) : null}
             {companionSuggestions.length > 0 ? (
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-micro font-medium text-muted-foreground">
                   {c.hints}
                 </p>
                 <KnowledgeSuggestionChips
@@ -785,7 +785,7 @@ export function WorkOrderComposer({
                   <Wrench className="size-3.5" />
                   {c.tabLabor}
                   {form.laborLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {form.laborLines.length}
                     </span>
                   ) : null}
@@ -794,7 +794,7 @@ export function WorkOrderComposer({
                   <Package className="size-3.5" />
                   {c.tabParts}
                   {regularPartLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {regularPartLines.length}
                     </span>
                   ) : null}
@@ -803,7 +803,7 @@ export function WorkOrderComposer({
                   <Cog className="size-3.5" />
                   {c.tabMotors}
                   {form.motorLines.length > 0 ? (
-                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                    <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                       {form.motorLines.length}
                     </span>
                   ) : null}
@@ -813,7 +813,7 @@ export function WorkOrderComposer({
                     <Package className="size-3.5" />
                     {c.tabCatalog}
                     {specificPartLines.length > 0 ? (
-                      <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                      <span className="rounded-full bg-primary/10 px-1.5 text-micro text-primary">
                         {specificPartLines.length}
                       </span>
                     ) : null}
@@ -1313,7 +1313,7 @@ function Field({
           {required ? <span className="text-destructive"> *</span> : null}
         </Label>
         {hint ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/60">{hint}</span>
+          <span className="shrink-0 text-micro tabular-nums text-muted-foreground/60">{hint}</span>
         ) : null}
       </div>
       {children}
@@ -1411,7 +1411,7 @@ function SummaryCard({
 }) {
   return (
     <div className={cn("rounded-xl border bg-card p-4", className)}>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{title}</p>
       {children}
     </div>
   );

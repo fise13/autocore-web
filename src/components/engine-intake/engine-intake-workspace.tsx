@@ -154,7 +154,7 @@ function BayCard({
             <span
               key={label}
               className={cn(
-                "max-w-full truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                "max-w-full truncate rounded-md px-1.5 py-0.5 text-micro font-medium",
                 active
                   ? "bg-primary-on-subtle/12 text-primary-on-subtle"
                   : "bg-muted text-muted-foreground",
@@ -168,7 +168,7 @@ function BayCard({
 
       <div
         className={cn(
-          "flex items-center justify-between gap-2 pl-1 text-[11px]",
+          "flex items-center justify-between gap-2 pl-1 text-micro",
           active ? "text-primary-on-subtle/65" : "text-muted-foreground",
         )}
       >
@@ -309,7 +309,7 @@ export function EngineIntakeWorkspace() {
                     aria-selected={selected}
                     onClick={() => setFilter(option.value)}
                     className={cn(
-                      "flex-1 rounded-md px-1.5 py-1.5 text-[11px] font-medium transition-all duration-200",
+                      "flex-1 rounded-md px-1.5 py-1.5 text-micro font-medium transition-all duration-200",
                       selected
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground",

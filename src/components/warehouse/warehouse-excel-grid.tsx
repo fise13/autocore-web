@@ -1573,7 +1573,7 @@ export function WarehouseExcelGrid({
                         <div
                           key={`${row.rowId}-${column.id}`}
                           className={cn(
-                            "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+                            "absolute flex border-r border-b px-2 text-grid leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
                             gridCellAlignClass(column.align),
                             outOfStock && "bg-destructive/18 text-destructive",
                             selected && !outOfStock && "bg-grid-selection",
@@ -1585,7 +1585,7 @@ export function WarehouseExcelGrid({
                               "bg-primary/12 ring-2 ring-inset ring-primary/40",
                             lowStock && (colIdx === 5 || colIdx === 7) && "font-medium text-warning-on-subtle",
                             colIdx === 6 && !outOfStock && "text-muted-foreground",
-                            colIdx === 16 && "text-muted-foreground text-[11px]",
+                            colIdx === 16 && "text-muted-foreground text-micro",
                           )}
                           style={{
                             left: cell.x,

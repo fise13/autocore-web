@@ -56,7 +56,7 @@ function AccountMenuPanel({
         <div className="min-w-0 flex-1">
           {displayName ? <p className="truncate text-sm font-semibold">{displayName}</p> : null}
           <p className="truncate text-xs text-muted-foreground">{email || "—"}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-micro text-muted-foreground">
             {accountInfo?.label ?? "—"} · {formatRole(profileRole)}
           </p>
         </div>

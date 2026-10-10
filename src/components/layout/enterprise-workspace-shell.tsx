@@ -32,7 +32,7 @@ export function EnterpriseWorkspaceShell({
       <header className="flex flex-col gap-4 px-4 pb-5 pt-4 sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-micro font-semibold text-muted-foreground">
               AutoCore
             </p>
             <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{title}</h2>

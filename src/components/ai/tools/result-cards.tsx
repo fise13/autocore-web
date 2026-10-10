@@ -135,14 +135,14 @@ export function StockCard({ data }: { data: Ok<SearchInventoryOutput> }) {
           <span className="shrink-0 text-right">
             <span
               className={cn(
-                "block text-[13px] font-medium tabular-nums leading-tight",
+                "block text-grid font-medium tabular-nums leading-tight",
                 item.lowStock && "text-warning-on-subtle",
               )}
             >
               {formatQuantity(item.available, item.unit)}
             </span>
             {item.reserved > 0 ? (
-              <span className="block text-[11px] leading-tight text-muted-foreground tabular-nums">
+              <span className="block text-micro leading-tight text-muted-foreground tabular-nums">
                 {formatQuantity(item.onHand)} / −{formatQuantity(item.reserved)}
               </span>
             ) : null}
@@ -165,7 +165,7 @@ export function StockLocationCard({ data }: { data: Ok<FindStockLocationOutput> 
       {data.placements.map((placement) => (
         <ToolCardRow key={placement.locationId} href={placement.href}>
           <ToolCardLines title={placement.displayCode} subtitle={placement.warehouseId} />
-          <span className="shrink-0 text-[13px] font-medium tabular-nums">
+          <span className="shrink-0 text-grid font-medium tabular-nums">
             {formatQuantity(placement.quantity)}
           </span>
         </ToolCardRow>
@@ -192,7 +192,7 @@ export function WorkOrderListCard({ data }: { data: Ok<ListWorkOrdersOutput> }) 
             title={`#${order.number}${order.licensePlate ? ` · ${order.licensePlate}` : ""}`}
             subtitle={[order.clientName, order.vehicleLabel].filter(Boolean).join(" · ")}
           />
-          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
+          <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-micro leading-none text-muted-foreground">
             {order.statusLabel}
           </span>
         </ToolCardRow>
@@ -228,7 +228,7 @@ export function WorkOrderDetailCard({ data }: { data: Ok<GetWorkOrderOutput> }) 
           {order.partLines.map((line) => (
             <ToolCardRow key={line.id}>
               <ToolCardLines title={line.name} subtitle={line.sku} />
-              <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+              <span className="shrink-0 text-grid tabular-nums text-muted-foreground">
                 ×{line.quantity}
               </span>
             </ToolCardRow>
@@ -248,10 +248,10 @@ function Field({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
     <span className="min-w-0">
-      <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <span className="block truncate text-micro font-semibold text-muted-foreground">
         {label}
       </span>
-      <span className="block truncate text-[13px] leading-tight">{value}</span>
+      <span className="block truncate text-grid leading-tight">{value}</span>
     </span>
   );
 }
@@ -290,7 +290,7 @@ export function EngineCard({ data }: { data: Ok<SearchEnginesOutput> }) {
               .join(" · ")}
           />
           {engine.status ? (
-            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
+            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-micro leading-none text-muted-foreground">
               {engine.status}
             </span>
           ) : null}
@@ -532,7 +532,7 @@ export function LocationCard({ data }: { data: Ok<GetWarehouseLocationOutput> })
             title={item.title}
             subtitle={[item.sku ?? item.serialCode, item.subtitle].filter(Boolean).join(" · ")}
           />
-          <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+          <span className="shrink-0 text-grid tabular-nums text-muted-foreground">
             {formatQuantity(item.quantity)}
           </span>
         </ToolCardRow>
@@ -549,7 +549,7 @@ export function NavigateCard({ data }: { data: Ok<NavigateToOutput> }) {
       href={data.href}
       className={cn(
         "inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border border-border",
-        "bg-secondary px-3 text-[13px] font-medium transition-colors hover:bg-muted sm:min-h-9",
+        "bg-secondary px-3 text-grid font-medium transition-colors hover:bg-muted sm:min-h-9",
       )}
     >
       <span className="min-w-0 truncate">{data.label}</span>
@@ -590,7 +590,7 @@ export function RecallKnowledgeCard({ data }: { data: Ok<RecallCompanyKnowledgeO
               className="border-l-2 border-ai bg-background/50 py-2 pl-3 pr-2"
             >
               <p className="text-sm leading-snug">{item.title}</p>
-              <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+              <p className="mt-1 text-xs leading-snug text-muted-foreground">
                 {item.explanation} · {Math.round(item.confidence * 100)}%
               </p>
             </li>

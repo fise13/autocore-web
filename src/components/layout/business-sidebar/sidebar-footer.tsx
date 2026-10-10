@@ -129,7 +129,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
           >
             <X className="size-3.5" />
           </Button>
-          <p className="pr-6 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="pr-6 text-micro font-semibold text-muted-foreground">
             {announcement.badge}
           </p>
           <p className="mt-1.5 text-sm font-semibold leading-snug text-sidebar-foreground">

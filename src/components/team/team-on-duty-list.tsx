@@ -128,7 +128,7 @@ export function TeamOnDutyList({
                 />
                 <div className="min-w-0 flex-1 pr-1">
                   <p className="truncate text-sm font-medium leading-snug">{employee.fullName}</p>
-                  <p className="mt-0.5 flex items-center gap-2 text-[11px] leading-snug text-muted-foreground">
+                  <p className="mt-0.5 flex items-center gap-2 text-micro leading-snug text-muted-foreground">
                     <span className="flex shrink-0 items-center gap-1">
                       <StatusIndicator color={online ? "emerald" : "amber"} pulse={online} />
                       {online ? userCopy.team.online : userCopy.team.offline}

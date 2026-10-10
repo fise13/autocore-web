@@ -55,7 +55,7 @@ export function BillingIntervalToggle({
               {interval === "yearly" ? (
                 <span
                   className={cn(
-                    "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                    "rounded-full px-1.5 py-0.5 text-micro font-semibold",
                     active
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-success-subtle text-success-on-subtle",

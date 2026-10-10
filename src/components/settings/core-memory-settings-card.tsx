@@ -151,7 +151,7 @@ export function CoreMemorySettingsCard({ onStatus }: CoreMemorySettingsCardProps
               <p className="text-sm leading-snug">{memory.text}</p>
               <button
                 type="button"
-                className="shrink-0 cursor-pointer rounded-full px-2 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                className="shrink-0 cursor-pointer rounded-full px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
                 disabled={saving}
                 onClick={() => void forget(memory.id)}
               >
@@ -164,7 +164,7 @@ export function CoreMemorySettingsCard({ onStatus }: CoreMemorySettingsCardProps
 
       {canTeach ? (
         <div className="mt-4 rounded-xl bg-muted/40 p-3">
-          <label htmlFor={composerId} className="text-[11px] leading-none text-muted-foreground">
+          <label htmlFor={composerId} className="text-micro leading-none text-muted-foreground">
             {copy.composer}
           </label>
           <textarea

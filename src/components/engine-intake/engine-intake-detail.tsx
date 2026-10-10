@@ -570,7 +570,7 @@ export function EngineIntakeDetail({
                           </div>
                           {canVerify ? (
                             <div className="flex flex-col gap-1">
-                              <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+                              <p className="text-micro font-medium text-muted-foreground">
                                 {userCopy.engineIntake.setCategory}
                               </p>
                               <Select

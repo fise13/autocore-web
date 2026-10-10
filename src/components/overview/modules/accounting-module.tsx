@@ -78,7 +78,7 @@ export const AccountingModule = memo(function AccountingModule({
                     style={{ height: `${(day.expense / maxBar) * 100}%` }}
                   />
                 </div>
-                <span className="text-[10px] text-muted-foreground">{day.label}</span>
+                <span className="text-micro text-muted-foreground">{day.label}</span>
               </div>
             ))}
           </div>

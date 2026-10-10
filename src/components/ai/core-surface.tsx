@@ -47,7 +47,7 @@ export function CoreLockup({
         <ThinkingOrb size={orbSize} state="idle" decorative />
         <div className="min-w-0">
           <p className="font-heading text-sm font-medium leading-none">{name}</p>
-          <p className="mt-1 truncate text-[11px] leading-none text-muted-foreground">{status}</p>
+          <p className="mt-1 truncate text-micro leading-none text-muted-foreground">{status}</p>
         </div>
       </div>
       {action}

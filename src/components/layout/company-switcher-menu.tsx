@@ -42,9 +42,9 @@ export function CompanyAvatar({ companyId, name, size = "md" }: CompanyAvatarPro
       style={companyAvatarStyle(companyId)}
       className={cn(
         "flex shrink-0 items-center justify-center font-semibold leading-none text-white shadow-sm ring-1 ring-white/15",
-        size === "sm" && "size-8 rounded-lg text-[11px]",
+        size === "sm" && "size-8 rounded-lg text-micro",
         size === "md" && "size-8 rounded-lg text-xs",
-        size === "rail" && "size-9 rounded-[0.7rem] text-[11px] tracking-wide shadow-md ring-black/10",
+        size === "rail" && "size-9 rounded-[0.7rem] text-micro tracking-wide shadow-md ring-black/10",
       )}
     >
       {companyMonogramLabel(name)}
@@ -113,7 +113,7 @@ export function CompanySwitcherMenu({
         <AppLogo size={32} className="rounded-lg" alt={userCopy.appName} />
         <div className="min-w-0 flex-1 leading-none">
           <p className="truncate text-sm font-medium">{userCopy.appName}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{userCopy.layout.noCompanies}</p>
+          <p className="mt-1 text-micro text-muted-foreground">{userCopy.layout.noCompanies}</p>
         </div>
       </DropdownMenuItem>
     ) : (
@@ -121,7 +121,7 @@ export function CompanySwitcherMenu({
         <AppLogo size={32} className="rounded-lg" alt={userCopy.appName} />
         <div className="min-w-0 flex-1 leading-none">
           <p className="truncate text-sm font-medium">{userCopy.appName}</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">{userCopy.layout.noCompanies}</p>
+          <p className="mt-1 text-micro text-muted-foreground">{userCopy.layout.noCompanies}</p>
         </div>
       </div>
     )
@@ -136,7 +136,7 @@ export function CompanySwitcherMenu({
             <CompanyPlanLabel
               companyId={company.companyId}
               isActiveCompany={active}
-              className="mt-1 text-[11px]"
+              className="mt-1 text-micro"
             />
           </div>
           {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
@@ -218,7 +218,7 @@ export function CompanySwitcherMenu({
     variant === "dropdown" ? (
       <>
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="px-2 pt-1.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          <DropdownMenuLabel className="px-2 pt-1.5 pb-2 text-micro font-medium text-muted-foreground">
             {userCopy.layout.companies}
             {isSyncing && companies.length > 0 ? (
               <span className="ml-1 normal-case tracking-normal text-muted-foreground/70">
@@ -236,7 +236,7 @@ export function CompanySwitcherMenu({
       </>
     ) : (
       <>
-        <p className="px-2 pt-1.5 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        <p className="px-2 pt-1.5 pb-2 text-micro font-medium text-muted-foreground">
           {userCopy.layout.companies}
         </p>
         {companyRows}

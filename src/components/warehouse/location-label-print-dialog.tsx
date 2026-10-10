@@ -187,7 +187,7 @@ export function LocationLabelPrintDialog({
                     />
                   )}
                   {card.humanLines.length > 0 ? (
-                    <div className="text-center text-[11px] leading-tight text-zinc-600">
+                    <div className="text-center text-micro leading-tight text-zinc-600">
                       {card.humanLines.map((line) => (
                         <p key={line}>{line}</p>
                       ))}

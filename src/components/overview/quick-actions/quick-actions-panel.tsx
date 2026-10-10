@@ -186,7 +186,7 @@ function ActionRowContent({
         <span className="block text-xs text-muted-foreground">{action.description}</span>
       </span>
       {shortcut ? (
-        <span className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+        <span className="rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-micro text-muted-foreground">
           ⌘{shortcut}
         </span>
       ) : (

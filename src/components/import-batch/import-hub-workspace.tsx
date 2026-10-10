@@ -229,7 +229,7 @@ function BatchListRow({ batch }: { batch: ImportBatch }) {
           {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: dateFnsLocale() })}
         </p>
       </div>
-      <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium">
+      <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-micro font-medium">
         {STATUS_LABELS[batch.status]}
       </span>
     </Link>

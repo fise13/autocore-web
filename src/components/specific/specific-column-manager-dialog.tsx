@@ -157,7 +157,7 @@ export function SpecificColumnManagerDialog({
             <div className="space-y-1.5">
               {canonical.map((column) => (
                 <div key={column.id} className="flex items-center gap-2 rounded-lg border bg-muted/20 px-2 py-1.5">
-                  <span className="w-5 shrink-0 text-center text-[10px] text-muted-foreground">
+                  <span className="w-5 shrink-0 text-center text-micro text-muted-foreground">
                     {(column.slotIndex ?? 0) + 1}
                   </span>
                   <Input
@@ -167,7 +167,7 @@ export function SpecificColumnManagerDialog({
                     className="h-8"
                   />
                   {column.slotIndex === 6 ? (
-                    <span className="shrink-0 text-[10px] text-muted-foreground">{userCopy.specificSheets.columnManager.saleOnly}</span>
+                    <span className="shrink-0 text-micro text-muted-foreground">{userCopy.specificSheets.columnManager.saleOnly}</span>
                   ) : null}
                 </div>
               ))}

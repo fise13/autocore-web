@@ -72,7 +72,7 @@ function Field({
 }) {
   return (
     <label className="grid gap-1">
-      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      <span className="text-micro font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -306,7 +306,7 @@ export function DocumentImportDataPanel({
           <h2 className="text-lg font-semibold tracking-tight">{userCopy.documentImport.dataTitle}</h2>
           <p className="text-sm text-muted-foreground">{titleCopy}</p>
         </div>
-        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-[11px] font-medium">
+        <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-micro font-medium">
           {aiStatus === "processing" ? userCopy.documentImport.aiBusy : dirty ? userCopy.documentImport.dirty : aiStatus === "done" ? userCopy.documentImport.ready : userCopy.documentImport.beta}
         </Badge>
       </div>

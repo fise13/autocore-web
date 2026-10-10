@@ -292,7 +292,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
 
       <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[220px_1fr]">
         <aside className="border-b border-border/80 p-3 lg:border-b-0 lg:border-r">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
             {userCopy.importBatch.files}
           </p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
@@ -312,14 +312,14 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                       className="aspect-video w-full rounded-lg object-cover"
                     />
                   ) : (
-                    <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-[10px] text-muted-foreground">
+                    <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-micro text-muted-foreground">
                       {file.kind}
                     </div>
                   )}
-                  <p className="truncate text-[11px] font-medium">{file.fileName || file.kind}</p>
-                  <p className="text-[10px] text-muted-foreground">{file.status}</p>
+                  <p className="truncate text-micro font-medium">{file.fileName || file.kind}</p>
+                  <p className="text-micro text-muted-foreground">{file.status}</p>
                   {file.error ? (
-                    <p className="text-[10px] text-destructive line-clamp-2">{file.error}</p>
+                    <p className="text-micro text-destructive line-clamp-2">{file.error}</p>
                   ) : null}
                 </div>
               ))

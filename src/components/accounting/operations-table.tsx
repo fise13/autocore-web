@@ -225,7 +225,7 @@ export function OperationsTable({
                     {resolveTypeLabel(operation.type, labels)}
                   </span>
                   {isAdvanceOperation(operation) ? (
-                    <span className="ml-1.5 inline-flex rounded-md bg-primary-subtle px-1.5 py-0.5 text-[10px] font-medium text-primary-on-subtle">
+                    <span className="ml-1.5 inline-flex rounded-md bg-primary-subtle px-1.5 py-0.5 text-micro font-medium text-primary-on-subtle">
                       {labels.advance}
                     </span>
                   ) : null}
@@ -242,7 +242,7 @@ export function OperationsTable({
                         return (
                           <span
                             className={cn(
-                              "ml-1.5 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                              "ml-1.5 inline-flex rounded-md px-1.5 py-0.5 text-micro font-medium",
                               flow.className,
                             )}
                           >

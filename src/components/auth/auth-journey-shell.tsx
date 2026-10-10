@@ -95,7 +95,7 @@ export function AuthJourneyBrandPanel({ stepLabel }: { stepLabel?: string }) {
           <motion.p
             key={stepLabel}
             {...authJourneyBrandReveal(1, reducedMotion)}
-            className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
+            className="text-xs font-medium text-muted-foreground"
           >
             {stepLabel}
           </motion.p>

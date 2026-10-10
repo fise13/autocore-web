@@ -99,7 +99,7 @@ export function EngineIntakeDetailHeader({
             {jobChecklistStatusLabel(job)}
           </span>
         </p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+        <p className="mt-0.5 text-micro text-muted-foreground/70">
           {job.sourceReference || intakeSourceLabel(job.source)} · Created{" "}
           {formatIntakeDate(job.createdAt)}
         </p>

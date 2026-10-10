@@ -380,7 +380,7 @@ export function WarehouseWorkspace() {
           <span className="min-w-0 flex-1 leading-relaxed">{saveError}</span>
           <button
             type="button"
-            className="shrink-0 rounded-md border border-destructive/20 px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-destructive/10"
+            className="shrink-0 rounded-md border border-destructive/20 px-2.5 py-1 text-micro font-medium transition-colors hover:bg-destructive/10"
             onClick={() => setSaveError(null)}
           >
             {userCopy.warehouse.hide}
@@ -395,12 +395,12 @@ export function WarehouseWorkspace() {
         right={
           <>
             {dirtyCount > 0 ? (
-              <span className="rounded-full border border-warning-border bg-warning-subtle px-2.5 py-1 text-[11px] font-medium text-warning-on-subtle">
+              <span className="rounded-full border border-warning-border bg-warning-subtle px-2.5 py-1 text-micro font-medium text-warning-on-subtle">
                 {userCopy.warehouse.dirtyCount(dirtyCount)}
               </span>
             ) : null}
             {lastBarcodeScan ? (
-              <span className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-foreground">
+              <span className="rounded-full border bg-background px-2.5 py-1 text-micro text-foreground">
                 {lastBarcodeScan.itemName
                   ? userCopy.warehouse.scan(lastBarcodeScan.itemName)
                   : userCopy.warehouse.scan(lastBarcodeScan.barcode)}

@@ -78,7 +78,7 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
             </span>
             <Badge
               variant="outline"
-              className="h-4 shrink-0 border-sidebar-border/80 px-1.5 text-[10px] font-medium leading-none text-muted-foreground"
+              className="h-4 shrink-0 border-sidebar-border/80 px-1.5 text-micro font-medium leading-none text-muted-foreground"
             >
               {userCopy.ai.entryBeta}
             </Badge>

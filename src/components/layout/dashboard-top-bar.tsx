@@ -387,7 +387,7 @@ export function DashboardTopBar() {
 
           {lastBarcodeScan && !isWarehouseRoute ? (
             <span
-              className="hidden max-w-[160px] truncate rounded-full border bg-muted/40 px-2.5 py-1 text-[11px] text-foreground lg:inline"
+              className="hidden max-w-[160px] truncate rounded-full border bg-muted/40 px-2.5 py-1 text-micro text-foreground lg:inline"
               title={lastBarcodeScan.barcode}
             >
               {lastBarcodeScan.itemName ?? lastBarcodeScan.barcode}

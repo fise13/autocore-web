@@ -211,7 +211,7 @@ export function HelpGuidesPanel() {
                 transition={CHIP_SPRING}
                 className={cn(
                   "relative inline-flex items-center gap-1.5 overflow-hidden rounded-full px-3 py-1.5",
-                  "border border-border/60 bg-background text-[13px] leading-4",
+                  "border border-border/60 bg-background text-grid leading-4",
                   "text-foreground/80 transition-colors hover:bg-muted/40 hover:text-foreground",
                   "disabled:pointer-events-none disabled:opacity-50",
                   selected && "text-foreground",

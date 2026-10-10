@@ -40,7 +40,7 @@ export function EngineIntakeChecklistPane({
       <div className="flex flex-col gap-4 pb-4">
         {activeGroups.map(({ group, label, items }) => (
           <section key={group} className="flex flex-col gap-1">
-            <h4 className="px-1 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+            <h4 className="px-1 text-micro font-semibold text-muted-foreground">
               {label}
             </h4>
             <div className="flex flex-col gap-0.5">
@@ -78,7 +78,7 @@ export function EngineIntakeChecklistPane({
                       {showHint ? (
                         <p
                           className={cn(
-                            "truncate text-[11px]",
+                            "truncate text-micro",
                             selected
                               ? "text-primary-on-subtle/65"
                               : "text-muted-foreground",
@@ -116,7 +116,7 @@ export function EngineIntakeChecklistPane({
                   )}
                 >
                   <span className="truncate">{item.label}</span>
-                  <span className="truncate text-[11px] text-muted-foreground">
+                  <span className="truncate text-micro text-muted-foreground">
                     {item.rationale || "Doesn’t apply"}
                   </span>
                 </button>

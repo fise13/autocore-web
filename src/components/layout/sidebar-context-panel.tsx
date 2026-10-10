@@ -34,7 +34,7 @@ type SidebarContextPanelProps = {
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="px-1 py-1">
-      <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="px-3 py-2 text-micro font-semibold text-muted-foreground">
         {title}
       </p>
       <div className="space-y-0.5">{children}</div>
@@ -137,7 +137,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
               }}
             />
             {!isPro ? (
-              <p className="px-3 text-[11px] text-muted-foreground">
+              <p className="px-3 text-micro text-muted-foreground">
                 {userCopy.layout.contextPanel.proImportExport}
               </p>
             ) : null}
@@ -169,7 +169,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
           <LayoutGrid className="size-4 shrink-0 opacity-80" />
           {userCopy.layout.contextPanel.allMotors}
         </Link>
-        <p className="flex items-start gap-2 px-3 py-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="flex items-start gap-2 px-3 py-1 text-micro leading-relaxed text-muted-foreground">
           <RotateCcw className="mt-0.5 size-3.5 shrink-0 opacity-70" />
           {userCopy.layout.contextPanel.returnHint}
         </p>
@@ -216,7 +216,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
           hint={userCopy.layout.contextPanel.adjustStockHint}
           disabled={!canEditInventory}
         />
-        <p className="px-3 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="px-3 text-micro leading-relaxed text-muted-foreground">
           {userCopy.layout.contextPanel.rowContextHint}
         </p>
       </PanelSection>

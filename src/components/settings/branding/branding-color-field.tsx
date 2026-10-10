@@ -27,7 +27,7 @@ export function BrandingColorField({
         <Label htmlFor={id} className="text-sm font-medium">
           {label}
         </Label>
-        <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{value}</span>
+        <span className="font-mono text-micro uppercase tracking-wide text-muted-foreground">{value}</span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -44,7 +44,7 @@ export function BrandingColorField({
           className="font-mono text-xs"
         />
       </div>
-      {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+      {hint ? <p className="text-micro text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

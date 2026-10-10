@@ -97,7 +97,7 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
                   <p className="truncate text-sm font-semibold tracking-tight">
                     {activeCompany?.name ?? userCopy.appName}
                   </p>
-                  <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                  <p className="mt-1 truncate text-micro text-muted-foreground">
                     {companies.length}{" "}
                     {companies.length === 1
                       ? userCopy.layout.spaceSingular

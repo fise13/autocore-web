@@ -93,7 +93,7 @@ export function AuthDebugPanel({ snapshot }: AuthDebugPanelProps) {
               </div>
               <div>{entry.message}</div>
               {entry.detail ? (
-                <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] text-muted-foreground">
+                <pre className="mt-1 whitespace-pre-wrap break-all text-micro text-muted-foreground">
                   {entry.detail}
                 </pre>
               ) : null}

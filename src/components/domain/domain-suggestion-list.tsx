@@ -75,7 +75,7 @@ export function DomainSuggestionList({
         role="listbox"
       >
         {!hasResults && !showCreate ? (
-          <div className="px-3 py-6 text-center text-[13px] text-muted-foreground">{emptyLabel}</div>
+          <div className="px-3 py-6 text-center text-grid text-muted-foreground">{emptyLabel}</div>
         ) : null}
 
         {virtualize ? (
@@ -132,7 +132,7 @@ export function DomainSuggestionList({
           }}
           onMouseEnter={() => onActiveIndexChange(results.length)}
           className={cn(
-            "flex shrink-0 items-center gap-2 border-t border-border/60 px-3 py-2.5 text-left text-[13px] transition-colors",
+            "flex shrink-0 items-center gap-2 border-t border-border/60 px-3 py-2.5 text-left text-grid transition-colors",
             activeIndex === results.length
               ? "bg-primary/10 text-foreground"
               : "text-muted-foreground hover:bg-muted/60",
@@ -213,7 +213,7 @@ function SuggestionRow({
         <span className="flex items-center gap-1.5">
           <span
             className={cn(
-              "truncate text-[13px] font-semibold tracking-tight",
+              "truncate text-grid font-semibold tracking-tight",
               active ? "text-primary-foreground" : "text-foreground",
             )}
           >
@@ -222,7 +222,7 @@ function SuggestionRow({
           {entry.custom ? (
             <span
               className={cn(
-                "rounded-[4px] px-1 py-px text-[10px] font-semibold uppercase tracking-wide",
+                "rounded-[4px] px-1 py-px text-micro font-semibold uppercase tracking-wide",
                 active
                   ? "bg-primary-foreground/20 text-primary-foreground"
                   : "bg-primary/12 text-primary",
@@ -235,7 +235,7 @@ function SuggestionRow({
         {meta && !compact ? (
           <span
             className={cn(
-              "truncate text-[12px] leading-tight",
+              "truncate text-xs leading-tight",
               active ? "text-primary-foreground/85" : "text-foreground/65",
             )}
           >

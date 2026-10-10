@@ -26,8 +26,8 @@ const sizeClasses = {
 } as const;
 
 const monogramSizeClasses = {
-  xs: "text-[9px]",
-  sm: "text-[10px]",
+  xs: "text-micro",
+  sm: "text-micro",
   md: "text-xs",
   lg: "text-sm",
 } as const;

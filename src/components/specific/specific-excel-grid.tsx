@@ -1309,7 +1309,7 @@ export function SpecificExcelGrid({
                         <div
                           key={`${row.rowId}-${column.id}`}
                           className={cn(
-                            "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+                            "absolute flex border-r border-b px-2 text-grid leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
                             column.align === "center"
                               ? "items-center justify-center"
                               : "items-center justify-start",

@@ -58,7 +58,7 @@ export function SidebarCustomizeSheet({
           {userCopy.layout.done}
         </button>
 
-        <div className="relative flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-[10px]">
+        <div className="relative flex shrink-0 rounded-md border border-sidebar-border/80 p-0.5 text-micro">
           {(["left", "right"] as SidebarPosition[]).map((side) => {
             const active = customization.position === side;
             return (
@@ -88,7 +88,7 @@ export function SidebarCustomizeSheet({
 
       {hasPool ? (
         <div className="min-h-0 overflow-hidden">
-          <p className="px-3 py-1 text-[10px] text-muted-foreground">
+          <p className="px-3 py-1 text-micro text-muted-foreground">
             {userCopy.layout.hiddenPoolHint}
           </p>
           <div className="max-h-[min(38vh,11rem)] space-y-0.5 overflow-y-auto overscroll-y-contain pr-0.5">
@@ -131,7 +131,7 @@ export function SidebarCustomizeSheet({
             position: DEFAULT_SIDEBAR_CUSTOMIZATION.position,
           }));
         }}
-        className="flex w-full shrink-0 items-center justify-center gap-1 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full shrink-0 items-center justify-center gap-1 py-1 text-micro text-muted-foreground transition-colors hover:text-foreground"
       >
         <RotateCcw className="size-3" />
         {userCopy.layout.resetDefaults}

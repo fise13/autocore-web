@@ -166,10 +166,10 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
             </span>
             <div>
               <p className="text-sm font-semibold">{copy.title}</p>
-              <p className="text-[11px] text-muted-foreground">{copy.clickToZoom}</p>
+              <p className="text-micro text-muted-foreground">{copy.clickToZoom}</p>
             </div>
           </div>
-          <span className="rounded-full border bg-background px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-full border bg-background px-2.5 py-1 text-micro font-medium text-muted-foreground">
             {themeLabels[theme]}
           </span>
         </div>
@@ -179,7 +179,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
             {palette.map((swatch) => (
               <div
                 key={swatch.label}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-background/80 px-2 py-1 text-[10px] font-medium"
+                className="inline-flex items-center gap-1.5 rounded-full border bg-background/80 px-2 py-1 text-micro font-medium"
               >
                 <span
                   className="size-3 rounded-full border border-foreground/10"
@@ -194,9 +194,9 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
             <div className="flex items-center justify-between gap-2 border-b bg-background/70 px-3 py-2">
               <div className="flex items-center gap-2">
                 <FileText className="size-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-muted-foreground">{copy.sampleWorkOrder}</span>
+                <span className="text-micro font-medium text-muted-foreground">{copy.sampleWorkOrder}</span>
               </div>
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-micro text-muted-foreground">
                 <Maximize2 className="size-3" />
                 A4
               </span>
@@ -222,7 +222,7 @@ export function BrandingLivePreview({ input, compact = false }: BrandingLivePrev
             </div>
           </motion.div>
 
-          <p className="flex items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="flex items-start gap-2 text-micro leading-relaxed text-muted-foreground">
             <Palette className="mt-0.5 size-3.5 shrink-0" />
             {copy.hint}
           </p>

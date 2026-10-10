@@ -84,7 +84,7 @@ export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderS
         </div>
         <span
           className={cn(
-            "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
+            "rounded-full px-2.5 py-1 text-micro font-semibold",
             headerEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
           )}
         >
@@ -123,7 +123,7 @@ export function DocumentHeaderSettings({ visibility, onChange }: DocumentHeaderS
               );
             })}
           </div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-micro leading-relaxed text-muted-foreground">
             {copy.logoFallback}
           </p>
         </>

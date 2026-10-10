@@ -123,7 +123,7 @@ export function GridContextMenuItem({
       role="menuitem"
       disabled={disabled}
       className={cn(
-        "flex w-full cursor-pointer items-center justify-between gap-3 rounded px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40",
+        "flex w-full cursor-pointer items-center justify-between gap-3 rounded px-2.5 py-1.5 text-left text-grid transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40",
         destructive && "text-destructive hover:bg-destructive/10",
       )}
       onClick={onClick}
@@ -140,7 +140,7 @@ export function GridContextMenuItem({
         ) : null}
         <span className="truncate">{children}</span>
       </span>
-      {shortcut ? <span className="shrink-0 text-[11px] text-muted-foreground">{shortcut}</span> : null}
+      {shortcut ? <span className="shrink-0 text-micro text-muted-foreground">{shortcut}</span> : null}
     </button>
   );
 }

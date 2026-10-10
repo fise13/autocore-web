@@ -28,7 +28,7 @@ export function PersistenceStatusBadge({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground",
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-micro text-muted-foreground",
         className,
       )}
       title={error ?? statusCopy()[status]}

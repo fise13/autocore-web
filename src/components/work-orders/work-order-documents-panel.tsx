@@ -222,11 +222,11 @@ export function WorkOrderDocumentsPanel({
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{title}</p>
                     {pending ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-micro font-medium text-muted-foreground">
                         {labels.pending}
                       </span>
                     ) : isReady || persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
-                      <span className="rounded-full bg-success-subtle px-2 py-0.5 text-[0.65rem] font-medium text-success-on-subtle">
+                      <span className="rounded-full bg-success-subtle px-2 py-0.5 text-micro font-medium text-success-on-subtle">
                         {labels.ready}
                       </span>
                     ) : null}

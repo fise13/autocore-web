@@ -199,7 +199,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
     >
       <Avatar size="default" className="row-span-2 sm:row-span-1">
         {entry.actorPhotoURL ? <AvatarImage alt={actorName} src={entry.actorPhotoURL} /> : null}
-        <GradientAvatarFallback seed={entry.actor || actorName} className="text-[11px] font-semibold text-white/90">
+        <GradientAvatarFallback seed={entry.actor || actorName} className="text-micro font-semibold text-white/90">
           {actorInitials(actorName)}
         </GradientAvatarFallback>
         {severity !== "info" ? <AvatarBadge className={severityBadgeClass[severity]} /> : null}
@@ -328,7 +328,7 @@ export function ActivityLogJournal({
           </Empty>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
-            <div className="sticky top-0 z-10 hidden border-b bg-muted/80 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground backdrop-blur-sm sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4">
+            <div className="sticky top-0 z-10 hidden border-b bg-muted/80 px-4 py-2 text-micro font-medium text-muted-foreground backdrop-blur-sm sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:gap-x-4">
               <span className="w-6" aria-hidden />
               <span>{userCopy.activity.colEvent}</span>
               <span className="w-[5.5rem]">{userCopy.activity.colModule}</span>
@@ -340,7 +340,7 @@ export function ActivityLogJournal({
                 <div className="sticky top-0 z-[1] flex items-center gap-3 bg-background/95 px-4 py-2.5 backdrop-blur-sm sm:top-[2.125rem]">
                   <p className="text-xs font-semibold tracking-tight text-foreground">{group.label}</p>
                   <Separator className="min-w-0 flex-1" />
-                  <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-micro tabular-nums text-muted-foreground">
                     {group.entries.length}
                   </span>
                 </div>

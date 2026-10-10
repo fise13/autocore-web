@@ -82,7 +82,7 @@ function McWeekBarItem({
       >
         <motion.div className={barClass} style={{ height: heightSpring }} />
       </div>
-      <span className="text-[11px] leading-tight text-muted-foreground">{bar.label}</span>
+      <span className="text-micro leading-tight text-muted-foreground">{bar.label}</span>
     </div>
   );
 }

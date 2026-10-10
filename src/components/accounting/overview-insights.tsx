@@ -153,7 +153,7 @@ export function OverviewInsights({
                       title={`${item.label}: ${formatMoney(item.net)}`}
                     />
                   </div>
-                  <span className="text-[10px] font-medium text-muted-foreground">{item.label}</span>
+                  <span className="text-micro font-medium text-muted-foreground">{item.label}</span>
                 </div>
               );
             })}

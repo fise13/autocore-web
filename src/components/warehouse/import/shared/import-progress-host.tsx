@@ -86,7 +86,7 @@ export function ImportProgressCore({
             )}
           >
             <Sparkles className="size-3 shrink-0 text-primary" aria-hidden />
-            <span className="shrink-0 text-[11px] font-medium tracking-[-0.01em] text-foreground">
+            <span className="shrink-0 text-micro font-medium tracking-[-0.01em] text-foreground">
               {userCopy.motors.magicImport}
             </span>
             <div className="h-1 w-20 overflow-hidden rounded-full bg-muted/90 sm:w-28">
@@ -132,10 +132,10 @@ export function ImportProgressCore({
             >
               <p className="text-xs font-medium">{phaseLabel(progress, kind)}</p>
               {progress.fileName ? (
-                <p className="mt-1 truncate text-[11px] text-muted-foreground">{progress.fileName}</p>
+                <p className="mt-1 truncate text-micro text-muted-foreground">{progress.fileName}</p>
               ) : null}
-              <p className="mt-2 text-[11px] text-muted-foreground">{progress.message ?? userCopy.warehouse.import.processing}</p>
-              <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{clamped}%</p>
+              <p className="mt-2 text-micro text-muted-foreground">{progress.message ?? userCopy.warehouse.import.processing}</p>
+              <p className="mt-1 text-right text-micro tabular-nums text-muted-foreground">{clamped}%</p>
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -162,7 +162,7 @@ export function ImportProgressCore({
           </div>
           <div>
             <p className="text-sm font-semibold tracking-tight">{userCopy.motors.magicImport}</p>
-            <p className="text-[11px] text-muted-foreground">{phaseLabel(progress, kind)}</p>
+            <p className="text-micro text-muted-foreground">{phaseLabel(progress, kind)}</p>
           </div>
         </button>
         <button
@@ -189,7 +189,7 @@ export function ImportProgressCore({
             transition={{ type: "spring", stiffness: 140, damping: 22 }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between text-micro text-muted-foreground">
           <span className="truncate">{progress.message ?? userCopy.warehouse.import.processing}</span>
           <span className="shrink-0 tabular-nums">{clamped}%</span>
         </div>
@@ -237,11 +237,11 @@ function ImportReviewIsland({
       >
         <Sparkles className="size-3 shrink-0 text-primary" aria-hidden />
         <span className="flex min-w-0 flex-col">
-          <span className="truncate text-[11px] font-medium text-foreground">
+          <span className="truncate text-micro font-medium text-foreground">
             {userCopy.motors.magicImportReview}
             {review.fileName ? ` · ${review.fileName}` : ""}
           </span>
-          <span className="truncate text-[10px] text-muted-foreground">
+          <span className="truncate text-micro text-muted-foreground">
             {motorsLabel}
             {specificLabel}
           </span>

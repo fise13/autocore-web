@@ -165,7 +165,7 @@ export function WorkOrderListPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {visibleDrafts.length > 0 ? (
           <div className="mb-3 space-y-1.5">
-            <p className="px-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-warning-on-subtle">
+            <p className="px-1.5 pt-1 text-micro font-semibold text-warning-on-subtle">
               {copy.unfinishedSection}
             </p>
             <ul className="space-y-1.5">
@@ -273,7 +273,7 @@ export function WorkOrderListPanel({
                             {order.clientName || "—"}
                           </p>
                           {assignees ? (
-                            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground/80">
+                            <p className="mt-0.5 line-clamp-1 text-micro text-muted-foreground/80">
                               <UserRound className="mr-1 inline size-3 -translate-y-px" />
                               {assignees}
                             </p>

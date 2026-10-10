@@ -87,7 +87,7 @@ export function ProfileNameStep({ onSaved }: ProfileNameStepProps) {
           <div className="mx-auto flex w-full max-w-sm flex-col gap-8 text-center">
             <div className="space-y-3">
               <AuthJourneyReveal index={0}>
-                <div className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                <div className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-micro font-medium text-muted-foreground">
                   <Sparkles className="size-3 text-primary" aria-hidden />
                   {userCopy.auth.profileName.step2}
                 </div>

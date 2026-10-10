@@ -88,7 +88,7 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
                     className="mc-list-row flex items-center justify-between gap-3 text-sm"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="flex size-6 items-center justify-center rounded-md bg-muted text-[10px] font-semibold tabular-nums text-muted-foreground">
+                      <span className="flex size-6 items-center justify-center rounded-md bg-muted text-micro font-semibold tabular-nums text-muted-foreground">
                         {index + 1}
                       </span>
                       <span className="font-medium">{contributor.actorName}</span>
@@ -110,7 +110,7 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="mc-stat-chip text-center">
-      <p className="text-[10px] text-muted-foreground uppercase">{label}</p>
+      <p className="text-micro text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight">{value}</p>
     </div>
   );

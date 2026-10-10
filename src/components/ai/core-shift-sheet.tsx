@@ -56,7 +56,7 @@ function ShiftMetrics({ pulse }: { pulse: CompanyBriefing["pulse"] }) {
             metric.tone === "attention" ? "bg-ai-subtle/50" : "bg-background/40",
           )}
         >
-          <p className="text-[11px] leading-none text-muted-foreground">{copy.metrics[metric.id]}</p>
+          <p className="text-micro leading-none text-muted-foreground">{copy.metrics[metric.id]}</p>
           <p
             className={cn(
               "mt-1.5 font-heading text-xl leading-none tabular-nums tracking-tight",
@@ -131,7 +131,7 @@ export function CoreShiftSheet({
   ) : view?.href && density === "chat" ? (
     <Link
       href={view.href}
-      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full px-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full px-2 text-grid text-muted-foreground transition-colors hover:text-foreground"
     >
       {copy.openHome}
       <ArrowRight className="size-3.5" aria-hidden />

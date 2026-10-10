@@ -132,7 +132,7 @@ function UserTurn({ message, featured }: { message: CoreUIMessage; featured: boo
             ) : (
               <span
                 key={file.url}
-                className="inline-flex max-w-[12rem] items-center truncate rounded-md border border-border px-2 py-1 text-[12px] text-muted-foreground"
+                className="inline-flex max-w-[12rem] items-center truncate rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
               >
                 {file.filename ?? userCopy.ai.attachedFiles}
               </span>
