@@ -16,7 +16,12 @@ import {
   isMarketingContentPath,
 } from "@/lib/seo/marketing-paths";
 import { APP_SESSION_COOKIE, hasAppSessionCookie } from "@/lib/auth/session-cookie";
-import { isMotorLandDesk, isValidDeskLogin } from "@/lib/motor-land/desk-login";
+import {
+  DESK_COOKIE,
+  deskPaths,
+  isMotorLandDesk,
+  isValidDeskCookie,
+} from "@/lib/motor-land/desk-login";
 import {
   getAppUrl,
   getHostKind,
@@ -152,24 +157,28 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLocalDev = isLocalDevHost(host);
 
+  const deskHost = normalizeHost(host);
   if (
-    isMotorLandDesk(normalizeHost(host), pathname) &&
-    !(await isValidDeskLogin(
-      request.headers.get("authorization"),
+    isMotorLandDesk(deskHost, pathname) &&
+    !(await isValidDeskCookie(
+      request.cookies.get(DESK_COOKIE)?.value,
       process.env.MOTOR_LAND_DOCS_USER,
       process.env.MOTOR_LAND_DOCS_PASSWORD,
     ))
   ) {
-    return new NextResponse("Требуется вход", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="Motor Land", charset="UTF-8"' },
-    });
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Требуется вход" }, { status: 401 });
+    }
+    return NextResponse.redirect(new URL(deskPaths(deskHost).login, request.url));
   }
 
   // docs.myautocore.com is the standalone document desk. Its root is the engine
-  // sale form; every other path on that host is served as written.
-  if (normalizeHost(host).startsWith("docs.") && pathname === "/") {
+  // sale form and `/login` its sign-in; every other path is served as written.
+  if (deskHost.startsWith("docs.") && pathname === "/") {
     return NextResponse.rewrite(new URL("/docs/motor-sale", request.url));
+  }
+  if (deskHost.startsWith("docs.") && pathname === "/login") {
+    return NextResponse.rewrite(new URL("/docs/login", request.url));
   }
 
   if (kind === "marketing") {

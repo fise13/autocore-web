@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { SaleDocumentBuilder } from "@/components/motor-land/sale-document-builder";
+import { Button } from "@/components/ui/button";
 import { COMPANY } from "@/lib/motor-land/sale-document";
 
 export const metadata: Metadata = {
-  title: "Motor Land — товарная накладная",
+  title: "Motor Land — документы",
   description:
-    "Заполните данные о двигателе и покупателе — товарная накладная и условия гарантии на обороте выгружаются одним файлом Word.",
+    "Товарная накладная с гарантией и диагностический лист Motor Land.",
   robots: { index: false, follow: false },
 };
 
@@ -50,18 +51,23 @@ export default function MotorSaleDocumentPage() {
           />
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
-              Товарная накладная на двигатель
+              Документы Motor Land
             </h1>
             <p className="truncate text-xs text-muted-foreground">{COMPANY.legalName}</p>
           </div>
+          <form action="/api/motor-land/logout" method="post" className="ml-auto">
+            <Button type="submit" variant="ghost" size="sm">
+              Выйти
+            </Button>
+          </form>
         </div>
       </header>
 
       <main className="motor-land-page mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
         <p className="mb-5 max-w-3xl text-sm text-muted-foreground print:hidden">
-          Номер и дата подставляются автоматически. Условия гарантии печатаются на том же листе —
-          отдельно включать их не нужно. Выданные документы попадают в общую историю на сервере, там
-          же по ним работает поиск.
+          Номер и дата подставляются автоматически. Каждый документ — накладная или диагностический
+          лист — сохраняется в общую историю при скачивании, печати и переходе к новому; там же по
+          ним работает поиск.
         </p>
 
         <SaleDocumentBuilder />

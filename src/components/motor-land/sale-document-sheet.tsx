@@ -158,31 +158,33 @@ function Sheet({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
-  const totals = computeTotals(data);
-  const vatNote =
-    data.vatRate > 0
-      ? ` (в т.ч. НДС ${formatQuantity(data.vatRate)}%: ${formatMoney(totals.vatIncluded)})`
-      : "";
-
+/** Logo, requisites and phones — the same top on every Motor Land form. */
+function CompanyHeader() {
   return (
-    <Sheet>
-      <header style={{ display: "flex", alignItems: "flex-start", gap: mm(4) }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size print mark, no layout shift to optimise */}
-        <img src="/motor-land/logo.png" alt="Motor Land" style={{ width: mm(29), height: mm(29) }} />
-        <div style={{ flex: 1, textAlign: "center", paddingTop: mm(3) }}>
-          <p style={{ color: ink }}>{COMPANY.legalName}</p>
-          <p style={{ color: ink, marginTop: mm(1) }}>{COMPANY.address}</p>
-          <p style={{ color: muted, marginTop: mm(1), fontSize: pt(8) }}>{COMPANY.site.toUpperCase()}</p>
-        </div>
-        <div style={{ width: mm(34), paddingTop: mm(3), textAlign: "right" }}>
-          {COMPANY.phones.map((phone) => (
-            <p key={phone} style={{ color: ink, fontWeight: 600, letterSpacing: pt(0.2) }}>
-              {phone}
-            </p>
-          ))}
-        </div>
-      </header>
+    <header style={{ display: "flex", alignItems: "flex-start", gap: mm(4) }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size print mark, no layout shift to optimise */}
+      <img src="/motor-land/logo.png" alt="Motor Land" style={{ width: mm(29), height: mm(29) }} />
+      <div style={{ flex: 1, textAlign: "center", paddingTop: mm(3) }}>
+        <p style={{ color: ink }}>{COMPANY.legalName}</p>
+        <p style={{ color: ink, marginTop: mm(1) }}>{COMPANY.address}</p>
+        <p style={{ color: muted, marginTop: mm(1), fontSize: pt(8) }}>{COMPANY.site.toUpperCase()}</p>
+      </div>
+      <div style={{ width: mm(34), paddingTop: mm(3), textAlign: "right" }}>
+        {COMPANY.phones.map((phone) => (
+          <p key={phone} style={{ color: ink, fontWeight: 600, letterSpacing: pt(0.2) }}>
+            {phone}
+          </p>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+/** What both forms print the same way: the company top, number, date and the two parties. */
+function DocumentTop({ data, title }: { data: SaleDocumentData; title: string }) {
+  return (
+    <>
+      <CompanyHeader />
 
       <div
         style={{
@@ -196,7 +198,7 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
         }}
       >
         <h1 style={{ fontSize: pt(15), fontWeight: 600, color: ink }}>
-          Товарная накладная № {data.documentNumber}
+          {title} № {data.documentNumber}
         </h1>
         <span style={{ fontSize: pt(9.5), color: label, whiteSpace: "nowrap" }}>
           {formatDateTime(data.issuedAt)}
@@ -208,6 +210,14 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
         <Field caption="Клиент:" value={data.customer.client} />
       </div>
 
+    </>
+  );
+}
+
+function ItemsTable({ data }: { data: SaleDocumentData }) {
+  const totals = computeTotals(data);
+  return (
+    <>
       <SectionCaption>Запасные части и материалы</SectionCaption>
       <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
         <thead>
@@ -246,6 +256,21 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
           </tr>
         </tbody>
       </table>
+    </>
+  );
+}
+
+export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
+  const totals = computeTotals(data);
+  const vatNote =
+    data.vatRate > 0
+      ? ` (в т.ч. НДС ${formatQuantity(data.vatRate)}%: ${formatMoney(totals.vatIncluded)})`
+      : "";
+
+  return (
+    <Sheet>
+      <DocumentTop data={data} title="Товарная накладная" />
+      <ItemsTable data={data} />
 
       <div style={{ display: "flex", gap: mm(4), alignItems: "baseline", marginTop: mm(4) }}>
         <span style={{ flex: `0 0 ${mm(56)}`, fontSize: pt(12), color: ink }}>Сумма документа:</span>
@@ -320,6 +345,81 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
         <p style={{ marginTop: mm(2), textAlign: "center", fontSize: pt(6.5), color: muted }}>
           {COMPANY.brand} · {COMPANY.phones.join(" · ")}
         </p>
+      </div>
+    </Sheet>
+  );
+}
+
+const DIAGNOSTIC_BLANK_COLUMNS = 6;
+
+/** 20 rows of ~9 mm is what is left of the page under the car's details. */
+const DIAGNOSTIC_ROWS = 20;
+
+/** A filled value, or an underline to write one in by hand. */
+function VehicleLine({ caption, value }: { caption: string; value: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: mm(1.5), minWidth: 0 }}>
+      <span style={{ color: label, whiteSpace: "nowrap" }}>{caption}:</span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          color: ink,
+          overflowWrap: "anywhere",
+          borderBottom: value ? "none" : `${mm(0.18)} solid ${line}`,
+        }}
+      >
+        {value || "\u00a0"}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The diagnostic sheet: the waybill's top, typed in on the same form, then the
+ * car instead of the goods, and an empty numbered grid the master fills in by
+ * hand instead of the warranty.
+ */
+export function DiagnosticSheet({ data }: { data: SaleDocumentData }) {
+  const { vin, plate, year, color, mileage } = data.vehicle;
+  return (
+    <Sheet>
+      <DocumentTop data={data} title="Диагностический лист" />
+
+      <SectionCaption>Автомобиль</SectionCaption>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: `${mm(2.5)} ${mm(8)}` }}>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <VehicleLine caption="VIN" value={vin} />
+        </div>
+        <VehicleLine caption="Гос. номер" value={plate} />
+        <VehicleLine caption="Год выпуска" value={year} />
+        <VehicleLine caption="Цвет" value={color} />
+        <VehicleLine caption="Пробег" value={mileage} />
+      </div>
+
+      <div style={{ flex: 1, minHeight: 0, marginTop: mm(4) }}>
+        <table style={{ width: "100%", height: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: mm(10) }} />
+            {Array.from({ length: DIAGNOSTIC_BLANK_COLUMNS }, (_, index) => (
+              <col key={index} />
+            ))}
+          </colgroup>
+          <tbody>
+            {Array.from({ length: DIAGNOSTIC_ROWS }, (_, rowIndex) => (
+              <tr key={rowIndex}>
+                <td style={{ border: cellBorder, textAlign: "center", color: ink }}>{rowIndex + 1}</td>
+                {Array.from({ length: DIAGNOSTIC_BLANK_COLUMNS }, (_, cellIndex) => (
+                  <td key={cellIndex} style={{ border: cellBorder }} />
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ paddingTop: mm(4) }}>
+        <BuyerSignature />
       </div>
     </Sheet>
   );

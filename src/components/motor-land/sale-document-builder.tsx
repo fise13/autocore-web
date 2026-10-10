@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DOCX_MIME_TYPE, buildSaleDocx } from "@/lib/motor-land/docx/package";
-import { entryTotal, parseHistory, searchHistory, type HistoryEntry } from "@/lib/motor-land/history";
+import {
+  entryTotal,
+  hasContent,
+  nextDocumentNumber,
+  parseHistory,
+  searchHistory,
+  type HistoryEntry,
+} from "@/lib/motor-land/history";
 import {
   computeTotals,
   createEmptyItem,
@@ -17,12 +24,14 @@ import {
   formatQuantity,
   itemAmount,
   saleDocumentFileName,
+  VEHICLE_FIELDS,
+  type DocumentKind,
   type SaleDocumentData,
   type SaleItem,
 } from "@/lib/motor-land/sale-document";
 import { cn } from "@/lib/utils";
 
-import { SaleDocumentSheet } from "./sale-document-sheet";
+import { DiagnosticSheet, SaleDocumentSheet } from "./sale-document-sheet";
 
 const API = "/api/motor-land/documents";
 
@@ -31,17 +40,6 @@ async function fetchHistory(): Promise<HistoryEntry[]> {
   const response = await fetch(API, { cache: "no-store" });
   if (!response.ok) throw new Error(`История недоступна (${response.status})`);
   return parseHistory(await response.json());
-}
-
-/**
- * `ПР-267` → `ПР-268`. The last issued document sets the series, so the number
- * is already filled in before the operator touches anything, and never repeats.
- */
-function nextDocumentNumber(previous: string | null): string {
-  const match = previous?.match(/^(\D*)(\d+)$/);
-  if (!match) return "ПР-1";
-  const width = match[2]!.length;
-  return `${match[1]}${String(Number(match[2]) + 1).padStart(width, "0")}`;
 }
 
 /** `<input type="datetime-local">` speaks local time without a zone suffix. */
@@ -153,7 +151,7 @@ function HistoryPanel({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Номер, заказчик, клиент, двигатель или номер агрегата"
+          placeholder="Номер, менеджер, клиент, двигатель, VIN или гос. номер"
           className="h-10 pl-8"
           aria-label="Поиск по выданным документам"
         />
@@ -161,8 +159,8 @@ function HistoryPanel({
 
       {history.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
-          Здесь появятся выданные документы. Каждый сохраняется автоматически при скачивании — его
-          можно найти, открыть и перевыпустить.
+          Здесь появятся выданные документы. Каждый сохраняется автоматически при скачивании,
+          печати и переходе к новому — его можно найти, открыть и перевыпустить.
         </p>
       ) : found.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
@@ -187,13 +185,19 @@ function HistoryPanel({
                       <span className="text-sm font-semibold text-foreground">
                         № {entry.data.documentNumber}
                       </span>
-                      <span className="text-sm font-medium text-foreground">
-                        {formatMoney(entryTotal(entry))} ₸
-                      </span>
+                      {entry.data.kind === "diagnostic" ? (
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">
+                          Диагностический лист
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-foreground">
+                          {formatMoney(entryTotal(entry))} ₸
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {formatDateTime(entry.data.issuedAt)}
                       </span>
-                      {entry.data.vatRate > 0 && (
+                      {entry.data.kind === "waybill" && entry.data.vatRate > 0 && (
                         <span className="text-xs text-muted-foreground">
                           НДС {formatQuantity(entry.data.vatRate)}%
                         </span>
@@ -208,39 +212,49 @@ function HistoryPanel({
                     <Button type="button" variant="outline" size="sm" onClick={() => onOpen(entry)}>
                       Открыть
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={building}
-                      onClick={() => onDownload(entry)}
-                      aria-label={`Скачать документ ${entry.data.documentNumber}`}
-                    >
-                      <Download className="size-3.5" />
-                    </Button>
+                    {entry.data.kind === "waybill" && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={building}
+                        onClick={() => onDownload(entry)}
+                        aria-label={`Скачать документ ${entry.data.documentNumber}`}
+                      >
+                        <Download className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
-                <table className="mt-2 w-full border-separate border-spacing-0 text-xs">
-                  <tbody>
-                    {entry.data.items.map((item, index) => (
-                      <tr key={item.id} className="text-muted-foreground">
-                        <td className="w-5 py-0.5 align-top">{index + 1}.</td>
-                        <td className="py-0.5 align-top text-foreground">
-                          {item.title || "Без наименования"}
-                          {item.serial ? ` · № ${item.serial}` : ""}
-                        </td>
-                        <td className="w-24 py-0.5 text-right align-top whitespace-nowrap">
-                          {formatQuantity(item.quantity)} {item.unit} ×{" "}
-                          {formatMoney(item.price)}
-                        </td>
-                        <td className="w-24 py-0.5 text-right align-top whitespace-nowrap text-foreground">
-                          {formatMoney(itemAmount(item))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {entry.data.kind === "diagnostic" ? (
+                  <p className="mt-2 text-xs text-foreground">
+                    {VEHICLE_FIELDS.filter(({ key }) => entry.data.vehicle[key].trim())
+                      .map(({ key, label }) => `${label}: ${entry.data.vehicle[key]}`)
+                      .join(" · ") || "Автомобиль не указан"}
+                  </p>
+                ) : (
+                  <table className="mt-2 w-full border-separate border-spacing-0 text-xs">
+                    <tbody>
+                      {entry.data.items.map((item, index) => (
+                        <tr key={item.id} className="text-muted-foreground">
+                          <td className="w-5 py-0.5 align-top">{index + 1}.</td>
+                          <td className="py-0.5 align-top text-foreground">
+                            {item.title || "Без наименования"}
+                            {item.serial ? ` · № ${item.serial}` : ""}
+                          </td>
+                          <td className="w-24 py-0.5 text-right align-top whitespace-nowrap">
+                            {formatQuantity(item.quantity)} {item.unit} ×{" "}
+                            {formatMoney(item.price)}
+                          </td>
+                          <td className="w-24 py-0.5 text-right align-top whitespace-nowrap text-foreground">
+                            {formatMoney(itemAmount(item))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </li>
             ))}
           </ul>
@@ -273,7 +287,7 @@ export function SaleDocumentBuilder() {
       setData(
         createEmptySaleDocument(
           new Date(),
-          nextDocumentNumber(stored[0]?.data.documentNumber ?? null),
+          nextDocumentNumber(stored.map((entry) => entry.data.documentNumber)),
           crypto.randomUUID(),
         ),
       );
@@ -323,31 +337,58 @@ export function SaleDocumentBuilder() {
     }
   }, []);
 
-  /** Issuing a document is what puts it in the shared history. */
-  const handleIssue = useCallback(async () => {
-    if (!data) return;
-    if (!(await downloadDocx(data))) return;
-
+  /**
+   * Puts `source` in the shared history and returns the refreshed list, or null
+   * when the server could not be reached. The number is the record's id, so
+   * saving the same document again updates it rather than adding a row.
+   */
+  const saveToHistory = useCallback(async (source: SaleDocumentData) => {
     try {
       const response = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data: source }),
       });
       if (!response.ok) throw new Error(`Сервер ответил ${response.status}`);
-      setHistory(await fetchHistory());
+      const fresh = await fetchHistory();
+      setHistory(fresh);
+      return fresh;
     } catch (cause) {
       setError(
-        `Файл готов, но в историю не записался: ${cause instanceof Error ? cause.message : "сервер недоступен"}`,
+        `В историю не записалось: ${cause instanceof Error ? cause.message : "сервер недоступен"}`,
       );
+      return null;
     }
-  }, [data, downloadDocx]);
+  }, []);
 
-  const handleNewDocument = useCallback(() => {
-    const latest = history[0]?.data.documentNumber ?? data?.documentNumber ?? null;
-    setData(createEmptySaleDocument(new Date(), nextDocumentNumber(latest), crypto.randomUUID()));
+  /** Downloading, printing and starting the next one all record the document. */
+  const handleIssue = useCallback(async () => {
+    if (!data) return;
+    if (await downloadDocx(data)) await saveToHistory(data);
+  }, [data, downloadDocx, saveToHistory]);
+
+  const handlePrint = useCallback(() => {
+    if (!data) return;
+    setError(null);
+    // Started before the dialog opens: it blocks the page, not the request.
+    const saving = saveToHistory(data);
+    window.print();
+    void saving;
+  }, [data, saveToHistory]);
+
+  const handleNewDocument = useCallback(async () => {
+    const keep = data !== null && hasContent(data);
+    const saved = keep ? await saveToHistory(data) : null;
+    const numbers = (saved ?? history).map((entry) => entry.data.documentNumber);
+    // Even unsaved, a filled-in number was used; an untouched blank's was not.
+    if (keep) numbers.push(data.documentNumber);
+    setData({
+      ...createEmptySaleDocument(new Date(), nextDocumentNumber(numbers), crypto.randomUUID()),
+      // The next document is most likely the same form as this one.
+      kind: data?.kind ?? "waybill",
+    });
     setView("document");
-  }, [data?.documentNumber, history]);
+  }, [data, history, saveToHistory]);
 
   const handleOpen = useCallback((entry: HistoryEntry) => {
     setData(entry.data);
@@ -357,6 +398,12 @@ export function SaleDocumentBuilder() {
   if (!data) {
     return <div className="h-[70vh] animate-pulse rounded-xl border border-border bg-card" />;
   }
+
+  const { kind } = data;
+  const showForm = (next: DocumentKind) => {
+    update({ kind: next });
+    setView("document");
+  };
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,400px)_minmax(0,1fr)] xl:items-start">
@@ -383,74 +430,94 @@ export function SaleDocumentBuilder() {
           </p>
         </Card>
 
-        <Card
-          title="Двигатели и запчасти"
-          action={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => update({ items: [...data.items, createEmptyItem(crypto.randomUUID())] })}
-            >
-              <Plus className="size-3.5" />
-              Строка
-            </Button>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            {data.items.map((item, index) => (
-              <div key={item.id} className="rounded-lg border border-border/70 bg-background p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Позиция {index + 1}</span>
-                  {data.items.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => update({ items: data.items.filter((row) => row.id !== item.id) })}
-                      aria-label={`Удалить позицию ${index + 1}`}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
+        {kind === "waybill" ? (
+          <Card
+            title="Двигатели и запчасти"
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => update({ items: [...data.items, createEmptyItem(crypto.randomUUID())] })}
+              >
+                <Plus className="size-3.5" />
+                Строка
+              </Button>
+            }
+          >
+            <div className="flex flex-col gap-4">
+              {data.items.map((item, index) => (
+                <div key={item.id} className="rounded-lg border border-border/70 bg-background p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Позиция {index + 1}</span>
+                    {data.items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => update({ items: data.items.filter((row) => row.id !== item.id) })}
+                        aria-label={`Удалить позицию ${index + 1}`}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <TextField
+                        label="Наименование"
+                        value={item.title}
+                        placeholder="Двигатель EJ253 (Subaru)"
+                        onChange={(value) => updateItem(item.id, { title: value })}
+                      />
+                    </div>
                     <TextField
-                      label="Наименование"
-                      value={item.title}
-                      placeholder="Двигатель EJ253 (Subaru)"
-                      onChange={(value) => updateItem(item.id, { title: value })}
+                      label="Номер агрегата"
+                      value={item.serial}
+                      placeholder="928420"
+                      onChange={(value) => updateItem(item.id, { serial: value })}
+                    />
+                    <TextField
+                      label="Количество"
+                      type="number"
+                      value={String(item.quantity)}
+                      onChange={(value) => updateItem(item.id, { quantity: parseNumber(value) })}
+                    />
+                    <TextField
+                      label="Единица"
+                      value={item.unit}
+                      onChange={(value) => updateItem(item.id, { unit: value })}
+                    />
+                    <TextField
+                      label="Цена, ₸"
+                      type="number"
+                      value={String(item.price)}
+                      onChange={(value) => updateItem(item.id, { price: parseNumber(value) })}
                     />
                   </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <Card title="Автомобиль">
+            <div className="grid grid-cols-2 gap-3">
+              {VEHICLE_FIELDS.map((field) => (
+                <div key={field.key} className={field.key === "vin" ? "col-span-2" : undefined}>
                   <TextField
-                    label="Номер агрегата"
-                    value={item.serial}
-                    placeholder="928420"
-                    onChange={(value) => updateItem(item.id, { serial: value })}
-                  />
-                  <TextField
-                    label="Количество"
-                    type="number"
-                    value={String(item.quantity)}
-                    onChange={(value) => updateItem(item.id, { quantity: parseNumber(value) })}
-                  />
-                  <TextField
-                    label="Единица"
-                    value={item.unit}
-                    onChange={(value) => updateItem(item.id, { unit: value })}
-                  />
-                  <TextField
-                    label="Цена, ₸"
-                    type="number"
-                    value={String(item.price)}
-                    onChange={(value) => updateItem(item.id, { price: parseNumber(value) })}
+                    label={field.label}
+                    value={data.vehicle[field.key]}
+                    placeholder={field.placeholder}
+                    onChange={(value) => update({ vehicle: { ...data.vehicle, [field.key]: value } })}
                   />
                 </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Все поля необязательные — пустое печатается чертой, его впишут от руки.
+            </p>
+          </Card>
+        )}
 
         <Card title="Стороны">
           <div className="grid gap-3">
@@ -469,25 +536,36 @@ export function SaleDocumentBuilder() {
           </div>
         </Card>
 
-        <Card title="НДС">
-          <TextField
-            label="НДС, % (0 — без НДС)"
-            type="number"
-            value={String(data.vatRate)}
-            onChange={(value) => update({ vatRate: parseNumber(value) })}
-          />
-          <p className="mt-2 text-xs text-muted-foreground">
-            Сумма документа:{" "}
-            <span className="font-medium text-foreground">{formatMoney(computeTotals(data).total)} ₸</span>
-          </p>
-        </Card>
+        {kind === "waybill" && (
+          <Card title="НДС">
+            <TextField
+              label="НДС, % (0 — без НДС)"
+              type="number"
+              value={String(data.vatRate)}
+              onChange={(value) => update({ vatRate: parseNumber(value) })}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Сумма документа:{" "}
+              <span className="font-medium text-foreground">{formatMoney(computeTotals(data).total)} ₸</span>
+            </p>
+          </Card>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/95 p-2 shadow-xs backdrop-blur print:hidden">
           <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
-            <ViewTab active={view === "document"} onClick={() => setView("document")}>
-              Документ
+            <ViewTab
+              active={view === "document" && kind === "waybill"}
+              onClick={() => showForm("waybill")}
+            >
+              Накладная
+            </ViewTab>
+            <ViewTab
+              active={view === "document" && kind === "diagnostic"}
+              onClick={() => showForm("diagnostic")}
+            >
+              Диагностический лист
             </ViewTab>
             <ViewTab active={view === "history"} onClick={() => setView("history")}>
               История{history.length > 0 ? ` · ${history.length}` : ""}
@@ -495,15 +573,22 @@ export function SaleDocumentBuilder() {
           </div>
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={() => void handleIssue()} disabled={building}>
-              {building ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-              Скачать Word
-            </Button>
-            <Button type="button" variant="outline" onClick={() => window.print()}>
+            {/* The diagnostic sheet is printed, never handed over as a file. */}
+            {kind === "waybill" && (
+              <Button type="button" onClick={() => void handleIssue()} disabled={building}>
+                {building ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                Скачать Word
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant={kind === "waybill" ? "outline" : "default"}
+              onClick={handlePrint}
+            >
               <Printer className="size-4" />
               Печать
             </Button>
-            <Button type="button" variant="outline" onClick={handleNewDocument}>
+            <Button type="button" variant="outline" onClick={() => void handleNewDocument()}>
               <FilePlus2 className="size-4" />
               Новый
             </Button>
@@ -527,8 +612,14 @@ export function SaleDocumentBuilder() {
 
         {/* Always in the DOM: printing has to work from the history view too. */}
         <div className={cn("flex flex-col gap-6 print:gap-0", view !== "document" && "hidden print:flex")}>
-          <p className="text-xs text-muted-foreground print:hidden">{fileName}</p>
-          <SaleDocumentSheet data={data} />
+          {kind === "waybill" ? (
+            <>
+              <p className="text-xs text-muted-foreground print:hidden">{fileName}</p>
+              <SaleDocumentSheet data={data} />
+            </>
+          ) : (
+            <DiagnosticSheet data={data} />
+          )}
         </div>
       </div>
     </div>

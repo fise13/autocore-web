@@ -26,12 +26,43 @@ export type SaleParty = {
   client: string;
 };
 
+/** Which printed form the document is: the sale, or the diagnostic sheet. */
+export type DocumentKind = "waybill" | "diagnostic";
+
+/**
+ * The car on a diagnostic sheet. Every line is optional free text — a blank one
+ * prints as a line to fill in by pen.
+ */
+export type Vehicle = {
+  vin: string;
+  plate: string;
+  year: string;
+  color: string;
+  mileage: string;
+};
+
+export const VEHICLE_FIELDS: readonly { key: keyof Vehicle; label: string; placeholder: string }[] = [
+  { key: "vin", label: "VIN", placeholder: "JF1BL5KS57G012345" },
+  { key: "plate", label: "Гос. номер", placeholder: "123 ABC 02" },
+  { key: "year", label: "Год выпуска", placeholder: "2008" },
+  { key: "color", label: "Цвет", placeholder: "Серебристый" },
+  { key: "mileage", label: "Пробег", placeholder: "185 000 км" },
+];
+
+export function createEmptyVehicle(): Vehicle {
+  return { vin: "", plate: "", year: "", color: "", mileage: "" };
+}
+
 export type SaleDocumentData = {
+  kind: DocumentKind;
   /** Printed after `№`, e.g. `ПР-267`. */
   documentNumber: string;
   /** ISO timestamp; the document prints it as `дд.мм.гггг чч:мм`. */
   issuedAt: string;
   customer: SaleParty;
+  /** Printed on the diagnostic sheet only. */
+  vehicle: Vehicle;
+  /** Printed on the waybill only. */
   items: SaleItem[];
   /** VAT percentage already contained in the prices. `0` prints no VAT note. */
   vatRate: number;
@@ -120,9 +151,11 @@ export function createEmptyItem(id: string): SaleItem {
 
 export function createEmptySaleDocument(now: Date, documentNumber: string, itemId: string): SaleDocumentData {
   return {
+    kind: "waybill",
     documentNumber,
     issuedAt: now.toISOString(),
     customer: { manager: "", client: "" },
+    vehicle: createEmptyVehicle(),
     items: [createEmptyItem(itemId)],
     vatRate: 16,
   };
