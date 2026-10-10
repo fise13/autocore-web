@@ -9,7 +9,11 @@
  */
 // Relative, not `@/` — these run under the repo-root node test runner, where
 // the `@/` alias points at the web app's src/.
-import { joinSearchFields, matchesSearchQuery } from '../../../lib/search/match-query';
+import {
+  compactAlphanumeric,
+  joinSearchFields,
+  normalizeSearchQuery,
+} from '../../../lib/search/match-query';
 import type { MotorEntity } from '../../../types/motor';
 
 import {
@@ -112,31 +116,87 @@ export function engineStatusTone(motor: MotorEntity): EngineStatusTone {
   }
 }
 
-export function engineMatchesQuery(motor: MotorEntity, query: string): boolean {
-  const exactGrade = isExactQualityGradeQuery(query);
-  if (exactGrade && engineQualityGrade(motor) === exactGrade) return true;
+type EngineSearchText = { lower: string; compact: string };
 
-  return matchesSearchQuery(
-    joinSearchFields(
-      motor.serialCode,
-      motor.brandName,
-      motor.engineCode,
-      motor.configuration,
-      motor.transmission,
-      motor.primaryLocationCode,
-      motor.warehouseLocation,
-      engineQualityLabel(motor),
-      engineQualitySearchText(motor),
-    ),
-    query,
+/** Motors are immutable snapshots, so a motor's searchable text is computed once. */
+const searchTextCache = new WeakMap<MotorEntity, EngineSearchText>();
+
+function engineSearchText(motor: MotorEntity): EngineSearchText {
+  const cached = searchTextCache.get(motor);
+  if (cached) return cached;
+  const haystack = joinSearchFields(
+    motor.serialCode,
+    motor.brandName,
+    motor.engineCode,
+    motor.configuration,
+    motor.transmission,
+    motor.primaryLocationCode,
+    motor.warehouseLocation,
+    engineQualityLabel(motor),
+    engineQualitySearchText(motor),
   );
+  const text = { lower: haystack.toLowerCase(), compact: compactAlphanumeric(haystack) };
+  searchTextCache.set(motor, text);
+  return text;
 }
 
+/**
+ * Fill the search-text cache for `motors[from, from + count)`; returns the next
+ * index. The screen calls it in idle slices after opening, so the first
+ * keystroke does not pay for 10,000 motors at once.
+ */
+export function primeEngineSearch(motors: readonly MotorEntity[], from: number, count: number): number {
+  const end = Math.min(motors.length, from + count);
+  for (let index = from; index < end; index += 1) engineSearchText(motors[index]!);
+  return end;
+}
+
+/**
+ * Build the matcher once per query, then test each motor against cached text.
+ * Same rules as `matchesSearchQuery` (multi-token AND, serial/VIN compaction),
+ * without re-normalising the query and re-lowercasing every motor per keystroke.
+ */
+export function createEngineQueryMatcher(query: string): (motor: MotorEntity) => boolean {
+  const normalized = normalizeSearchQuery(query);
+  if (!normalized) return () => false;
+  const tokens = normalized.split(' ').filter(Boolean);
+  const compactTokens = tokens.map(compactAlphanumeric);
+  const compactQuery = compactAlphanumeric(query);
+  const exactGrade = isExactQualityGradeQuery(query);
+
+  return (motor) => {
+    if (exactGrade && engineQualityGrade(motor) === exactGrade) return true;
+    const text = engineSearchText(motor);
+    if (compactQuery.length >= 4 && text.compact.includes(compactQuery)) return true;
+    return tokens.every(
+      (token, index) =>
+        text.lower.includes(token) ||
+        (compactTokens[index]!.length >= 3 && text.compact.includes(compactTokens[index]!)),
+    );
+  };
+}
+
+export function engineMatchesQuery(motor: MotorEntity, query: string): boolean {
+  return createEngineQueryMatcher(query)(motor);
+}
+
+/**
+ * One collator each, built once. `localeCompare(…, options)` sets up a collator
+ * on every call; sorting 10,000 serials that way cost ~170 ms in V8 and several
+ * times that in Hermes, every time the yard was regrouped.
+ */
+const serialCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+const titleCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+
 function compareUnits(left: MotorEntity, right: MotorEntity): number {
-  return engineUnitLabel(left).localeCompare(engineUnitLabel(right), undefined, {
-    numeric: true,
-    sensitivity: 'base',
-  });
+  return serialCollator.compare(engineUnitLabel(left), engineUnitLabel(right));
+}
+
+/** Natural serial order, with each label computed once rather than per comparison. */
+function sortUnits(units: MotorEntity[]): MotorEntity[] {
+  const keyed = units.map((motor) => ({ label: engineUnitLabel(motor), motor }));
+  keyed.sort((left, right) => serialCollator.compare(left.label, right.label));
+  return keyed.map((entry) => entry.motor);
 }
 
 /**
@@ -145,9 +205,7 @@ function compareUnits(left: MotorEntity, right: MotorEntity): number {
  */
 export function sortEnginesForCatalog(motors: MotorEntity[]): MotorEntity[] {
   return [...motors].sort((left, right) => {
-    const byVariant = engineVariantTitle(left).localeCompare(engineVariantTitle(right), undefined, {
-      sensitivity: 'base',
-    });
+    const byVariant = titleCollator.compare(engineVariantTitle(left), engineVariantTitle(right));
     if (byVariant !== 0) return byVariant;
     return compareUnits(left, right);
   });
@@ -178,22 +236,20 @@ export function groupEnginesByVariant(motors: MotorEntity[]): EngineVariant[] {
   }
 
   const variants = Array.from(map.values());
-  for (const variant of variants) variant.units.sort(compareUnits);
+  for (const variant of variants) variant.units = sortUnits(variant.units);
 
   return variants.sort((left, right) => {
     if (left.id === 'unspecified') return 1;
     if (right.id === 'unspecified') return -1;
     if (left.units.length !== right.units.length) return right.units.length - left.units.length;
-    return left.title.localeCompare(right.title, undefined, { sensitivity: 'base' });
+    return titleCollator.compare(left.title, right.title);
   });
 }
 
 export function variantSubtitle(variant: EngineVariant): string {
-  const count = variant.units.length;
-  const units = `${count} ${count === 1 ? 'unit' : 'units'}`;
-  const placed = variant.units.filter((unit) => engineUnitLocation(unit)).length;
-  if (placed === 0 || placed === count) return units;
-  return `${units} · ${count - placed} unplaced`;
+  // Just the count: a header has one line, and unshelved units already say so
+  // on their own rows in the warning colour.
+  return variant.units.length.toLocaleString('en-US');
 }
 
 /** Brand is the kicker; the code is what the yard actually files under. */

@@ -11,6 +11,11 @@ import {
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
+import {
+  reuseUnchangedDocs,
+  sameItems,
+  type DocEntityCache,
+} from '@/lib/firestore/reuse-unchanged-docs';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
 import { getFirebaseDb } from '@/services/firebase';
 import { MOTOR_STATUSES, type MotorEntity, type MotorFilters } from '@/types/motor';
@@ -190,6 +195,51 @@ export function createMotorRepository() {
     },
 
     /**
+     * Replace an engine's photo list (first = main photo).
+     *
+     * Writes the whole motor, not just `photoUrls`: this path is the current
+     * user's, and for an employee it may not hold the owner's document yet — a
+     * bare `{ photoUrls }` would create a newer, field-less copy that the
+     * collectionGroup dedupe then prefers over the real one.
+     */
+    async setPhotos(uid: string, motor: MotorEntity, photoUrls: string[]): Promise<void> {
+      const motorId = String(motor.localId ?? motor.id);
+      const localId = motor.localId ?? Number(motorId);
+      const optional = {
+        quality: motor.quality,
+        warehouseLocation: motor.warehouseLocation,
+        primaryLocationId: motor.primaryLocationId,
+        primaryLocationCode: motor.primaryLocationCode,
+        intakeJobId: motor.intakeJobId,
+        intakeStatus: motor.intakeStatus,
+      };
+      await setDoc(
+        motorDocRef(uid, motorId),
+        {
+          companyId: normalizeCompanyId(motor.companyId),
+          localId: Number.isFinite(localId) ? localId : null,
+          engineId: motor.engineId ?? null,
+          serialCode: motor.serialCode.trim(),
+          configuration: motor.configuration ?? '',
+          notes: motor.notes ?? '',
+          quantity: motor.quantity ?? 1,
+          transmission: motor.transmission ?? '',
+          arrivalDate: motor.arrivalDate ?? null,
+          soldDate: motor.soldDate ?? null,
+          brandName: motor.brandName ?? '',
+          engineCode: motor.engineCode ?? '',
+          status: motor.status ?? 'available',
+          reservedForWorkOrderId: motor.reservedForWorkOrderId ?? null,
+          installedOnVehicleId: motor.installedOnVehicleId ?? null,
+          ...Object.fromEntries(Object.entries(optional).filter(([, value]) => value != null)),
+          photoUrls,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    },
+
+    /**
      * Same write path as the web excel grid: `users/{uid}/motors/{localId}`.
      * Rows show up in Work → Engines and in the desktop spreadsheet.
      */
@@ -246,7 +296,10 @@ export function createMotorRepository() {
       onError?: (error: Error) => void,
     ) {
       const companyId = normalizeCompanyId(filters.companyId);
-      const merged = new Map<string, MotorEntity>();
+      const sources = new Map<'group' | 'user', DocEntityCache<MotorEntity>>([
+        ['group', new Map()],
+        ['user', new Map()],
+      ]);
       /**
        * Available-stock listeners must NOT open users/{uid}/motors.
        * That path is an unbounded sold archive and can freeze the JS thread for
@@ -256,23 +309,25 @@ export function createMotorRepository() {
         filters.availability === 'available' && !filters.soldOnly && Boolean(companyId);
       const sourceReady = { group: false, user: skipUserArchive };
 
+      let lastEmitted: MotorEntity[] | null = null;
       const emit = () => {
         if (!sourceReady.group || !sourceReady.user) return;
-        const scoped = Array.from(merged.values()).filter(
-          (motor) => !motor.companyId || motor.companyId === companyId,
-        );
-        onData(applyMotorFilters(dedupeMotors(scoped), filters));
+        const scoped: MotorEntity[] = [];
+        for (const cache of sources.values()) {
+          for (const motor of cache.values()) {
+            if (motor && (!motor.companyId || motor.companyId === companyId)) scoped.push(motor);
+          }
+        }
+        const next = applyMotorFilters(dedupeMotors(scoped), filters);
+        // Cache-then-server double fires and metadata-only snapshots change
+        // nothing; re-emitting would make every screen re-derive 10,000 motors.
+        if (lastEmitted && sameItems(lastEmitted, next)) return;
+        lastEmitted = next;
+        onData(next);
       };
 
-      const ingest = (prefix: string, docs: { id: string; data: () => Record<string, unknown> }[]) => {
-        for (const key of [...merged.keys()]) {
-          if (key.startsWith(`${prefix}:`)) merged.delete(key);
-        }
-        for (const item of docs) {
-          const motor = mapMotor(item.id, item.data());
-          if (!motor) continue;
-          merged.set(`${prefix}:${motor.localId ?? item.id}`, motor);
-        }
+      const ingest = (source: 'group' | 'user', snapshot: Parameters<typeof reuseUnchangedDocs>[0]) => {
+        sources.set(source, reuseUnchangedDocs(snapshot, sources.get(source)!, mapMotor).cache);
       };
 
       const groupQuery = query(
@@ -286,7 +341,7 @@ export function createMotorRepository() {
       const unsubGroup = listenQuery(
         groupQuery,
         (snapshot) => {
-          ingest('group', snapshot.docs);
+          ingest('group', snapshot);
           sourceReady.group = true;
           emit();
         },
@@ -307,7 +362,7 @@ export function createMotorRepository() {
       const unsubUser = listenQuery(
         userQuery,
         (snapshot) => {
-          ingest('user', snapshot.docs);
+          ingest('user', snapshot);
           sourceReady.user = true;
           emit();
         },

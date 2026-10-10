@@ -1,7 +1,6 @@
 import type { MotorQualityGrade } from '@autocore/engine-intake';
 
 import {
-  ENGINE_QUALITY_GRADE_MARKS,
   engineQualityGradeLabel,
 } from '../lib/engine-quality';
 
@@ -17,7 +16,8 @@ export type EngineQualityFilterValue = MotorQualityGrade | 'all';
  */
 export const ENGINE_QUALITY_FILTER_SEGMENTS: { value: string; label: string }[] = [
   { value: 'all', label: 'All' },
-  ...ENGINE_QUALITY_GRADE_MARKS.map((grade) => ({
+  // Best to worst, the way people read a grade — not the shop's digit order.
+  ...(['2', '1', '3'] as const).map((grade) => ({
     value: grade,
     label: engineQualityGradeLabel(grade),
   })),

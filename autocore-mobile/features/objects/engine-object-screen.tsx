@@ -18,6 +18,8 @@ import {
 import { EngineHero } from '@/features/engines/components/engine-hero';
 import { EngineLocationSheet } from '@/features/engines/components/engine-location-sheet';
 import { EnginePhotoViewer } from '@/features/engines/components/engine-photo-viewer';
+import { EnginePhotosSection } from '@/features/engines/components/engine-photos-section';
+import { useEnginePhotoEditor } from '@/features/engines/hooks/use-engine-photo-editor';
 import { SellMotorSheet, type SellMotorSheetRef } from '@/features/search/components/sell-motor-sheet';
 import { documentationLine, engineSpecRows } from '@/features/engines/lib/engine-facts';
 import { openEnginesList } from '@/features/engines/navigation';
@@ -66,6 +68,8 @@ export function EngineObjectScreen() {
     () => (motor?.photoUrls ?? []).filter((url) => url.trim().length > 0),
     [motor?.photoUrls],
   );
+
+  const photoEditor = useEnginePhotoEditor(motor);
 
   const intakeJobId = motor?.intakeJobId ?? null;
   const canSeeIntake = can('engine_intake_view');
@@ -131,12 +135,27 @@ export function EngineObjectScreen() {
       actions.push({ id: 'share-photo', title: 'Share Photo', systemImage: 'square.and.arrow.up' });
       actions.push({ id: 'copy-link', title: 'Copy Photo Link', systemImage: 'link' });
     }
+    if (photoEditor.canEdit) {
+      actions.push({ id: 'take-photo', title: 'Take Photo', systemImage: 'camera' });
+      actions.push({ id: 'add-photos', title: 'Add from Library', systemImage: 'photo.on.rectangle' });
+      if (photos.length > 1 && heroIndex > 0) {
+        actions.push({ id: 'make-main', title: 'Make Main Photo', systemImage: 'star' });
+      }
+      if (photos.length > 0) {
+        actions.push({ id: 'delete-photo', title: 'Delete Photo', systemImage: 'trash', destructive: true });
+      }
+    }
     return actions;
-  }, [photos.length]);
+  }, [heroIndex, photoEditor.canEdit, photos.length]);
 
   const onHeroAction = useCallback(
     (action: string) => {
       const url = photos[Math.min(heroIndex, photos.length - 1)];
+      const current = Math.min(heroIndex, Math.max(0, photos.length - 1));
+      if (action === 'take-photo') return void photoEditor.takePhoto();
+      if (action === 'add-photos') return void photoEditor.addFromLibrary();
+      if (action === 'make-main') return void photoEditor.makeMain(current);
+      if (action === 'delete-photo') return photoEditor.remove(current);
       void (async () => {
         if (action === 'copy-serial') {
           await Clipboard.setStringAsync(serial);
@@ -163,7 +182,7 @@ export function EngineObjectScreen() {
         }
       })();
     },
-    [heroIndex, photos, serial],
+    [heroIndex, photoEditor, photos, serial],
   );
 
   if (!motor) {
@@ -226,6 +245,21 @@ export function EngineObjectScreen() {
             }}
           >
             <EngineIdentity motor={motor} serial={serial} title={title} />
+
+            {photos.length > 0 || photoEditor.canEdit || photoEditor.uploading ? (
+              <EngineChapter title={photos.length > 0 ? `Photos · ${photos.length}` : 'Photos'}>
+                <EnginePhotosSection
+                  photos={photos}
+                  canEdit={photoEditor.canEdit}
+                  uploading={photoEditor.uploading}
+                  onOpen={setViewerIndex}
+                  onTakePhoto={() => void photoEditor.takePhoto()}
+                  onPickFromLibrary={() => void photoEditor.addFromLibrary()}
+                  onMakeMain={(index) => void photoEditor.makeMain(index)}
+                  onDelete={photoEditor.remove}
+                />
+              </EngineChapter>
+            ) : null}
 
             <EngineChapter title="Details">
               <EngineSpecList rows={specs} />

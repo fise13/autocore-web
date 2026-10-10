@@ -28,5 +28,7 @@ export const mobileApi = {
   notificationsBackfillTeam: '/api/notifications/backfill-team',
   notification: (id: string) => `/api/mobile/notifications/${encodeURIComponent(id)}`,
   accountAvatar: '/api/account/avatar',
+  /** Server stores the file (Storage rules deny clients) and returns its download URL. */
+  inventoryRowPhoto: '/api/inventory/row-photo',
   invitesSend: '/api/invites/send',
 } as const;

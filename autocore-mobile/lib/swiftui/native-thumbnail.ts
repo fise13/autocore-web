@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 
@@ -30,14 +30,12 @@ const inflight = new Map<string, Promise<void>>();
 const listeners = new Set<() => void>();
 
 /**
- * Bumped on every resolution so `useSyncExternalStore` sees a changed
- * snapshot. The map itself is mutated in place — copying it per thumbnail
- * would allocate a new map for every row in a long list.
+ * Every row is told a thumbnail resolved, but each row's snapshot is its own
+ * entry — so React re-renders only the row whose picture arrived. It used to
+ * read one global revision, which re-rendered every visible row for every
+ * thumbnail: opening a list of 60 photographed engines cost 60 × 60 renders.
  */
-let revision = 0;
-
 function notify(): void {
-  revision += 1;
   for (const listener of listeners) listener();
 }
 
@@ -46,8 +44,25 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-function getRevision(): number {
-  return revision;
+/** Thumbnails generated at once; the rest wait, so opening a list is not a CPU spike. */
+const MAX_PARALLEL = 3;
+let running = 0;
+const queue: (() => void)[] = [];
+
+function runLimited(task: () => Promise<void>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const start = () => {
+      running += 1;
+      task()
+        .then(resolve, reject)
+        .finally(() => {
+          running -= 1;
+          queue.shift()?.();
+        });
+    };
+    if (running < MAX_PARALLEL) start();
+    else queue.push(start);
+  });
 }
 
 function directory(): Directory {
@@ -141,7 +156,7 @@ async function generate(url: string, pointSize: number, key: string): Promise<vo
 function request(url: string, pointSize: number): void {
   const key = thumbCacheKey(url, pointSize);
   if (resolved.has(key) || inflight.has(key)) return;
-  const run = generate(url, pointSize, key)
+  const run = runLimited(() => generate(url, pointSize, key))
     .catch(() => {
       resolved.set(key, null);
       notify();
@@ -159,14 +174,15 @@ function request(url: string, pointSize: number): void {
  * thumbnail already uses while its image decodes.
  */
 export function useNativeThumbnail(url: string | null, pointSize: number): string | null {
-  useSyncExternalStore(subscribe, getRevision, getRevision);
+  const key = url ? thumbCacheKey(url, pointSize) : null;
+  const getSnapshot = useCallback(() => (key ? (resolved.get(key) ?? null) : null), [key]);
+  const local = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
     if (!url) return;
     request(url, pointSize);
   }, [pointSize, url]);
 
-  if (!url) return null;
-  return resolved.get(thumbCacheKey(url, pointSize)) ?? null;
+  return local;
 }
 

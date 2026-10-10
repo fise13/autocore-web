@@ -191,25 +191,16 @@ describe('engineMatchesQuery', () => {
 });
 
 describe('variantSubtitle', () => {
-  it('counts units and calls out the unplaced ones', () => {
+  it('is just the unit count, grouped for thousands', () => {
     const variants = groupEnginesByVariant([
       motor({ id: '1', brandName: 'Toyota', engineCode: '2AZ-FE', primaryLocationCode: 'A-1' }),
       motor({ id: '2', brandName: 'Toyota', engineCode: '2AZ-FE' }),
     ]);
-    assert.equal(variantSubtitle(variants[0]!), '2 units · 1 unplaced');
-  });
-
-  it('stays quiet when every unit is placed, or none are', () => {
-    const placed = groupEnginesByVariant([
-      motor({ id: '1', brandName: 'Toyota', engineCode: '2AZ-FE', primaryLocationCode: 'A-1' }),
-    ]);
-    assert.equal(variantSubtitle(placed[0]!), '1 unit');
-
-    const unplaced = groupEnginesByVariant([
-      motor({ id: '1', brandName: 'Toyota', engineCode: '2AZ-FE' }),
-      motor({ id: '2', brandName: 'Toyota', engineCode: '2AZ-FE' }),
-    ]);
-    assert.equal(variantSubtitle(unplaced[0]!), '2 units');
+    assert.equal(variantSubtitle(variants[0]!), '2');
+    const many = groupEnginesByVariant(
+      Array.from({ length: 1200 }, (_, i) => motor({ id: String(i), brandName: 'Subaru', engineCode: 'EJ251' })),
+    );
+    assert.equal(variantSubtitle(many[0]!), '1,200');
   });
 });
 

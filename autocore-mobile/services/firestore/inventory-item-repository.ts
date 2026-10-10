@@ -9,6 +9,7 @@ import {
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
+import { reuseUnchangedDocs, type DocEntityCache } from '@/lib/firestore/reuse-unchanged-docs';
 import { getFirebaseDb } from '@/services/firebase';
 import type { InventoryItem, InventoryItemStatus, InventoryItemType } from '@/types/inventory';
 
@@ -97,14 +98,17 @@ export function createInventoryItemRepository() {
         limit(500),
       );
 
+      let cache: DocEntityCache<NonNullable<ReturnType<typeof mapItem>>> = new Map();
       return listenQuery(
         q,
-        (snapshot) =>
+        (snapshot) => {
+          // Unchanged docs keep their objects; see reuseUnchangedDocs.
+          const next = reuseUnchangedDocs(snapshot, cache, mapItem);
+          cache = next.cache;
           onData(
-            snapshot.docs
-              .map((item) => mapItem(item.id, item.data() as Record<string, unknown>))
-              .filter((item) => item.status === 'active' || item.status === 'discontinued'),
-          ),
+            next.entities.filter((item) => item.status === 'active' || item.status === 'discontinued'),
+          );
+        },
         onError,
       );
     },

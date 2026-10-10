@@ -23,6 +23,7 @@ import { StoreShotsBootstrap } from '@/lib/store-shots/store-shots-bootstrap';
 import { ToastProvider } from '@/components/ui/toast';
 import { markStartup } from '@/lib/performance/startup-tracer';
 import { queryClient } from '@/lib/query-client';
+import { likelyExceedsPersistLimit } from '@/lib/realtime/persist-size';
 import {
   getQueryPersistBuster,
   mmkvQueryPersister,
@@ -32,6 +33,9 @@ import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage'
 import { warmSessionCacheFromDisk } from '@/lib/startup/warm-session-cache';
 
 export { ErrorBoundary } from '@/components/error-boundary-screen';
+
+/** Per-query ceiling for the React Query disk cache. */
+const MAX_DEHYDRATED_CHARS = 400_000;
 
 markStartup('js_bundle_eval');
 void ensureAsyncStorageMigrated();
@@ -54,8 +58,11 @@ function AppProviders({ children }: { children: React.ReactNode }) {
         maxAge: 1000 * 60 * 60 * 24 * 7,
         buster,
         dehydrateOptions: {
+          // Huge catalogs (a 10,000-motor yard) are left to the per-key
+          // snapshot cache, which already applies its own size limit.
           shouldDehydrateQuery: (query) =>
-            query.queryKey[0] === 'realtime' || query.queryKey[0] === 'api',
+            (query.queryKey[0] === 'realtime' || query.queryKey[0] === 'api') &&
+            !likelyExceedsPersistLimit(query.state.data, MAX_DEHYDRATED_CHARS),
         },
       }}
       onSuccess={() => {

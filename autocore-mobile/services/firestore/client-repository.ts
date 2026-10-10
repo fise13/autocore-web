@@ -14,6 +14,7 @@ import { createClientSchema } from '@/domain/schemas';
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
+import { reuseUnchangedDocs, type DocEntityCache } from '@/lib/firestore/reuse-unchanged-docs';
 import { getFirebaseDb } from '@/services/firebase';
 import type { ClientEntity, CreateClientInput, UpdateClientInput } from '@/types/client';
 
@@ -51,10 +52,15 @@ export function createClientRepository() {
       }
 
       const q = query(clientsRef(companyId), orderBy('updatedAt', 'desc'), limit(300));
+      let cache: DocEntityCache<NonNullable<ReturnType<typeof mapClient>>> = new Map();
       return listenQuery(
         q,
-        (snapshot) =>
-          onData(snapshot.docs.map((item) => mapClient(item.id, item.data() as Record<string, unknown>))),
+        (snapshot) => {
+          // Unchanged docs keep their objects; see reuseUnchangedDocs.
+          const next = reuseUnchangedDocs(snapshot, cache, mapClient);
+          cache = next.cache;
+          onData(next.entities);
+        },
         onError,
       );
     },

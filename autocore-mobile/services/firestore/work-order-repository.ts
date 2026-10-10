@@ -15,6 +15,7 @@ import { createWorkOrderSchema } from '@/domain/schemas';
 import { normalizeCompanyId } from '@/lib/company-id';
 import { toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
+import { reuseUnchangedDocs, type DocEntityCache } from '@/lib/firestore/reuse-unchanged-docs';
 import { stripUndefinedDeep } from '@/lib/firestore/strip-undefined';
 import { getFirebaseDb } from '@/services/firebase';
 import type {
@@ -125,12 +126,14 @@ export function createWorkOrderRepository() {
       }
 
       const q = query(workOrdersRef(companyId), orderBy('updatedAt', 'desc'), limit(200));
+      let cache: DocEntityCache<NonNullable<ReturnType<typeof mapWorkOrder>>> = new Map();
       return listenQuery(
         q,
         (snapshot) => {
-          onData(
-            snapshot.docs.map((item) => mapWorkOrder(item.id, item.data() as Record<string, unknown>)),
-          );
+          // Unchanged docs keep their objects; see reuseUnchangedDocs.
+          const next = reuseUnchangedDocs(snapshot, cache, mapWorkOrder);
+          cache = next.cache;
+          onData(next.entities);
         },
         onError,
       );

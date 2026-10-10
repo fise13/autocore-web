@@ -75,7 +75,7 @@ export function groupEngineRowsIntoSections(
 }
 
 /** Rows the iOS list mounts up front, and how many more each time its end comes into view. */
-export const ENGINE_LIST_PAGE = 60;
+export const ENGINE_LIST_PAGE = 30;
 
 /**
  * Keep only the first `limit` units, cutting a section short where needed.

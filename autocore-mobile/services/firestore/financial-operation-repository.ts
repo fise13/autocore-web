@@ -7,11 +7,13 @@ import {
   query,
   serverTimestamp,
   where,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 
 import { normalizeCompanyId } from '@/lib/company-id';
 import { dateMs, toDateFromFirestore } from '@/lib/firestore-timestamp';
 import { listenQuery } from '@/lib/firestore/trusted-snapshot';
+import { reuseUnchangedDocs, type DocEntityCache } from '@/lib/firestore/reuse-unchanged-docs';
 import { getFirebaseDb } from '@/services/firebase';
 import type { CreateFinancialOperationInput, FinancialOperation, OperationType } from '@/types/financial-operation';
 
@@ -103,6 +105,7 @@ export function createFinancialOperationRepository() {
         orderBy('createdAt', 'asc'),
       );
 
+      let cache: DocEntityCache<FinancialOperation> = new Map();
       return listenQuery(
         operationsQuery,
         (snapshot) => {
@@ -118,14 +121,13 @@ export function createFinancialOperationRepository() {
            * the row shows immediately and is replaced by the authoritative
            * value when the server acknowledges.
            */
-          let mapped = snapshot.docs
-            .map((item) =>
-              mapOperation(
-                item.id,
-                item.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>,
-              ),
-            )
-            .filter((item): item is FinancialOperation => item != null);
+          // Only changed docs are re-read; an estimated stamp resolving on the
+          // server arrives as a `modified` change, so it is never kept stale.
+          const next = reuseUnchangedDocs(snapshot, cache, mapOperation, (item) =>
+            (item as QueryDocumentSnapshot).data({ serverTimestamps: 'estimate' }),
+          );
+          cache = next.cache;
+          let mapped = next.entities;
 
           if (filters.type && filters.type !== 'all') {
             mapped = mapped.filter((item) => item.type === filters.type);

@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { InteractionManager, View } from 'react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { EngineIntakeJob } from '@autocore/engine-intake';
@@ -15,7 +15,6 @@ import {
   ContentState,
   Screen,
   ScreenGate,
-  catalogRowPosition,
   toast,
   useCatalogNavBarHeight,
 } from '@/components/ui';
@@ -59,62 +58,24 @@ import {
   type EngineQualityFilterValue,
 } from './components/engine-quality-filter-bar';
 import { EnginesLiftProvider } from './components/engines-lift-provider';
-import { engineMatchesQualityFilter } from './lib/engine-quality';
 import {
   ENGINE_LANE_SEGMENTS,
   parseEngineListFilter,
   type EngineListFilter,
 } from './lib/engine-lane';
-import type { EngineRow } from './lib/engine-list-sections';
-import { incomingJobForMotor, splitEngineCatalog } from './lib/motor-from-intake-job';
-import {
-  engineMatchesQuery,
-  engineUnitLocation,
-  groupEnginesByVariant,
-  variantHeading,
-  variantSubtitle,
-  type EngineVariant,
-} from './lib/engine-variants';
+import { deriveEngineCatalog } from './lib/engine-catalog-model';
+import { primeEngineSearch } from './lib/engine-variants';
+import { incomingJobForMotor } from './lib/motor-from-intake-job';
 import { newEngineHref } from './navigation';
 
-function flattenVariants(variants: EngineVariant[], lane: 'yard' | 'incoming'): EngineRow[] {
-  const rows: EngineRow[] = [];
-  for (const variant of variants) {
-    const heading = variantHeading(variant);
-    rows.push({
-      type: 'header',
-      key: `h:${lane}:${variant.id}`,
-      kicker: heading.kicker ?? undefined,
-      title: heading.title,
-      meta: variantSubtitle(variant),
-    });
-    variant.units.forEach((motor, index) => {
-      rows.push({
-        type: 'unit',
-        key: `u:${lane}:${variant.id}:${motor.id}`,
-        motor,
-        lane,
-        position: catalogRowPosition(index, variant.units.length),
-      });
-    });
-  }
-  return rows;
-}
-
-function flattenIncoming(motors: MotorEntity[]): EngineRow[] {
-  if (motors.length === 0) return [];
-  return motors.map((motor, index) => ({
-    type: 'unit' as const,
-    key: `u:incoming:${motor.intakeJobId ?? motor.id}`,
-    motor,
-    lane: 'incoming' as const,
-    position: catalogRowPosition(index, motors.length),
-  }));
-}
-
 function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
+  return `${count.toLocaleString('en-US')} ${count === 1 ? one : many}`;
 }
+
+/** One shared empty catalog, so a viewer without catalog access keeps a stable input. */
+const NO_MOTORS: MotorEntity[] = [];
+/** Motors whose search text is prepared per idle tick. */
+const SEARCH_PRIME_SLICE = 500;
 
 export function EnginesScreen() {
   return (
@@ -212,54 +173,43 @@ function EnginesScreenBody() {
     [jobsById],
   );
 
-  const { incoming, yard } = useMemo(
-    () => splitEngineCatalog(intake.jobs, canViewCatalog ? motors : []),
-    [canViewCatalog, intake.jobs, motors],
+  const catalog = useMemo(
+    () =>
+      deriveEngineCatalog({
+        jobs: intake.jobs,
+        motors: canViewCatalog ? motors : NO_MOTORS,
+        query: deferredQuery,
+        quality,
+        lane,
+      }),
+    [canViewCatalog, deferredQuery, intake.jobs, lane, motors, quality],
   );
+  const { rows } = catalog;
 
-  const matchQuery = useCallback(
-    (motor: MotorEntity) => {
-      if (!deferredQuery) return true;
-      return engineMatchesQuery(motor, deferredQuery);
-    },
-    [deferredQuery],
-  );
-
-  const incomingMatched = useMemo(
-    () => incoming.filter(matchQuery),
-    [incoming, matchQuery],
-  );
-  const yardMatched = useMemo(() => {
-    return yard.filter((motor) => {
-      if (!engineMatchesQualityFilter(motor, quality)) return false;
-      return matchQuery(motor);
-    });
-  }, [matchQuery, quality, yard]);
-
-  const rows = useMemo(() => {
-    if (lane === 'incoming') return flattenIncoming(incomingMatched);
-    if (lane === 'yard') return flattenVariants(groupEnginesByVariant(yardMatched), 'yard');
-    const incomingRows = flattenIncoming(incomingMatched);
-    const yardRows = flattenVariants(groupEnginesByVariant(yardMatched), 'yard');
-    if (incomingRows.length === 0) return yardRows;
-    return [
-      {
-        type: 'header' as const,
-        key: 'h:incoming',
-        title: 'Incoming',
-        meta: plural(incomingMatched.length, 'engine', 'engines'),
-      },
-      ...incomingRows,
-      ...yardRows,
-    ];
-  }, [incomingMatched, lane, yardMatched]);
-
+  // Warm search text in idle slices so the first keystroke is as quick as the rest.
+  useEffect(() => {
+    if (!canViewCatalog || motors.length === 0) return;
+    let cancelled = false;
+    let next = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const slice = () => {
+      if (cancelled) return;
+      next = primeEngineSearch(motors, next, SEARCH_PRIME_SLICE);
+      if (next < motors.length) timer = setTimeout(slice, 0);
+    };
+    const handle = InteractionManager.runAfterInteractions(slice);
+    return () => {
+      cancelled = true;
+      handle.cancel();
+      if (timer) clearTimeout(timer);
+    };
+  }, [canViewCatalog, motors]);
   const unitCount =
     lane === 'incoming'
-      ? incomingMatched.length
+      ? catalog.incomingCount
       : lane === 'yard'
-        ? yardMatched.length
-        : incomingMatched.length + yardMatched.length;
+        ? catalog.yardCount
+        : catalog.incomingCount + catalog.yardCount;
 
   const openEngine = useCallback(
     (motorId: string) => {
@@ -392,18 +342,18 @@ function EnginesScreenBody() {
     );
   }
 
-  const loading = catalogLoading || (canSeeIntake && intake.loading && incoming.length === 0);
+  const loading = catalogLoading || (canSeeIntake && intake.loading && catalog.incomingTotal === 0);
   const filtering = Boolean(deferredQuery) || (lane !== 'incoming' && quality !== 'all');
-  const unplacedCount = yardMatched.filter((motor) => !engineUnitLocation(motor)).length;
+  const { unplacedCount } = catalog;
 
   const subtitle = loading
     ? 'Loading…'
     : lane === 'incoming'
-      ? `${plural(incomingMatched.length, 'engine', 'engines')} incoming`
+      ? `${plural(catalog.incomingCount, 'engine', 'engines')} incoming`
       : filtering
         ? `${plural(unitCount, 'match', 'matches')}`
         : unplacedCount > 0
-          ? `${plural(unitCount, 'engine', 'engines')} · ${unplacedCount} without a shelf`
+          ? `${plural(unitCount, 'engine', 'engines')} · ${unplacedCount.toLocaleString('en-US')} without a shelf`
           : `${plural(unitCount, 'engine', 'engines')}`;
 
   const showLaneControl = canViewCatalog && canSeeIntake;

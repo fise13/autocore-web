@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import {
   Button,
@@ -67,7 +67,7 @@ import {
   limitEngineSections,
   type EngineUnitRow,
 } from '../lib/engine-list-sections';
-import { engineQualityLabel } from '../lib/engine-quality';
+import { engineQualityGrade, engineQualityLabel } from '../lib/engine-quality';
 import {
   engineRowActions,
   engineRowCapabilities,
@@ -119,6 +119,26 @@ function toneColor(tone: EngineStatusTone, colors: ReturnType<typeof useTheme>['
       return colors.primary;
     default:
       return colors.mutedForeground;
+  }
+}
+
+/** Leading tile on a row: photo or engine glyph. */
+const ROW_THUMB = 48;
+
+/** Grade → pill colours; ungraded rows show no pill at all. */
+function qualityColors(
+  grade: ReturnType<typeof engineQualityGrade>,
+  colors: ReturnType<typeof useTheme>['colors'],
+): { fg: string; bg: string } {
+  switch (grade) {
+    case '2':
+      return { fg: colors.successOnSubtle, bg: colors.successSubtle };
+    case '1':
+      return { fg: colors.warningOnSubtle, bg: colors.warningSubtle };
+    case '3':
+      return { fg: colors.dangerOnSubtle, bg: colors.dangerSubtle };
+    default:
+      return { fg: colors.mutedForeground, bg: colors.muted };
   }
 }
 
@@ -280,23 +300,50 @@ function NativeListHeader({
   );
 }
 
-function NativeEngineRow({
-  unit,
-  capabilities,
-  thumbUrl,
-  uploadRatio,
-  uploadLabel,
-  onAction,
-}: {
+type RowPermissions = Parameters<typeof engineRowCapabilities>[1];
+
+type NativeEngineRowProps = {
   unit: EngineUnitRow;
-  capabilities: EngineRowCapabilities;
+  permissions: RowPermissions;
   thumbUrl: string | null;
   uploadRatio: number | null;
   uploadLabel: string | null;
   onAction: (id: EngineRowActionId, unit: EngineUnitRow) => void;
-}) {
+};
+
+/**
+ * Rows are rebuilt whenever the catalog is re-derived, but a row only has to
+ * redraw when its motor (stable now that unchanged Firestore docs keep their
+ * object) or what it shows changed. Without this, every scroll-threshold flip
+ * and every realtime edit re-rendered every mounted SwiftUI row.
+ */
+function sameRow(left: NativeEngineRowProps, right: NativeEngineRowProps): boolean {
+  return (
+    left.unit.motor === right.unit.motor &&
+    left.unit.key === right.unit.key &&
+    left.unit.lane === right.unit.lane &&
+    left.permissions === right.permissions &&
+    left.thumbUrl === right.thumbUrl &&
+    left.uploadRatio === right.uploadRatio &&
+    left.uploadLabel === right.uploadLabel &&
+    left.onAction === right.onAction
+  );
+}
+
+const NativeEngineRow = memo(function NativeEngineRow({
+  unit,
+  permissions,
+  thumbUrl,
+  uploadRatio,
+  uploadLabel,
+  onAction,
+}: NativeEngineRowProps) {
   const { colors } = useTheme();
   const motor = unit.motor;
+  const capabilities: EngineRowCapabilities = useMemo(
+    () => engineRowCapabilities(motor, permissions),
+    [motor, permissions],
+  );
   const label = engineUnitLabel(motor);
   const thumb = useNativeThumbnail(thumbUrl, ENGINE_THUMB_SIZE);
   const incoming = capabilities.incoming;
@@ -306,40 +353,39 @@ function NativeEngineRow({
   const actions = useMemo(() => engineRowActions(capabilities), [capabilities]);
   const swipe = useMemo(() => engineRowSwipeAction(capabilities), [capabilities]);
 
+  const grade = engineQualityGrade(motor);
+  const gradeColors = qualityColors(grade, colors);
+  const showStatus = incoming || engineStatusTone(motor) !== 'success';
+
   const body = (
     <HStack spacing={12} alignment="center" modifiers={[onTapGesture(() => onAction('open', unit))]}>
       {thumb ? (
         <Image
           uiImage={thumb}
           modifiers={[
-            // Bare `uiImage` draws at the file's intrinsic size. Intake shots
-            // are full-resolution JPEGs, so a 52pt frame without `resizable`
-            // clips a few hundred pixels out of the middle — the row looks
-            // zoomed in. Fit the whole capture in the tile instead.
+            // Bare `uiImage` draws at the file's intrinsic size; fill the tile.
             resizable(),
-            aspectRatio({ contentMode: 'fit' }),
-            frame({ width: eng.thumb, height: eng.thumb }),
-            background(
-              colors.surfaceElevated,
-              shapes.roundedRectangle({ cornerRadius: eng.thumbRadius }),
-            ),
-            clipShape('roundedRectangle', eng.thumbRadius),
+            aspectRatio({ contentMode: 'fill' }),
+            frame({ width: ROW_THUMB, height: ROW_THUMB }),
+            clipShape('roundedRectangle', 10),
           ]}
         />
       ) : (
         <Image
-          systemName={'car.side.fill' satisfies SFSymbol}
-          size={Math.round(eng.thumb * 0.5)}
+          systemName={'engine.combustion' satisfies SFSymbol}
+          size={19}
           color={colors.mutedForeground}
-          modifiers={[frame({ width: eng.thumb, height: eng.thumb })]}
+          modifiers={[
+            frame({ width: ROW_THUMB, height: ROW_THUMB }),
+            background(colors.muted, shapes.roundedRectangle({ cornerRadius: 10 })),
+          ]}
         />
       )}
 
-      <VStack alignment="leading" spacing={3}>
+      <VStack alignment="leading" spacing={2}>
         <Text
           modifiers={[
-            font({ textStyle: 'body', weight: 'semibold' }),
-            monospacedDigit(),
+            font({ textStyle: 'body', weight: 'semibold', design: 'monospaced' }),
             lineLimit(1),
             foregroundStyle(colors.foreground),
           ]}
@@ -347,20 +393,33 @@ function NativeEngineRow({
           {label}
         </Text>
 
-        {/* While photos are going up the bar replaces the status line — two
+        {/* While photos are going up the bar replaces the detail line — two
             progress readouts on one row is one more than anybody reads. */}
         {uploadRatio == null ? (
-          <Text
-            modifiers={[
-              font({ textStyle: 'footnote' }),
-              lineLimit(1),
-              foregroundStyle(incoming || location ? tone : colors.warningOnSubtle),
-            ]}
-          >
-            {incoming
-              ? engineStatusLabel(motor)
-              : `${location ?? 'No location'}  ·  ${engineStatusLabel(motor)}`}
-          </Text>
+          <HStack spacing={4}>
+            {incoming ? null : (
+              <Text
+                modifiers={[
+                  font({ textStyle: 'subheadline' }),
+                  lineLimit(1),
+                  foregroundStyle(location ? colors.mutedForeground : colors.warningOnSubtle),
+                ]}
+              >
+                {location ?? 'No shelf'}
+              </Text>
+            )}
+            {showStatus ? (
+              <Text
+                modifiers={[
+                  font({ textStyle: 'subheadline', weight: 'medium' }),
+                  lineLimit(1),
+                  foregroundStyle(tone),
+                ]}
+              >
+                {incoming ? engineStatusLabel(motor) : `· ${engineStatusLabel(motor)}`}
+              </Text>
+            ) : null}
+          </HStack>
         ) : (
           <VStack alignment="leading" spacing={3}>
             <ProgressView value={uploadRatio} modifiers={[tint(colors.primary)]} />
@@ -379,11 +438,13 @@ function NativeEngineRow({
 
       <Spacer />
 
-      {incoming ? null : (
+      {incoming || !grade ? null : (
         <Text
           modifiers={[
             font({ textStyle: 'caption', weight: 'semibold' }),
-            foregroundStyle({ type: 'hierarchical', style: 'secondary' }),
+            foregroundStyle(gradeColors.fg),
+            padding({ horizontal: 8, vertical: 3 }),
+            background(gradeColors.bg, shapes.capsule()),
           ]}
         >
           {engineQualityLabel(motor)}
@@ -424,7 +485,7 @@ function NativeEngineRow({
       </SwipeActions.Actions>
     </SwipeActions>
   );
-}
+}, sameRow);
 
 export function EnginesList({
   rows,
@@ -486,7 +547,7 @@ export function EnginesList({
     toast({ title: `${label} copied`, variant: 'success' });
   }, []);
 
-  const handleAction = useCallback(
+  const handleActionImpl = useCallback(
     (id: EngineRowActionId, unit: EngineUnitRow) => {
       void searchRef.current?.blur();
       // The lane travels with the row. Re-deriving it from the motor got it
@@ -523,6 +584,15 @@ export function EnginesList({
       }
     },
     [actions, copySerial, incomingActions, onUnitPress],
+  );
+  // Rows hold one callback for their lifetime; it always calls the latest handler.
+  const handleActionRef = useRef(handleActionImpl);
+  useLayoutEffect(() => {
+    handleActionRef.current = handleActionImpl;
+  }, [handleActionImpl]);
+  const handleAction = useCallback(
+    (id: EngineRowActionId, unit: EngineUnitRow) => handleActionRef.current(id, unit),
+    [],
   );
 
   return (
@@ -586,7 +656,17 @@ export function EnginesList({
             key={section.key}
             header={
               section.title ? (
-                <HStack>
+                <HStack spacing={6}>
+                  {section.kicker ? (
+                    <Text
+                      modifiers={[
+                        font({ textStyle: 'headline', weight: 'regular' }),
+                        foregroundStyle({ type: 'hierarchical', style: 'secondary' }),
+                      ]}
+                    >
+                      {section.kicker}
+                    </Text>
+                  ) : null}
                   <Text
                     modifiers={[
                       font({ textStyle: 'headline', weight: 'bold' }),
@@ -618,7 +698,7 @@ export function EnginesList({
                 <NativeEngineRow
                   key={unit.key}
                   unit={unit}
-                  capabilities={engineRowCapabilities(unit.motor, permissions)}
+                  permissions={permissions}
                   thumbUrl={
                     (jobId ? previewUriByJobId.get(jobId) : null) ??
                     engineThumbnailUrl(unit.motor)

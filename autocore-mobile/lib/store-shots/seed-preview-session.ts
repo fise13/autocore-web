@@ -2,6 +2,8 @@ import type { User } from 'firebase/auth';
 
 import { PERMISSIONS } from '@autocore/rbac';
 
+import { queryClient } from '@/lib/query-client';
+import { makePreviewMotors } from '@/lib/store-shots/preview-motors';
 import { setPaywallBypassed } from '@/lib/subscriptions/paywall-bypass';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -62,4 +64,12 @@ export function seedPreviewSession(): void {
       permissions: [...PERMISSIONS],
     },
   });
+
+  const motorCount = Number(process.env.EXPO_PUBLIC_STORE_SHOTS_MOTORS ?? 0);
+  if (motorCount > 0) {
+    const key = ['realtime', 'motors', COMPANY_ID, 'store-shots-user'];
+    if (!queryClient.getQueryData(key)) {
+      queryClient.setQueryData(key, makePreviewMotors(motorCount, COMPANY_ID));
+    }
+  }
 }

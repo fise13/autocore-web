@@ -1,6 +1,7 @@
 import { InteractionManager } from 'react-native';
 
 import { reviveDatesDeep } from '@/lib/firestore-timestamp';
+import { likelyExceedsPersistLimit } from '@/lib/realtime/persist-size';
 import { clearNamespace, getJson, setString } from '@/lib/storage/kv';
 import { ensureAsyncStorageMigrated } from '@/lib/storage/migrate-async-storage';
 
@@ -40,6 +41,10 @@ function shouldSkipPersist(queryKey: readonly unknown[]): boolean {
 }
 
 function persistSnapshot(key: string, data: unknown): void {
+  if (likelyExceedsPersistLimit(data, MAX_PERSIST_CHARS)) {
+    lastDataJsonByKey.delete(key);
+    return;
+  }
   let dataJson: string;
   try {
     dataJson = JSON.stringify(data);
@@ -47,7 +52,8 @@ function persistSnapshot(key: string, data: unknown): void {
     return;
   }
   if (dataJson.length > MAX_PERSIST_CHARS) {
-    lastDataJsonByKey.set(key, dataJson);
+    // Do not hold a multi-megabyte string in memory just to compare against.
+    lastDataJsonByKey.delete(key);
     return;
   }
   if (lastDataJsonByKey.get(key) === dataJson) return;
