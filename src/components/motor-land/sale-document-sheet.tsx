@@ -350,7 +350,6 @@ export function SaleDocumentSheet({ data }: { data: SaleDocumentData }) {
   );
 }
 
-const DIAGNOSTIC_BLANK_COLUMNS = 6;
 
 /** 20 rows of ~9 mm is what is left of the page under the car's details. */
 const DIAGNOSTIC_ROWS = 20;
@@ -377,7 +376,7 @@ function VehicleLine({ caption, value }: { caption: string; value: string }) {
 
 /**
  * The diagnostic sheet: the waybill's top, typed in on the same form, then the
- * car instead of the goods, and an empty numbered grid the master fills in by
+ * car instead of the goods, and numbered ruled lines the master fills in by
  * hand instead of the warranty.
  */
 export function DiagnosticSheet({ data }: { data: SaleDocumentData }) {
@@ -401,17 +400,16 @@ export function DiagnosticSheet({ data }: { data: SaleDocumentData }) {
         <table style={{ width: "100%", height: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: mm(10) }} />
-            {Array.from({ length: DIAGNOSTIC_BLANK_COLUMNS }, (_, index) => (
-              <col key={index} />
-            ))}
+            <col />
           </colgroup>
           <tbody>
             {Array.from({ length: DIAGNOSTIC_ROWS }, (_, rowIndex) => (
               <tr key={rowIndex}>
-                <td style={{ border: cellBorder, textAlign: "center", color: ink }}>{rowIndex + 1}</td>
-                {Array.from({ length: DIAGNOSTIC_BLANK_COLUMNS }, (_, cellIndex) => (
-                  <td key={cellIndex} style={{ border: cellBorder }} />
-                ))}
+                {/* Lined paper, not a grid: one ruled line per number, no columns. */}
+                <td style={{ borderBottom: cellBorder, textAlign: "center", verticalAlign: "bottom", color: ink }}>
+                  {rowIndex + 1}
+                </td>
+                <td style={{ borderBottom: cellBorder }} />
               </tr>
             ))}
           </tbody>
