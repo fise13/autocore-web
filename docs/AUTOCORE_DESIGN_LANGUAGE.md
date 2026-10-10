@@ -234,7 +234,7 @@ Russian is the primary product language; English is the source language for keys
 | Helper text | One sentence, below the field, `caption` | — |
 | Validation | What is wrong + how to fix, next to the field | «Введите серийный номер: 6–17 символов» |
 | Loading | Noun form + ellipsis character `…` | «Загрузка…», «Сохранение…» (never «Сохраняем…», never `...`) |
-| Upload vs load | Upload = «Отправка файла…»; loading data = «Загрузка…» | — |
+| Upload vs load | Upload = «Загрузка файла…»; loading data = «Загрузка…» | — |
 | Success toast | Past tense, object, optional count | «Двигатель продан», «Импортировано 120 строк» |
 | Failure toast | «Не удалось» + action + reason/next step | «Не удалось сохранить. Проверьте соединение и повторите» |
 | Destructive dialog | Title as a question with the object and count; body states the consequence; confirm repeats the verb | «Удалить 12 двигателей?» / «Записи и фото будут удалены без возможности восстановления.» / [Удалить 12 двигателей] |
@@ -258,21 +258,21 @@ Dimensions use Tailwind's default 4 px spacing scale (`--spacing: 0.25rem`). Rad
 | --- | --- | --- | --- | --- | --- |
 | `xs` | 24 | 8 | 12 / 500 | 12 | Inline in grid rows, badges row |
 | `sm` | 28 | 10 | 13 / 500 | 14 | Toolbars, dense panels |
-| `default` | 32 | 12 | 14 / 500 | 16 | Default desktop |
-| `lg` | 36 | 14 | 14 / 500 | 16 | Dialog footers, page header primary, forms |
+| `default` | 32 | 10 | 14 / 500 | 16 | Default desktop |
+| `lg` | 36 | 10 | 14 / 500 | 16 | Dialog footers, page header primary, forms |
 | `icon-*` | equal width and height to the size above | — | — | as above | Icon-only |
 
 | Variant | Default | Hover | Pressed | Focus | Disabled |
 | --- | --- | --- | --- | --- | --- |
 | `default` (primary) | `primary` / `primary-foreground` | `primary-hover` | `primary-pressed`, `translate-y-px` | 2 px `ring` with 2 px offset | 50 % opacity |
 | `secondary` | `secondary` | `secondary-hover` | same | ring | 50 % |
-| `outline` | `card` bg, `input`-strength border | `muted` bg | same | ring | 50 % |
+| `outline` | `card` bg, `border` hairline (a button is identified by its label, so it does not need the 3:1 input boundary) | `muted` bg | same | ring | 50 % |
 | `ghost` | transparent | `muted` | same | ring | 50 % |
 | `destructive` (soft) | `danger-subtle` / `danger-on-subtle` / `danger-border` | border becomes `danger` (background unchanged; a `danger-border` fill would drop text to 3.95:1) | same | ring in `danger` | 50 % |
 | `destructive-solid` **New** | `danger` / `danger-foreground` | `danger-hover` (`#b92226` light 6.33:1, `#ff7a7e` dark 7.66:1) | same | ring offset | 50 % |
 | `link` | `primary` text, underline on hover | — | — | ring | 50 % |
 
-Rules: radius `lg` (10 px). One `default` per region. `destructive-solid` only inside a destructive confirmation dialog. Loading state keeps width, swaps the leading icon for `LoaderCircle`, sets `aria-busy`. On coarse pointers (`@media (pointer: coarse)`) all buttons have `min-height` and `min-width` 40 px.
+Rules: radius `lg` (10 px). One `default` per region. `destructive-solid` only inside a destructive confirmation dialog. Loading state keeps width, swaps the leading icon for `LoaderCircle`, sets `aria-busy`. Below 768 px buttons keep the existing 36 px minimum height (`app-mobile.css`), which clears WCAG 2.5.8 (24 px). A 40 px minimum on coarse pointers is recommended but not applied yet, because it changes dense toolbar and input-adornment layouts and needs a visual pass on tablets.
 
 ### 7.2 Inputs and textareas
 

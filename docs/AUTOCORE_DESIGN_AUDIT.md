@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-10
 **Scope:** Web dashboard (`src/app/(dashboard)`, `src/components`, `src/styles`, `src/app/globals.css`) and the shared colour package (`packages/design-tokens`). Marketing (`src/components/marketing`, `src/styles/marketing-experience.css`) and print/PDF templates are referenced only where they share primitives. Mobile (`autocore-mobile/`) is already covered by [`design-language.md`](./design-language.md) and is out of scope except for token parity.
-**Status:** Audit only. No application source code was changed.
+**Status:** Audit written 2026-10-10; most findings implemented afterwards on the same branch. See §8 for what changed and what is still open.
 
 **Companion documents**
 
@@ -377,3 +377,40 @@ Why not a more expressive direction: the users' attention is on serials, codes, 
 8. Custom engine and gearbox glyphs (Lucide has none) built with `createLucideIcon`.
 9. Scope of the em-dash rule (marketing only, or all UI).
 10. Removing decorative overview styling (`mc-*` glows, gradient text, hover lift).
+
+---
+
+## 8. Implementation status
+
+Findings below were implemented after the audit, with recommended defaults where §7 asked for a decision (the product owner said to proceed). Each line names the commit. Verified with `npm run typecheck`, `npm test` (web suite 967/967), `npm run lint` (no new warnings in touched files), `npm run tokens:check` (92/92 pairs pass, no waivers) and `npm run i18n:validate`. The rendered UI was still not inspected: no authenticated dashboard is available in this environment.
+
+| Finding | Status | Commit |
+| --- | --- | --- |
+| Engine grid pinned columns lag on horizontal scroll (reported after the audit) | Fixed: pinned header/body cells, fill handle and editor render in `position: sticky` layers; scroll state is snapped to row/column boundaries so scrolling inside a cell no longer re-renders the grid | `4705f25` |
+| C1 Contrast failures | Fixed: light primary `#0866d6`, danger `#d4292e`, solid focus ring, 3:1 input border, tone tokens everywhere; both contrast waivers removed | `de3965e`, `9d65987`, `d9e7f3f` |
+| C2 Grids invisible to assistive tech | Fixed: WAI-ARIA grid pattern on the engine, warehouse and catalog grids (checked in Chromium's accessibility tree with a structural mock) | `af21b90` |
+| H1 Status colours differ per screen | Fixed: `src/lib/status/status-tones.ts` + `StatusBadge`; work-order list and detail share it | `6d4983a` |
+| H2 Green, theme-blind grid selection | Fixed: `grid-selection` / `grid-active-border` tokens | `6d4983a` |
+| H3 Faint focus | Fixed: solid 2 px ring (offset on buttons) | `9d65987` |
+| H4 Numbers | Partly fixed: warehouse quantity and price columns right-aligned and tabular; KPI uses the shared formatter; Geist Mono loads Cyrillic. **Open:** one grouping style app-wide (decision §7.4) and the separate currency span | `6d4983a`, `de3965e` |
+| H5 Terminology and English strings | Fixed for the cases listed in the icon/copy audit, plus the whole engine-intake module, AI cards and primitives; dates follow the UI language | `28d2b6d` |
+| H6 Native confirm/alert | Fixed: `AlertDialog` / `ConfirmDialog`; import rollbacks and CSV import result | `28d2b6d` |
+| H7 Page headings | Fixed: top-bar title is the page `<h1>`; in-page headings demoted to `<h2>`. **Open:** a shared `PageHeader` component | `c16d02c` |
+| M1 Icons | Fixed: canonical names, navigation mapping, one stroke via `LucideProvider`. **Open:** custom engine/gearbox glyphs (Engines keep `Cog`, Transmissions keep `Settings2`) | `c16d02c` |
+| M2 Typography | Fixed: nothing below 11 px, sentence case labels | `ffbcfd0` |
+| M3 Dark theme gaps | Fixed: distinct dark `muted`/`popover`/`secondary`, no raw colours without dark values, `theme-color`, offline tokens exposed | `de3965e`, `d9e7f3f` |
+| M4 Control boundaries | Fixed: 3:1 input border. **Open:** 40 px targets on coarse pointers | `de3965e`, `9d65987` |
+| M5 Duplicates | Partly: dead components removed. **Open:** merge the three KPI tiles, the two empty states, three grid shells; adopt `Field` in older forms | `ffbcfd0` |
+| M6 Decoration | Fixed: overview surfaces flat and on tokens. This also fixed a bug: the `--mc-*` variables were only defined on an unused class, so several overview cards drew their borders in `currentColor` | `ffbcfd0` |
+| M7 Unnamed icon buttons | Fixed | `c16d02c` |
+| M8 Sidebar active state | Fixed: subtle fill, 5.19:1 text, 2 px indicator, `aria-current` | `9d65987` |
+| L1 Dead code | Fixed (12 components, unused CSS) | `ffbcfd0` |
+| L2 z-index | Tokens added (`--z-*`); existing ad-hoc values not yet migrated | `de3965e` |
+| L3 Toast tones | Fixed | `9d65987` |
+| L4 Micro-copy | Fixed | `28d2b6d` |
+| L5 `<html lang>` on the server | **Open:** the account locale is only known on the client today | — |
+| L6 Em-dash rule | **Open:** decision §7.9 | — |
+| L7 Badge shape | Fixed: rectangular status badges | `9d65987` |
+
+Still requiring a visual check before release: mobile (shares the colour package), dense toolbars after the focus-ring offset, and print/PDF templates (intentionally left on fixed ink-on-white colours).
+

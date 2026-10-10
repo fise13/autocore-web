@@ -49,14 +49,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/15 px-6 py-14 text-center",
+        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-14 text-center",
         className,
       )}
     >
-      <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-border/60 bg-background shadow-sm">
-        <Icon className="size-5 text-primary" />
-      </div>
-      <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+      <Icon className="mb-3 size-5 text-muted-foreground" aria-hidden="true" />
+      <h3 className="text-sm font-semibold">{title}</h3>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
       {primaryAction || secondaryAction ? (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
