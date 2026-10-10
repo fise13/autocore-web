@@ -12,6 +12,8 @@ export type InviteEmailParams = {
   expiresAt: Date;
   invitedByName?: string | null;
   recipientEmail?: string | null;
+  /** Same invite as the link, typed into "Join with a code" in the app. */
+  inviteCode?: string | null;
 };
 
 /** Display labels only — the stored role value is the untranslated key. */
@@ -55,6 +57,10 @@ export function buildInviteEmail(params: InviteEmailParams): EmailMessage {
   ];
   if (invitedBy) {
     rows.splice(1, 0, { label: "Invited by", value: invitedBy });
+  }
+  const inviteCode = params.inviteCode?.trim();
+  if (inviteCode) {
+    rows.push({ label: "Invite code", value: inviteCode });
   }
 
   const intro = invitedBy

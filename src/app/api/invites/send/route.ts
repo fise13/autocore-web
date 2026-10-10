@@ -4,7 +4,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { UserRole, USER_ROLES } from "@/domain/user";
 import { createInviteAsAdmin } from "@/infrastructure/firestore/invite-org-service.server";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
-import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import { sendEmail, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { buildInviteEmail } from "@/lib/email/templates/invite-email";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { verifyCompanyManager } from "@/lib/auth/verify-company-manager.server";
@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
       role,
       expiresAt,
       recipientEmail: email,
+      invitedByName: inviterName || null,
+      inviteCode: created.code,
     });
-
-    const resend = getResend();
-    await resend.emails.send({
+    await sendEmail({
       from: getSupportFrom(),
       to: email,
       subject: message.subject,

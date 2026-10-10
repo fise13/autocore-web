@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { EmailRateLimitError, reserveVerificationEmailSlot } from "@/lib/email/rate-limit";
-import { getNoreplyFrom, getResend, isResendConfigured } from "@/lib/email/resend-client";
+import { getNoreplyFrom, sendEmail, isResendConfigured } from "@/lib/email/resend-client";
 import { buildVerificationCodeEmail } from "@/lib/email/templates/verification-code-email";
 import {
   generateVerificationCode,
@@ -48,9 +48,7 @@ export async function POST(request: NextRequest) {
       userName: userRecord.displayName,
       recipientEmail: userRecord.email,
     });
-
-    const resend = getResend();
-    await resend.emails.send({
+    await sendEmail({
       from: getNoreplyFrom(),
       to: userRecord.email,
       subject: message.subject,

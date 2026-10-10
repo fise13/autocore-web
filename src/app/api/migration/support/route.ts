@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { escapeHtml } from "@/lib/email/escape-html";
-import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import { sendEmail, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import {
   enforceRateLimit,
@@ -65,9 +65,7 @@ export async function POST(request: NextRequest) {
       <p><strong>Комментарий:</strong></p>
       <p>${escapeHtml(comment || "—").replace(/\n/g, "<br/>")}</p>
     `;
-
-    const resend = getResend();
-    await resend.emails.send({
+    await sendEmail({
       from: getSupportFrom(),
       to: support,
       replyTo: contactEmail || undefined,

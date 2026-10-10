@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { escapeHtml, escapeHtmlParagraph } from "@/lib/email/escape-html";
-import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import { sendEmail, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import {
   contactIntentLabel,
   parseContactPayload,
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     const who = payload.company || payload.name;
     const headline = contactIntentLabel(payload.intent);
 
-    await getResend().emails.send({
+    await sendEmail({
       from: getSupportFrom(),
       to: recipient,
       replyTo: payload.email,

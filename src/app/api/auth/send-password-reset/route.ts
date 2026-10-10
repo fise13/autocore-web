@@ -7,7 +7,7 @@ import {
   EmailRateLimitError,
   markPasswordResetEmailSent,
 } from "@/lib/email/rate-limit";
-import { getNoreplyFrom, getResend, isResendConfigured } from "@/lib/email/resend-client";
+import { getNoreplyFrom, sendEmail, isResendConfigured } from "@/lib/email/resend-client";
 import { buildPasswordResetEmail } from "@/lib/email/templates/password-reset-email";
 import { getAdminAuth } from "@/infrastructure/firebase/admin";
 
@@ -50,9 +50,7 @@ export async function POST(request: NextRequest) {
         userName: userRecord.displayName,
         recipientEmail: email,
       });
-
-      const resend = getResend();
-      await resend.emails.send({
+      await sendEmail({
         from: getNoreplyFrom(),
         to: email,
         subject: message.subject,

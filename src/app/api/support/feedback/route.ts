@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { AccountAccessError, verifyAccountAccess } from "@/lib/auth/verify-account-access";
 import { escapeHtml, escapeHtmlParagraph } from "@/lib/email/escape-html";
-import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import { sendEmail, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { getPlatformContacts } from "@/lib/platform/platform-contacts";
 import {
   enforceRateLimit,
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const headline = subject || feedbackKindLabel(kind);
 
-    await getResend().emails.send({
+    await sendEmail({
       from: getSupportFrom(),
       to: recipient,
       replyTo: replyTo || reporter.email || undefined,

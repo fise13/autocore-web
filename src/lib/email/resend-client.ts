@@ -29,3 +29,21 @@ export function getResend(): Resend {
 export function isResendConfigured(): boolean {
   return Boolean(getResendApiKey());
 }
+
+export type SendEmailPayload = Parameters<Resend["emails"]["send"]>[0];
+
+/**
+ * The only way to send mail. Resend's SDK does not throw: a rejected send (bad key,
+ * unverified sender domain, rate limit) comes back as `{ error }`, and every caller
+ * awaited it and moved on — so the UI said "sent", the logs stayed clean and nothing
+ * reached the inbox. This turns that into a thrown, logged error.
+ */
+export async function sendEmail(payload: SendEmailPayload): Promise<{ id: string }> {
+  const { data, error } = await getResend().emails.send(payload);
+  if (error || !data) {
+    const reason = error ? `${error.name}: ${error.message}` : "no response from Resend";
+    console.error("[email] Resend rejected the message", { to: payload.to, subject: payload.subject, reason });
+    throw new Error(`Email was not sent (${reason})`);
+  }
+  return { id: data.id };
+}

@@ -7,7 +7,7 @@ import { USER_ROLES } from "@/domain/user";
 import { getAdminFirestore } from "@/infrastructure/firebase/admin";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { generateInviteToken } from "@/lib/invites/invite-token";
-import { getResend, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
+import { sendEmail, getSupportFrom, isResendConfigured } from "@/lib/email/resend-client";
 import { buildInviteEmail } from "@/lib/email/templates/invite-email";
 import { getPublicAppUrl } from "@/lib/site-urls";
 import { emitEmployeeJoinedByInviteNotifications, emitEmployeeInvitedNotification } from "@/lib/notifications/team-events.server";
@@ -557,10 +557,10 @@ export async function resendInviteAsAdmin(params: {
       role: normalizeRole(String(data.role ?? "employee")),
       expiresAt,
       recipientEmail: email,
+      invitedByName: inviterName ?? null,
+      inviteCode: typeof data.code === "string" ? data.code : null,
     });
-
-    const resend = getResend();
-    await resend.emails.send({
+    await sendEmail({
       from: getSupportFrom(),
       to: email,
       subject: message.subject,
