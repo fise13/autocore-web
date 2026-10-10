@@ -16,6 +16,7 @@ import {
   isMarketingContentPath,
 } from "@/lib/seo/marketing-paths";
 import { APP_SESSION_COOKIE, hasAppSessionCookie } from "@/lib/auth/session-cookie";
+import { isMotorLandDesk, isValidDeskLogin } from "@/lib/motor-land/desk-login";
 import {
   getAppUrl,
   getHostKind,
@@ -145,11 +146,25 @@ function handleMarketingRoutes(
   return NextResponse.next();
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const kind = getHostKind(host);
   const { pathname } = request.nextUrl;
   const isLocalDev = isLocalDevHost(host);
+
+  if (
+    isMotorLandDesk(normalizeHost(host), pathname) &&
+    !(await isValidDeskLogin(
+      request.headers.get("authorization"),
+      process.env.MOTOR_LAND_DOCS_USER,
+      process.env.MOTOR_LAND_DOCS_PASSWORD,
+    ))
+  ) {
+    return new NextResponse("Требуется вход", {
+      status: 401,
+      headers: { "WWW-Authenticate": 'Basic realm="Motor Land", charset="UTF-8"' },
+    });
+  }
 
   // docs.myautocore.com is the standalone document desk. Its root is the engine
   // sale form; every other path on that host is served as written.

@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 /**
  * Standalone document desk for Motor Land (docs.myautocore.com).
  *
- * Open without a sign-in and outside the workspace shell: the counter staff
+ * Behind the desk's one shared login (see `lib/motor-land/desk-login.ts`) and
+ * outside the workspace shell: the counter staff
  * type the engine and its serial, and get a one-page Word file — waybill with
  * the warranty terms under it, always. Issued documents go to a shared server
  * history that every counter sees.

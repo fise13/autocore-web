@@ -6,17 +6,14 @@ import { HISTORY_LIMIT, coerceSaleDocument, documentIdFor } from "@/lib/motor-la
 /**
  * Shared history for the Motor Land document desk (docs.myautocore.com).
  *
- * The desk is deliberately open — counter staff do not sign in — so this route
- * is unauthenticated and every computer sees the same list. That makes the body
- * untrusted input: it is rebuilt field by field through `coerceSaleDocument`
- * and capped, so nothing but a well-formed waybill of bounded size is ever
- * stored.
+ * The counter staff share one login, checked in the middleware
+ * (`lib/motor-land/desk-login.ts`), so every computer sees the same list. The
+ * body is still untrusted input: it is rebuilt field by field through
+ * `coerceSaleDocument` and capped, so nothing but a well-formed waybill of
+ * bounded size is ever stored.
  *
  * Records are append-only: there is no delete route, so an issued waybill
  * cannot be removed — not from the page, and not by anyone who finds the URL.
- *
- * ponytail: open endpoint, scoped to one small collection. Put it behind a
- * shared secret or sign-in if the URL ever leaks beyond the shop.
  */
 const COLLECTION = "motorLandDocuments";
 const MAX_ITEMS = 50;

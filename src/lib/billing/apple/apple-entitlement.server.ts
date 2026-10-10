@@ -196,6 +196,34 @@ export async function companyDisplayName(companyId: string): Promise<string | nu
   }
 }
 
+/**
+ * Whether a workspace holds no business data yet — nothing in stock, no
+ * engines, orders, clients or money movements.
+ *
+ * Moving Pro off such a workspace costs nobody anything, so a restore that
+ * would otherwise ask "move it here?" can just do it. The typical case is a
+ * workspace left behind by an earlier onboarding. Any read error answers
+ * `false`: when in doubt, the user is asked.
+ */
+export async function companyHasNoData(companyId: string): Promise<boolean> {
+  const db = getAdminFirestore();
+  const company = db.collection("companies").doc(companyId);
+  const probes = [
+    ...["motors", "engines", "inventoryItems", "financialOperations", "operations"].map((name) =>
+      db.collection(name).where("companyId", "==", companyId).limit(1),
+    ),
+    ...["workOrders", "clients", "vehicles", "quotes", "engineIntakeJobs"].map((name) =>
+      company.collection(name).limit(1),
+    ),
+  ];
+  try {
+    const snaps = await Promise.all(probes.map((query) => query.get()));
+    return snaps.every((snap) => snap.empty);
+  } catch {
+    return false;
+  }
+}
+
 export type ApplyResult = {
   proActive: boolean;
   planId: string | null;

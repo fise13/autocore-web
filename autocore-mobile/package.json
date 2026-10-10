@@ -51,13 +51,17 @@
     "expo-sharing": "~56.0.19",
     "expo-splash-screen": "~56.0.10",
     "expo-status-bar": "~56.0.4",
+
     "expo-symbols": "~56.0.6",
+    
     "expo-task-manager": "~56.0.25",
     "expo-thinking-orbs": "^0.2.1",
     "expo-web-browser": "~56.0.5",
     "expo-widgets": "~56.0.26",
     "firebase": "^12.15.0",
+
     "lucide-react-native": "^1.22.0",
+
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

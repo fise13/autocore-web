@@ -12,6 +12,7 @@ import {
   applyAppleTransaction,
   assertNotStripeManaged,
   companyDisplayName,
+  companyHasNoData,
   companyForAppAccountToken,
   companyForOriginalTransaction,
   readStoredSubscription,
@@ -39,6 +40,8 @@ export const runtime = "nodejs";
  * used to leave both companies marked Pro off a single payment; the caller now
  * has to ask for a transfer explicitly (`transfer: true`), which moves the
  * entitlement and revokes it from the previous workspace in one transaction.
+ * The one exception is a previous workspace with no data at all, which is
+ * moved without asking (`companyHasNoData`).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -140,6 +143,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Moving Pro off a workspace with nothing in it costs nobody anything —
+    // typically one left behind by an earlier onboarding. Do it without asking.
+    let transfer = body.transfer === true;
+    if (!best && conflict && (await companyHasNoData(conflict.companyId))) {
+      best = conflict.transaction;
+      transfer = true;
+    }
+
     if (!best) {
       if (conflict) {
         return NextResponse.json({
@@ -159,7 +170,7 @@ export async function POST(request: NextRequest) {
       transaction: best,
       renewal: null,
       uid: access.uid,
-      allowTransfer: body.transfer === true,
+      allowTransfer: transfer,
     });
 
     return NextResponse.json({
