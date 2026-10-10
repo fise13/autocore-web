@@ -2,10 +2,10 @@
 
 import { useTheme } from "next-themes";
 import {
-  CheckCircle2,
+  CircleAlert,
+  CircleCheck,
   Info,
-  Loader2,
-  XCircle,
+  LoaderCircle,
 } from "lucide-react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { userCopy } from "@/lib/user-copy";
@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 import "sonner/dist/styles.css";
 
 const toastBase = cn(
-  "group pointer-events-auto w-[min(100vw-2rem,380px)] rounded-xl border p-3.5 shadow-lg backdrop-blur-md",
-  "bg-popover/95 text-popover-foreground border-border/80",
+  "group pointer-events-auto w-[min(100vw-2rem,380px)] rounded-xl border p-3.5 shadow-popover",
+  "bg-popover text-popover-foreground border-border",
 );
 
 export function Toaster({ ...props }: ToasterProps) {
@@ -46,16 +46,16 @@ export function Toaster({ ...props }: ToasterProps) {
             "bg-transparent text-muted-foreground transition-colors",
             "hover:bg-muted/60 hover:text-foreground",
           ),
-          success: "border-chart-2/30 bg-[color-mix(in_oklab,var(--chart-2)_10%,var(--popover))]",
-          error: "border-destructive/35 bg-destructive/10",
-          default: "border-border/80",
+          success: "border-l-[3px] border-l-success",
+          error: "border-l-[3px] border-l-danger",
+          default: "border-border",
         },
       }}
       icons={{
-        success: <CheckCircle2 className="text-chart-2" />,
-        info: <Info className="text-primary" />,
-        error: <XCircle className="text-destructive" />,
-        loading: <Loader2 className="animate-spin text-primary" />,
+        success: <CircleCheck className="text-success-on-subtle" />,
+        info: <Info className="text-primary-on-subtle" />,
+        error: <CircleAlert className="text-danger-on-subtle" />,
+        loading: <LoaderCircle className="animate-spin text-primary" />,
       }}
       style={
         {

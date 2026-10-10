@@ -180,7 +180,7 @@ export function SearchCombobox({
     >
       <Combobox.InputGroup
         className={cn(
-          "relative flex h-9 w-full items-center rounded-md border border-input bg-background shadow-xs outline-none transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30 [&>input]:pr-14",
+          "relative flex h-9 w-full items-center rounded-md border border-input bg-background shadow-xs outline-none transition-[color,box-shadow] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>input]:pr-14",
           className,
         )}
       >

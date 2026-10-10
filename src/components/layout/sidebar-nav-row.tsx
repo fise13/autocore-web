@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils";
 export const sidebarNavRowClass =
   "sidebar-nav-row flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200 ease-out";
 
-export const sidebarNavIconClass = "size-4 shrink-0 opacity-80";
+export const sidebarNavIconClass = "size-4 shrink-0";
 
 export const sidebarSectionLabelClass =
-  "sidebar-section-label px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+  "sidebar-section-label px-3 py-2 text-xs font-medium text-muted-foreground";
 
 type SidebarNavRowProps = {
   icon: LucideIcon;
@@ -38,7 +38,7 @@ export function SidebarNavRow({
       className={cn(
         sidebarNavRowClass,
         active
-          ? "bg-primary/12 text-primary shadow-sm"
+          ? "bg-primary-subtle font-medium text-primary-on-subtle shadow-[inset_2px_0_0_var(--sidebar-primary)]"
           : "text-sidebar-foreground hover:bg-sidebar-accent",
         ghost && "opacity-45 hover:opacity-70",
         className,
@@ -46,7 +46,7 @@ export function SidebarNavRow({
     >
       <Icon className={sidebarNavIconClass} />
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      {hint ? <span className="shrink-0 text-[10px] text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="shrink-0 text-micro text-muted-foreground">{hint}</span> : null}
       {children}
     </div>
   );

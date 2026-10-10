@@ -61,7 +61,7 @@ export function AutoCoreAIButton({ collapsed = false, className }: AutoCoreAIBut
           "text-foreground",
           "transition-[transform,opacity] duration-150 ease-out",
           "hover:opacity-90",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
           "active:scale-[0.98]",
           collapsed ? "size-9 rounded-full p-0" : "h-10 gap-2 rounded-full px-3",
         )}

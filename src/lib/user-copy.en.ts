@@ -4228,9 +4228,14 @@ export const userCopyEn = {
   },
 
   commonUi: {
+    close: "Close",
+    cancel: "Cancel",
+    loading: "Loading",
     closeAria: "Close",
     setupStepsAria: "Setup steps",
     collapsePanel: "Collapse panel",
+    toggleSidebar: "Toggle sidebar",
+    more: "More",
   },
 
   authErrors: {

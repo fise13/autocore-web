@@ -70,15 +70,18 @@ export const SidebarNavLink = memo(function SidebarNavLink({
       onMouseEnter={prefetch}
       onFocus={prefetch}
       data-guide={guideId}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "relative cursor-pointer",
-        motionEnabled && active && "bg-transparent data-active:bg-transparent",
+        motionEnabled &&
+          active &&
+          "bg-transparent shadow-none data-active:bg-transparent data-active:shadow-none",
       )}
     >
       {motionEnabled && active ? (
         <motion.span
           layoutId={activeLayoutId}
-          className="absolute inset-0 rounded-md bg-sidebar-accent shadow-sm"
+          className="absolute inset-0 rounded-md bg-primary-subtle shadow-[inset_2px_0_0_var(--sidebar-primary)]"
           transition={sidebarNavActiveSpring}
         />
       ) : null}

@@ -4244,9 +4244,14 @@ export const userCopyRu = {
   },
 
   commonUi: {
+    close: "Закрыть",
+    cancel: "Отмена",
+    loading: "Загрузка",
     closeAria: "Закрыть",
     setupStepsAria: "Шаги настройки",
     collapsePanel: "Свернуть панель",
+    toggleSidebar: "Показать или скрыть боковую панель",
+    more: "Ещё",
   },
 
   authErrors: {

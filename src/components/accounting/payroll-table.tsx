@@ -135,7 +135,7 @@ export function PayrollTable({
                       title={cols.statusCycleHint}
                       disabled={isUpdating}
                       onClick={() => onStatusChange(row.id, nextPayrollStatus(row.status))}
-                      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {statusControl}
                     </button>

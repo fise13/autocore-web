@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { formatGroupedNumber } from "@/lib/money/format-number";
 import { cn } from "@/lib/utils";
 
 type KpiCardTone = "default" | "primary" | "warning" | "destructive";
@@ -23,20 +24,20 @@ type KpiCardProps = {
 const valueToneClass: Record<KpiCardTone, string> = {
   default: "text-foreground",
   primary: "text-primary",
-  warning: "text-amber-600 dark:text-amber-400",
-  destructive: "text-destructive",
+  warning: "text-warning-on-subtle",
+  destructive: "text-danger-on-subtle",
 };
 
 const iconToneClass: Record<KpiCardTone, string> = {
   default: "bg-muted text-muted-foreground",
-  primary: "bg-primary/10 text-primary",
-  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  destructive: "bg-destructive/10 text-destructive",
+  primary: "bg-primary-subtle text-primary-on-subtle",
+  warning: "bg-warning-subtle text-warning-on-subtle",
+  destructive: "bg-danger-subtle text-danger-on-subtle",
 };
 
 function formatValue(value: number): string {
   if (!Number.isFinite(value)) return "0";
-  return new Intl.NumberFormat("en-US").format(value);
+  return formatGroupedNumber(value, { allowDecimals: true });
 }
 
 export function KpiCard({
@@ -63,7 +64,7 @@ export function KpiCard({
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="mc-section-label text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-xs font-medium text-muted-foreground">
           {label}
         </p>
         {Icon ? (
