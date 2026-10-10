@@ -4246,6 +4246,9 @@ export const userCopyEn = {
 
   grid: {
     autofillAria: "Autofill",
+    motorsAria: "Engines table",
+    warehouseAria: "Warehouse table",
+    specificAria: "Catalog table",
     editorHint: "Enter — select · Esc — close without syncing",
   },
 

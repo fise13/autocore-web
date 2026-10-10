@@ -33,6 +33,8 @@ type ExcelGridHeaderCellProps = {
   className?: string;
   style?: CSSProperties;
   pinned?: boolean;
+  /** 1-based column index for the ARIA grid pattern. */
+  ariaColIndex?: number;
   onSelectColumn?: () => void;
   onResizeMouseDown: (event: ReactMouseEvent) => void;
   children?: ReactNode;
@@ -49,12 +51,15 @@ export function ExcelGridHeaderCell({
   className,
   style,
   pinned = false,
+  ariaColIndex,
   onSelectColumn,
   onResizeMouseDown,
   children,
 }: ExcelGridHeaderCellProps) {
   return (
     <div
+      role={ariaColIndex != null ? "columnheader" : undefined}
+      aria-colindex={ariaColIndex}
       className={cn("group absolute top-0", pinned && "bg-muted", className)}
       style={{ left, width, height, ...style }}
     >

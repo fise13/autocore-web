@@ -4262,6 +4262,9 @@ export const userCopyRu = {
 
   grid: {
     autofillAria: "Автозаполнение",
+    motorsAria: "Таблица двигателей",
+    warehouseAria: "Таблица склада",
+    specificAria: "Таблица каталога",
     editorHint: "Enter — выбрать · Esc — закрыть без синхронизации",
   },
 

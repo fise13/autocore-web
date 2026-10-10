@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { createMotorUseCase } from "@/application/use-cases/create-motor";
 import { pruneUnusedMotorCatalogUseCase } from "@/application/use-cases/motors/prune-unused-motor-catalog";
@@ -84,6 +84,7 @@ import {
   MOTOR_GRID_PINNED_COLUMN_IDS,
   scaleMotorGridDimension,
 } from "@/lib/motor-grid-layout";
+import { gridAriaColIndex, gridAriaRowIndex, gridCellDomId } from "@/lib/grid/grid-aria";
 import { pinnedColumnMetrics, unionVisibleColumnIndexes } from "@/lib/grid/pinned-columns";
 import { sameGridScroll, snapGridScroll, type GridScrollMetrics } from "@/lib/grid/scroll-window";
 import {
@@ -445,6 +446,7 @@ export function MotorsExcelGrid({
   }, [hideBrandColumn]);
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const gridDomId = useId();
   const bodyRef = useRef<HTMLDivElement>(null);
   const commandBusRef = useRef(new GridCommandBus());
   const motorsRef = useRef(motors);
@@ -1386,6 +1388,7 @@ export function MotorsExcelGrid({
     return (
       <ExcelGridHeaderCell
         key={column.id}
+        ariaColIndex={gridAriaColIndex(colIdx)}
         title={column.title}
         width={column.width}
         left={isPinned ? pinnedLeft : (layout.xOffsets[colIdx] ?? 0)}
@@ -1441,6 +1444,10 @@ export function MotorsExcelGrid({
     return (
       <div
         key={`${row.rowId}-${column.id}`}
+        id={gridCellDomId(gridDomId, rowIdx, colIdx)}
+        role="gridcell"
+        aria-colindex={gridAriaColIndex(colIdx)}
+        aria-selected={selected}
         className={cn(
           "absolute flex border-r border-b px-2.5 text-grid leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
           motorGridCellClass(column.id),
@@ -1647,6 +1654,12 @@ export function MotorsExcelGrid({
       />
     ) : null;
 
+  const activeCellDomId =
+    selection.head.row >= visible.rowStart &&
+    selection.head.row <= visible.rowEnd &&
+    visibleColumnIndexes.includes(selection.head.column)
+      ? gridCellDomId(gridDomId, selection.head.row, selection.head.column)
+      : undefined;
   const editorPinnedLeft = editor ? pinned.lefts.get(editor.cell.column) : undefined;
   const pinnedEditor = editor && editorPinnedLeft != null ? renderEditor(editorPinnedLeft) : null;
 
@@ -1655,6 +1668,12 @@ export function MotorsExcelGrid({
       <div
         ref={gridRef}
         tabIndex={0}
+        role="grid"
+        aria-label={userCopy.grid.motorsAria}
+        aria-rowcount={rows.length + 1}
+        aria-colcount={layout.columns.length}
+        aria-multiselectable="true"
+        aria-activedescendant={activeCellDomId}
         data-grid-root
         data-context-menu-scope="local"
         className="relative min-h-0 w-full min-w-0 flex-1 overflow-hidden outline-none"
@@ -1732,6 +1751,8 @@ export function MotorsExcelGrid({
             }}
           >
             <div
+              role="row"
+              aria-rowindex={1}
               className="autocore-grid-header-enter sticky top-0 z-10 border-b bg-muted"
               style={{ height: layout.headerHeight, width: Math.max(layout.totalWidth, scroll.width || 0) }}
             >
@@ -1779,6 +1800,17 @@ export function MotorsExcelGrid({
                 return (
                   <div
                     key={row.rowId}
+                    role="row"
+                    aria-rowindex={gridAriaRowIndex(rowIdx)}
+                    // Pinned cells live in the sticky layer; list every cell so the
+                    // accessibility tree keeps visual column order.
+                    aria-owns={
+                      pinned.indexes.length > 0
+                        ? visibleColumnIndexes
+                            .map((colIdx) => gridCellDomId(gridDomId, rowIdx, colIdx))
+                            .join(" ")
+                        : undefined
+                    }
                     className="transition-[height] duration-200 ease-out"
                     style={{ height: layout.rowHeight, ["--grid-row-i" as string]: offset }}
                   >
