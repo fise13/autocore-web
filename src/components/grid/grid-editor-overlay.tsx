@@ -407,7 +407,7 @@ export function GridEditorOverlay({
       <div className="absolute z-30" style={{ left: frame.x, top: frame.y, width: frame.width + 1 }}>
         <div
           className="relative overflow-hidden rounded-[2px] border-2 bg-card opacity-100 shadow-sm"
-          style={{ height: frame.height + 1, borderColor: "rgb(22, 163, 74)" }}
+          style={{ height: frame.height + 1, borderColor: "var(--grid-active-border)" }}
         >
           <div
             aria-hidden

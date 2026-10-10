@@ -1445,9 +1445,9 @@ export function MotorsExcelGrid({
           "absolute flex border-r border-b px-2.5 text-[13px] leading-[1.35] whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
           motorGridCellClass(column.id),
           column.align === "center" ? "items-center justify-center" : "items-center justify-start",
-          !isPinned && selected && "bg-emerald-500/12",
+          !isPinned && selected && "bg-grid-selection",
           focused && !isPinned && "z-[2] ring-2 ring-inset",
-          saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
+          saveFlashRows.has(row.rowId) && "bg-success-subtle",
           isPinned && "bg-card",
         )}
         style={{
@@ -1458,7 +1458,7 @@ export function MotorsExcelGrid({
           zIndex: isPinned ? (focused ? 6 : 4) : undefined,
           backgroundColor: selected
             ? isPinned
-              ? "color-mix(in srgb, var(--card) 82%, rgb(22, 163, 74))"
+              ? gridPalette.pinnedSelectionFill
               : gridPalette.selectionFill
             : isPinned
               ? "var(--card)"
@@ -1522,10 +1522,9 @@ export function MotorsExcelGrid({
             <button
               type="button"
               className={cn(
-                "rounded border px-2 py-0.5 text-[11px]",
                 row.soldDate
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+                  ? "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  : "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle",
               )}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
@@ -1807,7 +1806,7 @@ export function MotorsExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );

@@ -41,7 +41,7 @@ import {
   selectWholeRow,
   selectWholeRowActiveStart,
 } from "@/lib/grid/selection-controller";
-import { GridCellAddress, GridRange, isCellInsideRange } from "@/lib/grid/grid-types";
+import { GridCellAddress, GridRange, gridCellAlignClass, isCellInsideRange } from "@/lib/grid/grid-types";
 import type { DomainCategory } from "@/lib/domain/types";
 import { filterColumnSuggestions, resolveGridColumnAutocomplete } from "@/lib/grid/grid-column-autocomplete";
 import { gridPalette } from "@/lib/grid/grid-palette";
@@ -1574,16 +1574,16 @@ export function WarehouseExcelGrid({
                           key={`${row.rowId}-${column.id}`}
                           className={cn(
                             "absolute flex border-r border-b px-2 text-[13px] leading-5 whitespace-nowrap transition-[background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
-                            column.align === "center" ? "items-center justify-center" : "items-center justify-start",
+                            gridCellAlignClass(column.align),
                             outOfStock && "bg-destructive/18 text-destructive",
-                            selected && !outOfStock && "bg-emerald-500/12",
+                            selected && !outOfStock && "bg-grid-selection",
                             focused && "z-[2] ring-2 ring-inset",
-                            isDirtyRow && !outOfStock && !selected && "bg-amber-500/8",
-                            saveFlashRows.has(row.rowId) && !outOfStock && "bg-emerald-400/20",
+                            isDirtyRow && !outOfStock && !selected && "bg-warning-subtle",
+                            saveFlashRows.has(row.rowId) && !outOfStock && "bg-success-subtle",
                             scanFlashRows.has(row.rowId) &&
                               !outOfStock &&
                               "bg-primary/12 ring-2 ring-inset ring-primary/40",
-                            lowStock && (colIdx === 5 || colIdx === 7) && "text-amber-700 dark:text-amber-300",
+                            lowStock && (colIdx === 5 || colIdx === 7) && "font-medium text-warning-on-subtle",
                             colIdx === 6 && !outOfStock && "text-muted-foreground",
                             colIdx === 16 && "text-muted-foreground text-[11px]",
                           )}
@@ -1593,7 +1593,7 @@ export function WarehouseExcelGrid({
                             width: cell.width,
                             height: cell.height,
                             ...(isDirtyRow && colIdx === 1
-                              ? { boxShadow: "inset 3px 0 0 0 color-mix(in oklab, var(--color-amber-500) 70%, transparent)" }
+                              ? { boxShadow: "inset 3px 0 0 0 var(--warning)" }
                               : {}),
                             ...(outOfStock
                               ? { backgroundColor: "color-mix(in oklab, var(--destructive) 16%, transparent)" }
@@ -1660,7 +1660,7 @@ export function WarehouseExcelGrid({
                             row.rowKind === "saved" && row.sku.trim() && canEdit ? (
                               <button
                                 type="button"
-                                className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-700"
+                                className="rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle"
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -1745,7 +1745,7 @@ export function WarehouseExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );

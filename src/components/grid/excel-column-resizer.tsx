@@ -3,6 +3,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { gridCellAlignClass, type GridColumnAlign } from "@/lib/grid/grid-types";
 
 type ExcelColumnResizerProps = {
   onMouseDown: (event: ReactMouseEvent) => void;
@@ -27,7 +28,7 @@ type ExcelGridHeaderCellProps = {
   left: number;
   height: number;
   fontSize: number;
-  align?: "left" | "center";
+  align?: GridColumnAlign;
   buttonClassName?: string;
   className?: string;
   style?: CSSProperties;
@@ -61,7 +62,7 @@ export function ExcelGridHeaderCell({
         type="button"
         className={cn(
           "flex h-full w-full border-r px-2.5 font-semibold text-muted-foreground",
-          align === "center" ? "items-center justify-center" : "items-center justify-start",
+          gridCellAlignClass(align),
           buttonClassName,
         )}
         style={{ fontSize }}

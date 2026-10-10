@@ -44,12 +44,13 @@ import {
   eventTypeLabel,
   STATUS_HINTS,
   STATUS_LABELS,
-  statusTone,
   transitionLabel,
 } from "@/components/work-orders/work-order-copy";
 import { money } from "@/components/work-orders/work-order-utils";
 import type { DocumentSlug } from "@/lib/documents/document-types";
 import { laborLineTotal, normalizeLaborPricingMode } from "@/lib/work-order/labor-pricing";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { workOrderStatusStyle } from "@/lib/status/status-tones";
 
 export type WorkOrderDetailPanelLabels = {
   dateLocale: "en" | "ru";
@@ -225,14 +226,11 @@ export function WorkOrderDetailPanel({
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl font-semibold tracking-tight">{orderTitle}</h2>
-              <span
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
-                  statusTone(order.status),
-                )}
-              >
-                {labels.status[order.status]}
-              </span>
+              <StatusBadge
+                status={workOrderStatusStyle[order.status]}
+                label={labels.status[order.status]}
+                showIcon
+              />
             </div>
             <p className="text-sm text-muted-foreground">{labels.statusHint[order.status]}</p>
             {assignees ? (

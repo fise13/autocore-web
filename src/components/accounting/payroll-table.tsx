@@ -19,6 +19,7 @@ import {
 } from "@/lib/work-order/work-order-display";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { payrollStatusStyle, statusToneChipClass } from "@/lib/status/status-tones";
 
 type PayrollTableProps = {
   rows: PayrollTransaction[];
@@ -90,11 +91,9 @@ export function PayrollTable({
             const statusControl = (
               <span
                 className={cn(
-                  "inline-flex rounded-md px-2 py-0.5 text-xs font-medium transition-all duration-200",
-                  row.status === "paid" && "bg-emerald-500/10 text-emerald-700",
-                  row.status === "pending" && "bg-amber-500/10 text-amber-700",
-                  row.status === "cancelled" && "bg-muted text-muted-foreground",
-                  canEdit && onStatusChange && "cursor-pointer hover:scale-[1.02] hover:shadow-sm active:scale-[0.98]",
+                  "inline-flex rounded-sm border px-2 py-0.5 text-xs font-medium transition-colors",
+                  statusToneChipClass[payrollStatusStyle[row.status].tone],
+                  canEdit && onStatusChange && "cursor-pointer hover:border-foreground/30",
                   isUpdating && "opacity-60",
                 )}
               >

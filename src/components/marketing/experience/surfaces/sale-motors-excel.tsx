@@ -347,7 +347,7 @@ export function SaleMotorsExcel({
                           column.align === "center"
                             ? "items-center justify-center"
                             : "items-center justify-start",
-                          selected && "bg-emerald-500/12",
+                          selected && "bg-grid-selection",
                           focused && "z-[2]",
                         )}
                         style={{
@@ -379,7 +379,7 @@ export function SaleMotorsExcel({
                           isData ? (
                             <button
                               type="button"
-                              className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-700 dark:text-emerald-400"
+                              className="rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle"
                               onPointerDown={(event) => event.stopPropagation()}
                               onClick={(event) => {
                                 event.stopPropagation();

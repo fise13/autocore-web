@@ -22,6 +22,7 @@ import { FinancialOperationRepository } from "@/infrastructure/firestore/financi
 import { useImportJobsRealtime } from "@/hooks/use-import-jobs-realtime";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { inventoryImportStatusStyle, statusToneTextClass } from "@/lib/status/status-tones";
 
 type WarehouseImportHistoryPanelProps = {
   open: boolean;
@@ -41,17 +42,7 @@ function statusLabels(): Record<InventoryImportJob["status"], string> {
 }
 
 function statusTone(status: InventoryImportJob["status"]) {
-  switch (status) {
-    case "completed":
-      return "text-emerald-700";
-    case "failed":
-    case "rolled_back":
-      return "text-destructive";
-    case "applying":
-      return "text-primary";
-    default:
-      return "text-muted-foreground";
-  }
+  return statusToneTextClass[inventoryImportStatusStyle[status].tone];
 }
 
 export function WarehouseImportHistoryPanel({

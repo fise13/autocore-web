@@ -6,7 +6,6 @@ import { FilePenLine, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { WorkOrder } from "@/domain/work-order";
 import { CompanyEmployee } from "@/domain/rbac";
 import { PayrollTransaction } from "@/domain/payroll-transaction";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +18,9 @@ import type { PersistenceDraftRecord } from "@/lib/persistence";
 import { cn } from "@/lib/utils";
 import { getActiveUserCopyLocale, userCopy } from "@/lib/user-copy";
 import { formatWorkOrderLabel, workOrderAssigneeSummary } from "@/lib/work-order/work-order-display";
-import { STATUS_LABELS, statusBadgeVariant } from "@/components/work-orders/work-order-copy";
+import { STATUS_LABELS } from "@/components/work-orders/work-order-copy";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { workOrderStatusStyle } from "@/lib/status/status-tones";
 import { isOpenStatus, money } from "@/components/work-orders/work-order-utils";
 
 export type OrderListFilter = "all" | "open" | "done";
@@ -278,9 +279,11 @@ export function WorkOrderListPanel({
                             </p>
                           ) : null}
                         </div>
-                        <Badge variant={statusBadgeVariant(order.status)} className="shrink-0">
-                          {STATUS_LABELS[order.status]}
-                        </Badge>
+                        <StatusBadge
+                          status={workOrderStatusStyle[order.status]}
+                          label={STATUS_LABELS[order.status]}
+                          showIcon
+                        />
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                         <span className="line-clamp-1 min-w-0 flex-1 text-muted-foreground">

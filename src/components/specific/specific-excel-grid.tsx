@@ -1313,9 +1313,9 @@ export function SpecificExcelGrid({
                             column.align === "center"
                               ? "items-center justify-center"
                               : "items-center justify-start",
-                            selected && "bg-emerald-500/12",
+                            selected && "bg-grid-selection",
                             focused && "z-[2] ring-2 ring-inset",
-                            saveFlashRows.has(row.rowId) && "bg-emerald-400/20",
+                            saveFlashRows.has(row.rowId) && "bg-success-subtle",
                           )}
                           style={{
                             left: cell.x,
@@ -1383,10 +1383,9 @@ export function SpecificExcelGrid({
                               <button
                                 type="button"
                                 className={cn(
-                                  "rounded border px-2 py-0.5 text-[11px]",
                                   sold
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700"
-                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+                                    ? "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    : "rounded-sm border border-border bg-card px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:border-primary-border hover:bg-primary-subtle",
                                 )}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={(event) => {
@@ -1456,7 +1455,7 @@ export function SpecificExcelGrid({
                       top,
                       width: right - left,
                       height,
-                      borderColor: idx === 0 ? gridPalette.activeBorder : "rgba(22, 163, 74, 0.55)",
+                      borderColor: idx === 0 ? gridPalette.activeBorder : gridPalette.secondaryRangeBorder,
                     }}
                   />
                 );
