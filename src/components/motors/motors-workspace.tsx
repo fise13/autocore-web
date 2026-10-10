@@ -248,9 +248,17 @@ export function MotorsWorkspace({ soldOnly = false }: { soldOnly?: boolean }) {
   );
 
   const selectedEngineCode = useMemo(
-    () => engines.find((engine) => engine.localId === workspace.selectedEngineLocalId)?.code,
-    [engines, workspace.selectedEngineLocalId],
+    () =>
+      collectionContext.engineCode ??
+      engines.find((engine) => engine.localId === workspace.selectedEngineLocalId)?.code,
+    [collectionContext.engineCode, engines, workspace.selectedEngineLocalId],
   );
+
+  // Sidebar brand links carry the filter in the URL; mirror it into the grid filter.
+  const { setSelectedBrandLocalId } = workspace;
+  useEffect(() => {
+    setSelectedBrandLocalId(collectionContext.brandLocalId ?? null);
+  }, [collectionContext.brandLocalId, setSelectedBrandLocalId]);
 
   const motorsQuery = useMotorsRealtime(motorRepository, {
     uid,

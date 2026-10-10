@@ -23,6 +23,7 @@ export type InventoryCollectionContext = {
   collection: InventoryCollectionId;
   filter?: PinnedFilterId;
   brandLocalId?: number;
+  engineCode?: string;
   subcategory?: WarehouseSubcategoryFilter;
 };
 
@@ -88,11 +89,13 @@ export function buildBrandHref(input: {
   sold?: boolean;
   filter?: PinnedFilterId;
   collection?: InventoryCollectionId;
+  engineCode?: string;
 }): string {
   const path = input.sold ? "/sold" : "/motors";
   const params = new URLSearchParams();
   params.set("collection", input.collection ?? "engines");
   params.set("brand", String(input.brandLocalId));
+  if (input.engineCode) params.set("engine", input.engineCode);
   if (input.filter) params.set("filter", input.filter);
   return `${path}?${params.toString()}`;
 }
@@ -127,7 +130,9 @@ export function parseCollectionFromSearchParams(
     subcategory = subcategoryRaw;
   }
 
-  return { collection, filter, brandLocalId, subcategory };
+  const engineCode = brandLocalId != null ? params.get("engine")?.trim() || undefined : undefined;
+
+  return { collection, filter, brandLocalId, engineCode, subcategory };
 }
 
 type ReadonlyURLSearchParamsLike = {

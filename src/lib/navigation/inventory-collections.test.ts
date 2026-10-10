@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildBrandHref,
   buildCollectionHref,
   collectionMatchesCategory,
   parseCollectionFromSearchParams,
@@ -16,6 +17,19 @@ describe("inventory-collections", () => {
       brandLocalId: 3,
     });
     assert.equal(href, "/motors?collection=parts&filter=available&brand=3");
+  });
+
+  it("round-trips a brand + engine model link", () => {
+    const href = buildBrandHref({ brandLocalId: 7, engineCode: "EJ253 AVCS" });
+    assert.equal(href, "/motors?collection=engines&brand=7&engine=EJ253+AVCS");
+    const parsed = parseCollectionFromSearchParams(new URL(href, "http://x").searchParams, "/motors");
+    assert.equal(parsed.brandLocalId, 7);
+    assert.equal(parsed.engineCode, "EJ253 AVCS");
+  });
+
+  it("ignores an engine param without a brand", () => {
+    const parsed = parseCollectionFromSearchParams(new URLSearchParams("engine=EJ251"), "/motors");
+    assert.equal(parsed.engineCode, undefined);
   });
 
   it("defaults motors route to engines collection", () => {

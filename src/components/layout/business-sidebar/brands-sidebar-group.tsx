@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Minus, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRightIcon, Minus, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { createBrandUseCase } from "@/application/use-cases/create-brand";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
 import { renameBrandUseCase } from "@/application/use-cases/rename-brand";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,9 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { useToast } from "@/components/ui/toast-provider";
 import { useCatalogRealtime } from "@/hooks/use-catalog-realtime";
@@ -43,6 +47,7 @@ import type { BrandEntity, EngineEntity } from "@/infrastructure/firestore/catal
 import { createCatalogRepository } from "@/infrastructure/firestore/catalog-repository";
 import { createMotorRepository } from "@/infrastructure/firestore/motor-repository";
 import { can } from "@/lib/auth/permissions";
+import { countStockByBrandEngine, type EngineStock } from "@/lib/catalog-brand-counts";
 import { normalizeCompanyId } from "@/lib/company-id";
 import { businessNavCopy } from "@/lib/navigation/business-nav-copy";
 import {
@@ -88,6 +93,7 @@ export function BrandsSidebarGroup({
   onHide,
 }: BrandsSidebarGroupProps) {
   const router = useRouter();
+  const activeEngineCode = useSearchParams().get("engine")?.trim().toLowerCase() || null;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -101,6 +107,32 @@ export function BrandsSidebarGroup({
     companyId,
     enabled: Boolean(uid && companyId),
   });
+
+  // Sold archive counts come from the parent; the per-model stock list is for live stock only.
+  const stockByBrand = useMemo(
+    () => (soldRoute ? new Map<string, EngineStock[]>() : countStockByBrandEngine(motorsQuery.data ?? [])),
+    [motorsQuery.data, soldRoute],
+  );
+  const [openBrandIds, setOpenBrandIds] = useState<Set<number>>(
+    () => new Set(activeBrandLocalId != null ? [activeBrandLocalId] : []),
+  );
+  // Navigating to a brand (from anywhere) unfolds it; adjusted during render, not in an effect.
+  const [lastActiveBrand, setLastActiveBrand] = useState(activeBrandLocalId);
+  if (lastActiveBrand !== activeBrandLocalId) {
+    setLastActiveBrand(activeBrandLocalId);
+    if (activeBrandLocalId != null && !openBrandIds.has(activeBrandLocalId)) {
+      setOpenBrandIds(new Set(openBrandIds).add(activeBrandLocalId));
+    }
+  }
+
+  const toggleBrandOpen = useCallback((brandLocalId: number) => {
+    setOpenBrandIds((current) => {
+      const next = new Set(current);
+      if (next.has(brandLocalId)) next.delete(brandLocalId);
+      else next.add(brandLocalId);
+      return next;
+    });
+  }, []);
 
   const brandsKey = useMemo(
     () => ["catalog", "brands", companyId] as const,
@@ -424,23 +456,38 @@ export function BrandsSidebarGroup({
               const isActive = activeBrandLocalId === brand.localId;
               const showActions = canManage && !isEditing;
               const isExiting = exitingIds.has(brand.id);
+              const engineStock = stockByBrand.get(brand.name.trim().toLowerCase()) ?? [];
+              const hasEngines = engineStock.length > 0 && !isEditing;
+              const isOpen = hasEngines && openBrandIds.has(brand.localId);
 
               return (
-                <SidebarMenuItem
+                <Collapsible
                   key={brand.id}
+                  open={isOpen}
                   className={cn(
                     "group/menu-item overflow-hidden transition-[opacity,transform,max-height] duration-200 ease-out",
                     isExiting
                       ? "pointer-events-none max-h-0 opacity-0 -translate-y-0.5"
-                      : "max-h-12 opacity-100",
+                      : "max-h-[200rem] opacity-100",
                   )}
+                  render={<SidebarMenuItem />}
                 >
                   <SidebarMenuButton
-                    isActive={isActive}
+                    isActive={isActive && !activeEngineCode}
                     tooltip={brand.name}
-                    className={cn(showActions && "pr-8")}
+                    className={cn("group", showActions && "pr-8")}
+                    data-panel-open={isOpen ? "" : undefined}
                     render={
-                      isEditing ? undefined : <Link href={href} onClick={() => onNavigate?.()} />
+                      isEditing ? undefined : (
+                        <Link
+                          href={href}
+                          onClick={() => {
+                            // First click opens the brand; clicking the open, unfiltered brand folds it.
+                            if (!isOpen || (isActive && !activeEngineCode)) toggleBrandOpen(brand.localId);
+                            onNavigate?.();
+                          }}
+                        />
+                      )
                     }
                     onDoubleClick={(event) => {
                       event.preventDefault();
@@ -452,6 +499,9 @@ export function BrandsSidebarGroup({
                       <span className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground">
                         {brandCount.toLocaleString("en-US")}
                       </span>
+                    ) : null}
+                    {hasEngines ? (
+                      <ChevronRightIcon className="size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-[panel-open]:rotate-90 motion-reduce:transition-none" />
                     ) : null}
                   </SidebarMenuButton>
 
@@ -483,7 +533,37 @@ export function BrandsSidebarGroup({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : null}
-                </SidebarMenuItem>
+
+                  {hasEngines ? (
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {engineStock.map((engine) => (
+                          <SidebarMenuSubItem key={engine.code}>
+                            <SidebarMenuSubButton
+                              isActive={isActive && activeEngineCode === engine.code.toLowerCase()}
+                              render={
+                                <Link
+                                  href={buildBrandHref({
+                                    brandLocalId: brand.localId,
+                                    engineCode: engine.code,
+                                    filter: activeFilter,
+                                    collection: activeCollection,
+                                  })}
+                                  onClick={() => onNavigate?.()}
+                                />
+                              }
+                            >
+                              <span className="min-w-0 flex-1 truncate">{engine.code}</span>
+                              <span className="shrink-0 text-xs tabular-nums tracking-tight text-muted-foreground">
+                                {engine.count.toLocaleString("en-US")}
+                              </span>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  ) : null}
+                </Collapsible>
               );
             })
           )}

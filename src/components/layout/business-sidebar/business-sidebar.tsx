@@ -244,7 +244,7 @@ function BusinessSidebarInner({
                   {showBrands ? (
                     <BrandsSidebarGroup
                       brands={brands}
-                      brandCounts={brandCounts}
+                      brandCounts={counts.brandCounts}
                       activeCollection={resolvedCollection}
                       activeBrandLocalId={activeBrandLocalId}
                       activeFilter={activeFilter}
