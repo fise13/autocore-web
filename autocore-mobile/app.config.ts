@@ -151,6 +151,8 @@ plugins.push(
   withOptionalAppleSignIn,
   withDisableSwiftUICoreAutolink,
   withOpenIapPurchasePatch,
+  require('./plugins/with-pods-min-deployment-target'),
+  require('./plugins/with-ios-uiscene-lifecycle'),
   require('./plugins/with-ios-push-entitlements'),
   require('./plugins/with-ios-universal-links'),
   require('./plugins/with-ios-widget-extension-sources'),
