@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 
 import { rollbackImportJobUseCase } from "@/application/use-cases/warehouse/rollback-import-job";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,8 @@ import { useImportJobsRealtime } from "@/hooks/use-import-jobs-realtime";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 import { inventoryImportStatusStyle, statusToneTextClass } from "@/lib/status/status-tones";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
+import { ConfirmDialog } from "@/components/ui/alert-dialog";
 
 type WarehouseImportHistoryPanelProps = {
   open: boolean;
@@ -61,10 +62,15 @@ export function WarehouseImportHistoryPanel({
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  async function handleRollback(job: InventoryImportJob) {
-    if (!confirm(userCopy.warehouse.import.rollbackConfirm(job.sourceFileName ?? job.id))) {
-      return;
-    }
+  const [pendingRollback, setPendingRollback] = useState<InventoryImportJob | null>(null);
+
+  function handleRollback(job: InventoryImportJob) {
+    setPendingRollback(job);
+  }
+
+  async function confirmRollback() {
+    const job = pendingRollback;
+    if (!job) return;
     setBusyJobId(job.id);
     setActionError(null);
     try {
@@ -80,6 +86,7 @@ export function WarehouseImportHistoryPanel({
       setActionError(error instanceof Error ? error.message : userCopy.warehouse.import.rollbackFailed);
     } finally {
       setBusyJobId(null);
+      setPendingRollback(null);
     }
   }
 
@@ -121,7 +128,7 @@ export function WarehouseImportHistoryPanel({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{job.sourceFileName ?? userCopy.warehouse.import.historyFallback}</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: enUS })}
+                    {format(job.createdAt, "d MMM yyyy, HH:mm", { locale: dateFnsLocale() })}
                     {" · "}
                     <span className={cn(statusTone(job.status))}>{statusLabels()[job.status]}</span>
                   </p>
@@ -148,7 +155,7 @@ export function WarehouseImportHistoryPanel({
                       size="sm"
                       variant="outline"
                       disabled={busyJobId === job.id}
-                      onClick={() => void handleRollback(job)}
+                      onClick={() => handleRollback(job)}
                     >
                       {userCopy.warehouse.import.rollback}
                     </Button>
@@ -158,6 +165,19 @@ export function WarehouseImportHistoryPanel({
             </div>
           ))}
         </div>
+        <ConfirmDialog
+          open={pendingRollback !== null}
+          onOpenChange={(next) => {
+            if (!next) setPendingRollback(null);
+          }}
+          title={userCopy.warehouse.import.rollbackConfirmTitle(
+            pendingRollback?.sourceFileName ?? pendingRollback?.id ?? "",
+          )}
+          description={userCopy.warehouse.import.rollbackConfirmDescription}
+          confirmLabel={userCopy.warehouse.import.rollbackConfirmAction}
+          busy={pendingRollback !== null && busyJobId === pendingRollback.id}
+          onConfirm={confirmRollback}
+        />
       </DialogContent>
     </Dialog>
   );

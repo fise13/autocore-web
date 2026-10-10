@@ -1,10 +1,10 @@
 import { format, isToday, isYesterday } from "date-fns";
-import { enUS } from "date-fns/locale";
 
 import { ActivityLogEntry } from "@/domain/rbac";
 import { ActivityModule, ActivitySeverity } from "@/domain/activity-log";
 import { moduleLabel, resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { formatWorkOrderActivityName } from "@/lib/work-order/work-order-display";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 export type ActivityJournalModuleFilter = ActivityModule | "all";
 export type ActivityJournalSeverityFilter = ActivitySeverity | "all";
@@ -40,7 +40,7 @@ export function formatActivityTargetName(entry: ActivityLogEntry, module: Activi
 export function formatDayLabel(date: Date): string {
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
-  return format(date, "d MMMM yyyy", { locale: enUS });
+  return format(date, "d MMMM yyyy", { locale: dateFnsLocale() });
 }
 
 export function filterActivityEntries(

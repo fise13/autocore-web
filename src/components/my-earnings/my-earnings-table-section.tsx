@@ -1,7 +1,6 @@
 "use client";
 
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 import Link from "next/link";
 
 import { PayrollTransaction } from "@/domain/payroll-transaction";
@@ -17,6 +16,7 @@ import { ROLE_LABELS } from "@/components/work-orders/work-order-copy";
 import { userCopy } from "@/lib/user-copy";
 import { cn } from "@/lib/utils";
 import { payrollStatusStyle, statusToneChipClass } from "@/lib/status/status-tones";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const STATUS_LABELS = {
   pending: userCopy.myEarnings.filters.pending,
@@ -67,7 +67,7 @@ export function MyEarningsTableSection({ rows, workOrders, isLoading }: MyEarnin
                     <div>
                       <p className="text-base font-semibold tabular-nums">{money(row.amount)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: enUS })}
+                        {format(row.paidAt ?? row.createdAt, "d MMM yyyy", { locale: dateFnsLocale() })}
                       </p>
                     </div>
                     <span

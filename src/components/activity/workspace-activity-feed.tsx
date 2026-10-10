@@ -1,7 +1,6 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import {
   ClipboardListIcon,
   FolderIcon,
@@ -16,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const moduleIcons: Record<string, LucideIcon> = {
   inventory: PackageIcon,
@@ -53,7 +53,7 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
         const entryModule = entry.module ?? resolved.module;
         const Icon = moduleIcons[entryModule] ?? SettingsIcon;
         const when = entry.timestamp
-          ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
+          ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateFnsLocale() })
           : userCopy.activity.now;
         const actor = entry.actorName?.trim() || userCopy.activity.actorFallback;
         const title = `${actor}: ${resolved.label}${entry.targetName ? ` · ${entry.targetName}` : ""}`;

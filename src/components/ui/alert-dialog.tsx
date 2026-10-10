@@ -22,14 +22,18 @@ function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
 
 function AlertDialogContent({
   className,
+  overlayClassName,
   children,
   ...props
-}: AlertDialogPrimitive.Popup.Props) {
+}: AlertDialogPrimitive.Popup.Props & { overlayClassName?: string }) {
   return (
     <AlertDialogPrimitive.Portal>
       <AlertDialogPrimitive.Backdrop
         data-slot="alert-dialog-overlay"
-        className="pointer-events-none fixed inset-0 isolate z-50 bg-overlay duration-200 data-open:pointer-events-auto data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0"
+        className={cn(
+          "pointer-events-none fixed inset-0 isolate z-50 bg-overlay duration-200 data-open:pointer-events-auto data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0",
+          overlayClassName
+        )}
       />
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
@@ -90,6 +94,8 @@ type ConfirmDialogProps = {
   /** Destructive actions use the solid danger button. */
   destructive?: boolean
   busy?: boolean
+  /** Raise above a parent dialog that uses a custom z-index. */
+  layerClassName?: string
 }
 
 /** Ready-made confirmation with the AutoCore anatomy. Replaces window.confirm(). */
@@ -103,12 +109,17 @@ function ConfirmDialog({
   onConfirm,
   destructive = true,
   busy = false,
+  layerClassName,
 }: ConfirmDialogProps) {
   const cancelRef = React.useRef<HTMLButtonElement>(null)
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => (busy ? undefined : onOpenChange(next))}>
-      <AlertDialogContent initialFocus={cancelRef}>
+      <AlertDialogContent
+        initialFocus={cancelRef}
+        className={layerClassName}
+        overlayClassName={layerClassName}
+      >
         <div className="grid gap-2">
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}

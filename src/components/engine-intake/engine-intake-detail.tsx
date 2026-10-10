@@ -210,7 +210,7 @@ export function EngineIntakeDetail({
       toast.success(success);
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Engine intake update failed");
+      toast.error(error instanceof Error ? error.message : userCopy.engineIntake.feedback.updateFailed);
       return false;
     } finally {
       setBusy(null);
@@ -257,7 +257,7 @@ export function EngineIntakeDetail({
           assigneeName: employee?.fullName ?? null,
         },
       }),
-      employee ? `Assigned to ${employee.fullName}` : "Moved to unassigned queue",
+      employee ? userCopy.engineIntake.feedback.assignedTo(employee.fullName) : userCopy.engineIntake.feedback.movedToUnassigned,
     );
   };
 
@@ -270,7 +270,7 @@ export function EngineIntakeDetail({
         type: "start_verification",
         payload: { jobId: job.id },
       }),
-      "Verification opened",
+      userCopy.engineIntake.feedback.verificationOpened,
     );
     if (started) setDialog(nextDialog);
   };
@@ -298,18 +298,18 @@ export function EngineIntakeDetail({
     let message: string;
     if (dialog.kind === "approve") {
       if (releaseNeedsOverride && !reviewNote.trim() && !aiOverrideReason.trim()) {
-        toast.error("Add an override note — sale checklist items are still open");
+        toast.error(userCopy.engineIntake.feedback.overrideNoteRequired);
         return;
       }
       if (!quality) {
-        toast.error("Set engine quality before releasing to Motors Grid");
+        toast.error(userCopy.engineIntake.feedback.qualityRequired);
         return;
       }
       command = managedCommand({
         type: "approve_job",
         payload: {
           jobId: job.id,
-          note: reviewNote.trim() || (releaseNeedsOverride ? "" : "Checklist ready"),
+          note: reviewNote.trim() || (releaseNeedsOverride ? "" : userCopy.engineIntake.defaultReasons.checklistReady),
           identity: {
             serialCode: serialCode.trim(),
             engineCode: engineCode.trim(),
@@ -321,46 +321,46 @@ export function EngineIntakeDetail({
                 aiOverrideReason:
                   aiOverrideReason.trim() ||
                   reviewNote.trim() ||
-                  "Manager override for release",
+                  userCopy.engineIntake.defaultReasons.managerOverride,
               }
             : {}),
         },
       });
-      message = "Released to Motors Grid";
+      message = userCopy.engineIntake.feedback.released;
     } else if (dialog.kind === "rework") {
       command = managedCommand({
         type: "request_rework",
         payload: {
           jobId: job.id,
-          note: reviewNote.trim() || `Retake ${dialog.requirement.label}`,
+          note: reviewNote.trim() || userCopy.engineIntake.defaultReasons.retake(dialog.requirement.label),
           gaps: [
             {
               requirementId: dialog.requirement.id,
-              reason: reviewNote.trim() || `Retake ${dialog.requirement.label}`,
+              reason: reviewNote.trim() || userCopy.engineIntake.defaultReasons.retake(dialog.requirement.label),
               ...(dialog.photoId ? { photoId: dialog.photoId } : {}),
             },
           ],
         },
       });
-      message = "Targeted retake sent to the field worker";
+      message = userCopy.engineIntake.feedback.retakeSent;
     } else if (dialog.kind === "quarantine") {
       command = managedCommand({
         type: "quarantine_job",
         payload: {
           jobId: job.id,
-          reason: reviewNote.trim() || "Manual inspection required",
+          reason: reviewNote.trim() || userCopy.engineIntake.defaultReasons.manualInspection,
         },
       });
-      message = "Engine moved to quarantine";
+      message = userCopy.engineIntake.feedback.quarantined;
     } else if (dialog.kind === "reject") {
       command = managedCommand({
         type: "reject_job",
         payload: {
           jobId: job.id,
-          reason: reviewNote.trim() || "Engine rejected during verification",
+          reason: reviewNote.trim() || userCopy.engineIntake.defaultReasons.rejectedDuringVerification,
         },
       });
-      message = "Engine intake rejected";
+      message = userCopy.engineIntake.feedback.rejected;
     } else if (dialog.kind === "identity") {
       command = managedCommand({
         type: "update_identity",
@@ -373,16 +373,16 @@ export function EngineIntakeDetail({
           },
         },
       });
-      message = "Expected engine identity updated";
+      message = userCopy.engineIntake.feedback.identityUpdated;
     } else {
       command = managedCommand({
         type: "cancel_job",
         payload: {
           jobId: job.id,
-          reason: reviewNote.trim() || "Cancelled by desktop operator",
+          reason: reviewNote.trim() || userCopy.engineIntake.defaultReasons.cancelledByOperator,
         },
       });
-      message = "Engine intake job cancelled";
+      message = userCopy.engineIntake.feedback.cancelled;
     }
     if (await run(command, message)) {
       setDialog(null);
@@ -407,21 +407,21 @@ export function EngineIntakeDetail({
           void run(
             managedCommand({
               type: "release_claim",
-              payload: { jobId: job.id, reason: "Released by desktop operator" },
+              payload: { jobId: job.id, reason: userCopy.engineIntake.defaultReasons.claimReleasedByOperator },
             }),
-            "Worker claim released",
+            userCopy.engineIntake.feedback.claimReleased,
           )
         }
         onPause={() =>
           void run(
             managedCommand({ type: "pause_job", payload: { jobId: job.id } }),
-            "Intake paused",
+            userCopy.engineIntake.feedback.paused,
           )
         }
         onResume={() =>
           void run(
             managedCommand({ type: "resume_job", payload: { jobId: job.id } }),
-            "Intake resumed",
+            userCopy.engineIntake.feedback.resumed,
           )
         }
         onCancel={() => {
@@ -434,7 +434,7 @@ export function EngineIntakeDetail({
       {job.identityMismatch ? (
         <Alert variant="destructive" className="mx-4 mt-3 w-auto shrink-0">
           <ShieldAlert />
-          <AlertTitle>Worker reported the wrong physical engine</AlertTitle>
+          <AlertTitle>{userCopy.engineIntake.detailUi.wrongEngineTitle}</AlertTitle>
           <AlertDescription>{job.identityMismatch.reason}</AlertDescription>
         </Alert>
       ) : null}
@@ -442,7 +442,7 @@ export function EngineIntakeDetail({
       {job.blockingAiFlags?.length > 0 ? (
         <Alert className="mx-4 mt-3 w-auto shrink-0">
           <Sparkles />
-          <AlertTitle>AI flags need a glance</AlertTitle>
+          <AlertTitle>{userCopy.engineIntake.detailUi.aiFlagsTitle}</AlertTitle>
           <AlertDescription>
             {job.blockingAiFlags.map((flag) => flag.message).join(" · ")}
           </AlertDescription>
@@ -460,8 +460,8 @@ export function EngineIntakeDetail({
                     : "Label photos yourself · checklist updates from your labels")}
               </p>
               <TabsList variant="line">
-                <TabsTrigger value="checklist">Checklist</TabsTrigger>
-                <TabsTrigger value="photos">All photos</TabsTrigger>
+                <TabsTrigger value="checklist">{userCopy.engineIntake.detailUi.checklistTab}</TabsTrigger>
+                <TabsTrigger value="photos">{userCopy.engineIntake.detailUi.allPhotosTab}</TabsTrigger>
               </TabsList>
             </div>
 
@@ -762,7 +762,7 @@ export function EngineIntakeDetail({
               {dialog.kind === "approve" ? (
                 <>
                   <Field>
-                    <FieldLabel>Quality</FieldLabel>
+                    <FieldLabel>{userCopy.engineIntake.detailUi.quality}</FieldLabel>
                     <div className="grid grid-cols-3 gap-2">
                       {MOTOR_QUALITY_GRADE_OPTIONS.map((option) => {
                         const selected = quality === option.value;
@@ -790,7 +790,7 @@ export function EngineIntakeDetail({
                     </div>
                   </Field>
                   <Field>
-                    <FieldLabel>Verification note</FieldLabel>
+                    <FieldLabel>{userCopy.engineIntake.detailUi.verificationNote}</FieldLabel>
                     <Textarea
                       value={reviewNote}
                       onChange={(event) => setReviewNote(event.target.value)}
@@ -798,11 +798,11 @@ export function EngineIntakeDetail({
                   </Field>
                   {job.blockingAiFlags.length > 0 ? (
                     <Field>
-                      <FieldLabel>AI flag override reason</FieldLabel>
+                      <FieldLabel>{userCopy.engineIntake.detailUi.aiOverrideReason}</FieldLabel>
                       <Textarea
                         value={aiOverrideReason}
                         onChange={(event) => setAiOverrideReason(event.target.value)}
-                        placeholder="Explain why the evidence is safe to approve"
+                        placeholder={userCopy.engineIntake.detailUi.aiOverridePlaceholder}
                       />
                     </Field>
                   ) : null}
@@ -811,16 +811,16 @@ export function EngineIntakeDetail({
             </FieldGroup>
           ) : (
             <Field>
-              <FieldLabel>Operational reason</FieldLabel>
+              <FieldLabel>{userCopy.engineIntake.detailUi.operationalReason}</FieldLabel>
               <Textarea
                 value={reviewNote}
                 onChange={(event) => setReviewNote(event.target.value)}
                 placeholder={
                   dialog?.kind === "rework"
-                    ? "Example: serial digits are obscured by glare"
+                    ? userCopy.engineIntake.detailUi.reworkPlaceholder
                     : dialog?.kind === "cancel"
-                      ? "Why is this physical intake being cancelled?"
-                      : "Explain the condition or decision"
+                      ? userCopy.engineIntake.detailUi.cancelPlaceholder
+                      : userCopy.engineIntake.detailUi.reasonPlaceholder
                 }
               />
             </Field>

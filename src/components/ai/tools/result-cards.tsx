@@ -213,14 +213,14 @@ export function WorkOrderDetailCard({ data }: { data: Ok<GetWorkOrderOutput> }) 
       href={order.href}
     >
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-2 sm:grid-cols-3">
-        <Field label="Client" value={order.clientName} />
-        <Field label="Vehicle" value={order.vehicleLabel} />
-        <Field label="Plate" value={order.licensePlate} />
+        <Field label={userCopy.ai.cardFields.client} value={order.clientName} />
+        <Field label={userCopy.ai.cardFields.vehicle} value={order.vehicleLabel} />
+        <Field label={userCopy.ai.cardFields.plate} value={order.licensePlate} />
         {order.vin ? <Field label="VIN" value={order.vin} /> : null}
         {order.mileage > 0 ? (
-          <Field label="Mileage" value={order.mileage.toLocaleString("en-US")} />
+          <Field label={userCopy.ai.cardFields.mileage} value={order.mileage.toLocaleString("en-US")} />
         ) : null}
-        <Field label="Total" value={order.grandTotal.toLocaleString("en-US")} />
+        <Field label={userCopy.ai.cardFields.total} value={order.grandTotal.toLocaleString("en-US")} />
       </div>
 
       {hasLines ? (
@@ -235,7 +235,7 @@ export function WorkOrderDetailCard({ data }: { data: Ok<GetWorkOrderOutput> }) 
           ))}
           {order.laborTitles.map((title) => (
             <ToolCardRow key={title}>
-              <ToolCardLines title={title} subtitle="Labor" />
+              <ToolCardLines title={title} subtitle={userCopy.ai.cardFields.labor} />
             </ToolCardRow>
           ))}
         </div>
@@ -522,9 +522,9 @@ export function LocationCard({ data }: { data: Ok<GetWarehouseLocationOutput> })
       empty={data.items.length === 0}
     >
       <div className="grid grid-cols-3 gap-2 border-b border-border/70 px-3 py-2">
-        <Field label="On hand" value={String(occupancy.totalOnHand)} />
-        <Field label="Available" value={String(occupancy.totalAvailable)} />
-        <Field label="Engines" value={String(occupancy.engineCount)} />
+        <Field label={userCopy.ai.cardFields.onHand} value={String(occupancy.totalOnHand)} />
+        <Field label={userCopy.ai.cardFields.available} value={String(occupancy.totalAvailable)} />
+        <Field label={userCopy.ai.cardFields.engines} value={String(occupancy.engineCount)} />
       </div>
       {data.items.map((item) => (
         <ToolCardRow key={`${item.kind}-${item.id}`}>

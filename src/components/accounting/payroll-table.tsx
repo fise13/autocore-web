@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
-import { enUS } from "date-fns/locale";
 import Link from "next/link";
 
 import { PayrollTransaction, PayrollTransactionStatus } from "@/domain/payroll-transaction";
@@ -20,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
 import { payrollStatusStyle, statusToneChipClass } from "@/lib/status/status-tones";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 type PayrollTableProps = {
   rows: PayrollTransaction[];
@@ -104,7 +104,7 @@ export function PayrollTable({
             return (
               <TableRow key={row.id} className="animate-autocore-fade-in-up motion-reduce:animate-none">
                 <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {format(row.createdAt, "dd.MM.yyyy", { locale: enUS })}
+                  {format(row.createdAt, "dd.MM.yyyy", { locale: dateFnsLocale() })}
                 </TableCell>
                 <TableCell className="font-medium">
                   {resolveEmployeeName(row.employeeId, employees) ?? cols.employeeFallback}

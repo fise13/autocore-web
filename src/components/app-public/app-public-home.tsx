@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { marketingRoute } from "@/lib/marketing-routes";
 import { marketingHomeUrl } from "@/lib/site-urls";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 const SUPPORT_EMAIL = "support@myautocore.com";
 
@@ -76,7 +77,7 @@ export function AppPublicHome() {
 
       <nav
         className="mt-10 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground"
-        aria-label="Legal"
+        aria-label={userCopy.commonUi.legalNavAria}
       >
         <Link href={marketingRoute("terms")} className="underline underline-offset-4 hover:text-foreground">
           Terms of Use

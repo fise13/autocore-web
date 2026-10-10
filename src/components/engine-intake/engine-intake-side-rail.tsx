@@ -242,7 +242,7 @@ export function EngineIntakeSideRail({
               ))}
             </ul>
           ) : (
-            <p className="py-3 text-center text-xs text-muted-foreground">No events yet</p>
+            <p className="py-3 text-center text-xs text-muted-foreground">{userCopy.engineIntake.detailUi.noEvents}</p>
           )}
         </TabsContent>
         <TabsContent
@@ -269,7 +269,7 @@ export function EngineIntakeSideRail({
               </div>
             ))
           ) : (
-            <p className="py-3 text-center text-xs text-muted-foreground">No sessions</p>
+            <p className="py-3 text-center text-xs text-muted-foreground">{userCopy.engineIntake.detailUi.noSessions}</p>
           )}
         </TabsContent>
       </Tabs>

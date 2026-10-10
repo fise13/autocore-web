@@ -14,6 +14,7 @@ import {
 import { InventoryImportRow } from "@/domain/inventory-import";
 import { parseCsvText } from "@/lib/warehouse/import-rules-engine";
 import { userCopy } from "@/lib/user-copy";
+import { toast } from "sonner";
 
 type WarehouseImportDialogProps = {
   open: boolean;
@@ -73,7 +74,7 @@ export function WarehouseImportDialog({
       onOpenChange(false);
       setPreviewRows([]);
       setStats(null);
-      alert(copy.importCsv.importedRows(result.applied));
+      toast.success(copy.importCsv.importedRows(result.applied));
     } catch (applyError) {
       setError(applyError instanceof Error ? applyError.message : copy.importCsv.applyError);
     } finally {

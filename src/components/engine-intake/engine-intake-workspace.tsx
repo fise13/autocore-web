@@ -409,10 +409,8 @@ export function EngineIntakeWorkspace() {
                     <EmptyMedia variant="icon">
                       <CheckCircle2 />
                     </EmptyMedia>
-                    <EmptyTitle>Select an engine</EmptyTitle>
-                    <EmptyDescription>
-                      Checklist, evidence, and release controls open here.
-                    </EmptyDescription>
+                    <EmptyTitle>{userCopy.engineIntake.detailUi.selectEngineTitle}</EmptyTitle>
+                    <EmptyDescription>{userCopy.engineIntake.detailUi.selectEngineDescription}</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               </motion.div>

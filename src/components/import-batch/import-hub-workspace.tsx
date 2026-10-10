@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import { FileUp, Plus, Smartphone, Sparkles } from "lucide-react";
 
 import type { ImportBatch, ImportBatchStatus } from "@/domain/import-batch";
@@ -22,6 +21,7 @@ import {
 import { normalizeCompanyId } from "@/lib/company-id";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const STATUS_LABELS: Record<ImportBatchStatus, string> = {
   collecting: userCopy.importBatch.status.collecting,
@@ -226,7 +226,7 @@ function BatchListRow({ batch }: { batch: ImportBatch }) {
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {userCopy.importBatch.toastFilesRows(batch.counts.files, batch.counts.rows)} ·{" "}
-          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: enUS })}
+          {formatDistanceToNow(batch.createdAt, { addSuffix: true, locale: dateFnsLocale() })}
         </p>
       </div>
       <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium">

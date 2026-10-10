@@ -11,6 +11,7 @@ import {
   checklistStateMark,
 } from "@/components/engine-intake/engine-intake-format";
 import { cn } from "@/lib/utils";
+import { userCopy } from "@/lib/user-copy";
 
 function StateIcon({ state }: { state: DocumentationChecklistItemState }) {
   if (state === "completed") return <Check className="size-3.5 text-success" />;
@@ -84,10 +85,10 @@ export function EngineIntakeChecklistPane({
                           )}
                         >
                           {item.state === "uncertain"
-                            ? "Needs a glance"
+                            ? userCopy.engineIntake.detailUi.checklistNeedsGlance
                             : item.source === "manager_override"
-                              ? "Manager override"
-                              : "Sale gate"}
+                              ? userCopy.engineIntake.detailUi.checklistManagerOverride
+                              : userCopy.engineIntake.detailUi.checklistSaleGate}
                         </p>
                       ) : null}
                     </div>

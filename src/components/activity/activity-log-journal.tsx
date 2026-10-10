@@ -2,7 +2,6 @@
 
 import { memo, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import {
   ClipboardListIcon,
   FolderIcon,
@@ -59,6 +58,7 @@ import {
 import { moduleLabel, resolveActivityLabel } from "@/lib/overview/activity-labels";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 type ActivityLogJournalProps = {
   entries: ActivityLogEntry[];
@@ -186,7 +186,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
   const severity = entry.severity ?? resolved.severity;
   const targetName = formatActivityTargetName(entry, entryModule);
   const when = entry.timestamp
-    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: enUS })
+    ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateFnsLocale() })
     : userCopy.activity.now;
   const ModuleIcon = moduleIcons[entryModule] ?? SettingsIcon;
 

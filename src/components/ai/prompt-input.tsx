@@ -65,6 +65,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { userCopy } from "@/lib/user-copy"
 
 // ============================================================================
 // Provider Context & Types
@@ -298,7 +299,7 @@ export function PromptInputAttachment({ data, className, ...props }: PromptInput
                         )}
                       </div>
                       <Button
-                        aria-label="Remove attachment"
+                        aria-label={userCopy.ai.removeAttachment}
                         className="absolute inset-0 size-5 cursor-pointer rounded p-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 [&>svg]:size-2.5"
                         onClick={e => {
                           e.stopPropagation()
@@ -728,12 +729,12 @@ export const PromptInput = ({
     <>
       <input
         accept={accept}
-        aria-label="Upload files"
+        aria-label={userCopy.ai.uploadFiles}
         className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
-        title="Upload files"
+        title={userCopy.ai.uploadFiles}
         type="file"
       />
       <form className="w-full" onSubmit={handleSubmit} ref={formRef} {...props}>

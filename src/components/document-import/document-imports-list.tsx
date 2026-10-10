@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { enUS } from "date-fns/locale";
 import { FileText } from "lucide-react";
 
 import type { DocumentImportJob, DocumentImportStatus } from "@/domain/document-import";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { userCopy } from "@/lib/user-copy";
+import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const STATUS_LABELS: Record<DocumentImportStatus, string> = {
   pending: userCopy.documentImport.status.pending,
@@ -95,7 +95,7 @@ export function DocumentImportsList({
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {STATUS_LABELS[job.status]} ·{" "}
-              {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: enUS })}
+              {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: dateFnsLocale() })}
             </p>
           </div>
           <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary-on-subtle opacity-0 transition group-hover:opacity-100">
