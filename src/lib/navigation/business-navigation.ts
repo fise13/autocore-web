@@ -1,15 +1,16 @@
 import {
-  CircleDollarSign,
+  Bolt,
   Car,
   ClipboardList,
   Cog,
+  Coins,
   FileText,
-  LayoutGrid,
+  HandCoins,
+  LayoutDashboard,
   Package,
-  Puzzle,
-  Receipt,
   Settings2,
   Wallet,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,7 +57,7 @@ export type InventoryCollectionNavItem = {
 const COLLECTION_ICONS: Record<InventoryCollectionId, LucideIcon> = {
   engines: Cog,
   transmissions: Settings2,
-  parts: Puzzle,
+  parts: Bolt,
   consumables: Package,
 };
 
@@ -85,7 +86,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
         id: "dashboard" as const,
         label: businessNavCopy.workspace.dashboard,
         href: "/home",
-        icon: LayoutGrid,
+        icon: LayoutDashboard,
       }
     : null;
 
@@ -96,7 +97,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
       id: "inventory",
       label: businessNavCopy.business.inventory,
       href: buildCollectionHref({ collection: "engines" }),
-      icon: Package,
+      icon: Warehouse,
       children: INVENTORY_COLLECTION_NAV.filter((item) => isCollectionAllowed(user, item.id)).map(
         (item) => ({
           ...item,
@@ -111,7 +112,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
       id: "sales",
       label: businessNavCopy.business.sales,
       href: "/sold",
-      icon: Receipt,
+      icon: HandCoins,
     });
   }
 
@@ -138,7 +139,7 @@ export function buildBusinessNavTree(user: UserEntity | null | undefined): {
       id: "accounting",
       label: businessNavCopy.business.accounting,
       href: "/accounting",
-      icon: CircleDollarSign,
+      icon: Coins,
     });
   }
 

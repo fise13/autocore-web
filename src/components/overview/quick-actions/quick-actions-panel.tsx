@@ -12,7 +12,7 @@ import {
 import { canAccessMotorsArea } from "@/lib/auth/app-access";
 import { can } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ClipboardList, Download, Package, Plus, Upload, UserPlus, Wallet } from "lucide-react";
+import { Banknote, ChevronRight, ClipboardList, Download, Package, Plus, Upload, UserPlus } from "lucide-react";
 import Link from "next/link";
 
 import { deepActionRoutes } from "@/lib/navigation/deep-actions";
@@ -67,7 +67,7 @@ function buildQuickActions(): QuickAction[] {
       href: deepActionRoutes.expense(),
       label: qa.expense,
       description: qa.expenseDesc,
-      icon: Wallet,
+      icon: Banknote,
       permission: "accounting_edit",
       shortcut: "E",
     },

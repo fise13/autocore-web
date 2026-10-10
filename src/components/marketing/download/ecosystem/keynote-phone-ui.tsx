@@ -1,6 +1,6 @@
 "use client";
 
-import { Barcode, Check, ChevronLeft, Loader2 } from "lucide-react";
+import { Barcode, Check, ChevronLeft, LoaderCircle } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { useDemoChrome } from "@/components/marketing/modals/use-demo-chrome";
@@ -40,7 +40,7 @@ export function KeynotePhoneUi({ snapshot }: KeynotePhoneUiProps) {
             </>
           ) : sending ? (
             <>
-              <Loader2 className="size-2.5 animate-spin" aria-hidden />
+              <LoaderCircle className="size-2.5 animate-spin" aria-hidden />
               {chrome.scan.sending}
             </>
           ) : scanning ? (

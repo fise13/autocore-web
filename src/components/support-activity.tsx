@@ -9,14 +9,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { ShieldCheckIcon, LayersIcon, WandIcon, UsersRoundIcon, ArrowRightIcon } from "lucide-react";
+import { ShieldCheck, Layers, Wand, UsersRound, ArrowRight } from "lucide-react";
 
 const items = [
 	{
 		title: "SLA warning cleared for Oak Street Studio",
 		time: "12 min ago",
 		icon: (
-			<ShieldCheckIcon
+			<ShieldCheck
 			/>
 		),
 	},
@@ -24,7 +24,7 @@ const items = [
 		title: "Conversation escalated to Tier 2",
 		time: "28 min ago",
 		icon: (
-			<LayersIcon
+			<Layers
 			/>
 		),
 	},
@@ -32,7 +32,7 @@ const items = [
 		title: "Macro “Refund approved” updated",
 		time: "1 hr ago",
 		icon: (
-			<WandIcon
+			<Wand
 			/>
 		),
 	},
@@ -40,7 +40,7 @@ const items = [
 		title: "New customer segment synced from CRM",
 		time: "3 hr ago",
 		icon: (
-			<UsersRoundIcon
+			<UsersRound
 			/>
 		),
 	},
@@ -80,7 +80,7 @@ export function SupportActivity({
 			</CardContent>
 			<div className="flex items-center justify-center">
 				<Button size="sm" variant="ghost" render={<Link href="/home" />} nativeButton={false}>View All
-                						<ArrowRightIcon aria-hidden="true" data-icon="inline-end" /></Button>
+                						<ArrowRight aria-hidden="true" data-icon="inline-end" /></Button>
 			</div>
 		</Card>
 	);

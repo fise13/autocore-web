@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Home, RotateCw, SquareArrowOutUpRight } from "lucide-react";
+import { House, RotateCw, SquareArrowOutUpRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,7 @@ export function IPhoneSimulatorFrame({
           <p className="iphone-sim-os">{osLabel}</p>
         </div>
         <div className="iphone-sim-actions">
-          <Home className="size-3.5" />
+          <House className="size-3.5" />
           <RotateCw className="size-3.5" />
           <SquareArrowOutUpRight className="size-3.5" />
         </div>

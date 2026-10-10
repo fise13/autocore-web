@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import type { LucideIcon } from "lucide-react";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function EnterpriseQuickLink({
         <span className="block text-sm font-medium">{label}</span>
         {hint ? <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span> : null}
       </span>
-      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-[opacity,transform] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 md:opacity-40" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-[opacity,transform] duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 md:opacity-40" />
     </>
   );
 

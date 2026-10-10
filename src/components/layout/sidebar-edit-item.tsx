@@ -61,7 +61,7 @@ export function SidebarEditItem({
         className="absolute left-0 top-1/2 z-10 flex size-3.5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         title={userCopy.layout.hide}
       >
-        <Minus className="size-2.5" strokeWidth={2.5} />
+        <Minus className="size-2.5" strokeWidth={2} />
       </button>
 
       <div

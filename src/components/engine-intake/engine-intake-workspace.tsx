@@ -2,9 +2,9 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import {
-  AlertTriangle,
+  TriangleAlert,
   Camera,
-  CheckCircle2,
+  CircleCheck,
   Clock3,
   Search,
   ShieldCheck,
@@ -255,9 +255,9 @@ export function EngineIntakeWorkspace() {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Camera className="size-4 text-primary" />
-            <h1 className="font-heading text-lg font-semibold tracking-tight">
+            <h2 className="font-heading text-lg font-semibold tracking-tight">
               {userCopy.engineIntake.workspace.title}
-            </h1>
+            </h2>
           </div>
           <p className="truncate text-xs text-muted-foreground">
             {userCopy.engineIntake.workspace.subtitle}
@@ -274,7 +274,7 @@ export function EngineIntakeWorkspace() {
 
       {error ? (
         <Alert variant="destructive" className="mx-5 mt-3 w-auto shrink-0">
-          <AlertTriangle />
+          <TriangleAlert />
           <AlertTitle>{userCopy.engineIntake.workspace.streamUnavailable}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -407,7 +407,7 @@ export function EngineIntakeWorkspace() {
                 <Empty>
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      <CheckCircle2 />
+                      <CircleCheck />
                     </EmptyMedia>
                     <EmptyTitle>{userCopy.engineIntake.detailUi.selectEngineTitle}</EmptyTitle>
                     <EmptyDescription>{userCopy.engineIntake.detailUi.selectEngineDescription}</EmptyDescription>

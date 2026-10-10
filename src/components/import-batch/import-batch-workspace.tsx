@@ -8,7 +8,7 @@ import {
   ArrowLeft,
   Check,
   FileUp,
-  Loader2,
+  LoaderCircle,
   RefreshCw,
   Smartphone,
   Trash2,
@@ -239,9 +239,9 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
           <ArrowLeft className="size-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold tracking-tight">
+          <h2 className="truncate text-lg font-semibold tracking-tight">
             {batch.title || userCopy.importBatch.motorsFallback}
-          </h1>
+          </h2>
           <p className="text-xs text-muted-foreground">
             {userCopy.importBatch.filesRowsSelected(batch.counts.files, batch.counts.rows, selectedCount)}
             {batch.aiStatus === "processing" ? userCopy.importBatch.aiWorking : null}
@@ -277,7 +277,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
             </Button>
           ) : (
             <Button type="button" size="sm" disabled={!canCommit || busy} onClick={() => void commit()}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
               {userCopy.importBatch.importSelected(selectedCount || "")}
             </Button>
           )}
@@ -339,7 +339,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
                   disabled={busy}
                   onClick={() => void retryProcessing()}
                 >
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                  {busy ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
                   {userCopy.importBatch.retryParse}
                 </Button>
               ) : null}
@@ -368,7 +368,7 @@ export function ImportBatchWorkspace({ batchId }: ImportBatchWorkspaceProps) {
             <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-6 py-16 text-center">
               {batch.aiStatus === "processing" ? (
                 <>
-                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
                   <p className="text-sm font-medium">{userCopy.importBatch.aiParsing}</p>
                 </>
               ) : (

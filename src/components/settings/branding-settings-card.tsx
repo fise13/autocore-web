@@ -8,7 +8,7 @@ import {
   ImageUp,
   LayoutTemplate,
   ScanLine,
-  Loader2,
+  LoaderCircle,
   Palette,
   PanelTop,
   Save,
@@ -286,7 +286,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
     return (
       <div className="flex min-h-[320px] items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {userCopy.settings.brandingUi.loading}
         </div>
       </div>
@@ -315,7 +315,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
           >
             {saving ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
+                <LoaderCircle className="size-4 animate-spin" />
                 {userCopy.settings.brandingUi.saving}
               </>
             ) : (
@@ -378,7 +378,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
                           )}
                           {uploadingLogo ? (
                             <div className="absolute inset-0 flex items-center justify-center bg-background/75">
-                              <Loader2 className="size-5 animate-spin text-primary" />
+                              <LoaderCircle className="size-5 animate-spin text-primary" />
                             </div>
                           ) : null}
                         </div>
@@ -754,7 +754,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
         >
           {saving ? (
             <>
-              <Loader2 className="size-4 animate-spin" />
+              <LoaderCircle className="size-4 animate-spin" />
               {userCopy.settings.brandingUi.savingBranding}
             </>
           ) : (
@@ -808,7 +808,7 @@ export function BrandingSettingsCard({ companyId, onStatus }: BrandingSettingsCa
             <Button type="button" onClick={() => void handleSave()} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <LoaderCircle className="size-4 animate-spin" />
                   {userCopy.settings.brandingUi.saving}
                 </>
               ) : (

@@ -35,7 +35,7 @@ export function EnterpriseWorkspaceShell({
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               AutoCore
             </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{title}</h1>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{title}</h2>
             {description ? (
               <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                 {description}

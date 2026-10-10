@@ -1,6 +1,6 @@
 "use client";
 
-import { XIcon } from "lucide-react";
+import { X } from "lucide-react";
 import { userCopy } from "@/lib/user-copy";
 
 import type { KnowledgeSuggestion } from "@/domain/knowledge/types";
@@ -55,7 +55,7 @@ export function KnowledgeSuggestionChips({
               className="rounded p-0.5 text-muted-foreground opacity-60 hover:bg-background hover:opacity-100"
               onClick={() => onDismiss(suggestion)}
             >
-              <XIcon className="size-3" />
+              <X className="size-3" />
             </button>
           ) : null}
         </div>

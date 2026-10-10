@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ArrowRight, Loader2, MessageCircleQuestion, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, LoaderCircle, MessageCircleQuestionMark, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -118,7 +118,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               onClick={() => setSupportOpen(true)}
               className="text-muted-foreground hover:text-foreground"
             >
-              <MessageCircleQuestion
+              <MessageCircleQuestionMark
                 data-icon="inline-start"
                 className="size-3.5 opacity-80 transition-opacity group-hover/button:opacity-100"
                 strokeWidth={1.75}
@@ -255,7 +255,7 @@ function AnalyzingState({
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-success-subtle text-success-on-subtle">
-        <Loader2 className="size-7 animate-spin" />
+        <LoaderCircle className="size-7 animate-spin" />
       </div>
       <div className="flex flex-col gap-1">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
@@ -279,7 +279,7 @@ function CommittingState({ progress }: { progress: { done: number; total: number
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-success-subtle text-success-on-subtle">
-        <Loader2 className="size-7 animate-spin" />
+        <LoaderCircle className="size-7 animate-spin" />
       </div>
       <div className="flex w-full flex-col gap-2">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
@@ -324,7 +324,7 @@ function ErrorState({
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" onClick={onSupport}>
-          <MessageCircleQuestion data-icon="inline-start" className="size-3.5" strokeWidth={1.75} />
+          <MessageCircleQuestionMark data-icon="inline-start" className="size-3.5" strokeWidth={2} />
           {userCopy.migration.requestHelp}
         </Button>
         <Button onClick={onRetry}>{userCopy.migration.tryAnotherFile}</Button>

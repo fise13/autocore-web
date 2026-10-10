@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -79,7 +79,7 @@ export function MarketingAppleSignIn({
         aria-label={showLabel ? undefined : userCopy.auth.signInApple}
       >
         {isLoading ? (
-          <Loader2 className="size-4 animate-spin" data-icon={showLabel ? "inline-start" : undefined} aria-hidden />
+          <LoaderCircle className="size-4 animate-spin" data-icon={showLabel ? "inline-start" : undefined} aria-hidden />
         ) : (
           <AppleIcon className="size-4" data-icon={showLabel ? "inline-start" : undefined} />
         )}

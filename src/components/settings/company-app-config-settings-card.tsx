@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Boxes, Loader2, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { Boxes, LoaderCircle, Save, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 import { CompanyAppConfigForm } from "@/components/company-config/company-app-config-form";
 import { LastSavedHint } from "@/components/persistence/last-saved-hint";
@@ -116,7 +116,7 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
+              <SlidersHorizontal className="size-4 text-primary" />
               <CardTitle>{SETUP_WIZARD_COPY.settings.title}</CardTitle>
             </div>
             <CardDescription>{SETUP_WIZARD_COPY.settings.subtitle}</CardDescription>
@@ -132,7 +132,7 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ConfigTab)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="modules" className="gap-1.5">
-                <Sparkles className="size-3.5" />
+                <SlidersHorizontal className="size-3.5" />
                 <span className="hidden sm:inline">{SETUP_WIZARD_COPY.steps[0].title}</span>
                 <span className="sm:hidden">{userCopy.settings.appConfigUi.tabModulesShort}</span>
               </TabsTrigger>
@@ -205,7 +205,7 @@ export function CompanyAppConfigSettingsCard({ companyId, onStatus }: CompanyApp
             {appConfigKey ? <LastSavedHint persistenceKey={appConfigKey} /> : null}
           </div>
           <Button type="button" disabled={busy || !loaded || !canSave} onClick={() => void handleSave()}>
-            {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Save aria-hidden />}
+            {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : <Save aria-hidden />}
             {busy ? SETUP_WIZARD_COPY.settings.saving : SETUP_WIZARD_COPY.settings.save}
           </Button>
         </div>

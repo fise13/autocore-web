@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Download, Eye, FileText, Loader2, RefreshCw } from "lucide-react";
+import { Download, Eye, FileText, LoaderCircle, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -182,7 +182,7 @@ export function WorkOrderDocumentsPanel({
 
       {isGenerating ? (
         <p className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {labels.pdfGenerating}
         </p>
       ) : null}

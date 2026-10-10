@@ -17,7 +17,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { MailIcon, MessageCircleIcon, ArrowRightIcon } from "lucide-react";
+import { Mail, MessageCircle, ArrowRight } from "lucide-react";
 
 type Conversation = {
 	customer: string;
@@ -106,11 +106,11 @@ function statusLabel(state: Conversation["state"]): string {
 function channelIcon(channel: Conversation["channel"]) {
 	if (channel === "email") {
 		return (
-			<MailIcon className="size-3.5 shrink-0" />
+			<Mail className="size-3.5 shrink-0" />
 		);
 	}
 	return (
-		<MessageCircleIcon className="size-3.5 shrink-0" />
+		<MessageCircle className="size-3.5 shrink-0" />
 	);
 }
 
@@ -174,7 +174,7 @@ export function RecentConversations({
 				</Table>
 				<div className="flex justify-center border-t py-3">
 					<Button size="sm" variant="ghost" render={<a href="#/inbox" />} nativeButton={false}>View all conversations
-                    							<ArrowRightIcon aria-hidden="true" data-icon="inline-end" /></Button>
+                    							<ArrowRight aria-hidden="true" data-icon="inline-end" /></Button>
 				</div>
 			</CardContent>
 		</Card>

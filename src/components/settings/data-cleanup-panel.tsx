@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, FileText, LayoutGrid, Package, Receipt } from "lucide-react";
+import { TriangleAlert, FileText, LayoutGrid, Package, Receipt } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -143,7 +143,7 @@ export function DataCleanupPanel({ onStatus }: DataCleanupPanelProps) {
       <Card className="border-destructive/20">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 text-destructive" />
+            <TriangleAlert className="size-4 text-destructive" />
             <CardTitle>{userCopy.settings.dataCleanup}</CardTitle>
           </div>
           <CardDescription>{userCopy.settings.dataCleanupDescription}</CardDescription>

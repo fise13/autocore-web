@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { FileTextIcon } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { SidebarNavLink } from "@/components/layout/sidebar-nav-link";
@@ -35,7 +35,7 @@ export function SidebarDocumentsPanel({
           <SidebarNavLink
             href="/documents"
             label={userCopy.nav.business.documents}
-            icon={FileTextIcon}
+            icon={FileText}
             pathname={pathname}
             collapsed={collapsed}
             onNavigate={onNavigate}

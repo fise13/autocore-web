@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { XIcon } from "lucide-react"
+import { X } from "lucide-react"
 import { userCopy } from "@/lib/user-copy"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -74,7 +74,7 @@ function DialogContent({
               />
             }
           >
-            <XIcon
+            <X
             />
             <span className="sr-only">{userCopy.commonUi.closeAria}</span>
           </DialogPrimitive.Close>

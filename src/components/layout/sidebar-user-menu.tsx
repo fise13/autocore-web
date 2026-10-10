@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, CreditCard, LogOut, Settings, UserCircle } from "lucide-react";
+import { ChevronsUpDown, CreditCard, LogOut, Settings, CircleUser } from "lucide-react";
 
 import { UserAvatar } from "@/components/account/user-avatar";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -122,7 +122,7 @@ export function SidebarUserMenu({ collapsed = false }: SidebarUserMenuProps) {
                 className="cursor-pointer gap-2"
                 onClick={() => navigate("/settings?section=account")}
               >
-                <UserCircle />
+                <CircleUser />
                 {userCopy.settings.account}
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => navigate("/settings")}>

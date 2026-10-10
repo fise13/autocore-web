@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { Columns3Cog } from "lucide-react";
 
 import { ensureSpecificCategorySchemaUseCase } from "@/application/use-cases/specific/ensure-specific-category-schema";
 import { sellSpecificWithFinancialOperationUseCase } from "@/application/use-cases/sell-specific-with-financial-operation";
@@ -194,7 +194,7 @@ export function SpecificRecordsWorkspace({
             aria-label={userCopy.specificSheets.columnsAria}
             title={userCopy.specificSheets.columnsAria}
           >
-            <Settings2 className="size-3.5" />
+            <Columns3Cog className="size-3.5" />
           </Button>
         </div>
       ) : null}

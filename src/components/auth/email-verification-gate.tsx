@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { Loader2, MailCheck } from "lucide-react";
+import { LoaderCircle, MailCheck } from "lucide-react";
 
 import { AppLogo } from "@/components/brand/app-logo";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -131,7 +131,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
           <CardHeader className="text-center">
             <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
               {busy ? (
-                <Loader2 className="size-6 animate-spin" aria-hidden />
+                <LoaderCircle className="size-6 animate-spin" aria-hidden />
               ) : (
                 <MailCheck className="size-6" aria-hidden />
               )}

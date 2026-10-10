@@ -88,7 +88,7 @@ export function ImportHubWorkspace() {
     <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col gap-8 overflow-y-auto p-4 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.importBatch.hubTitle}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{userCopy.importBatch.hubTitle}</h2>
           <p className="max-w-xl text-sm text-muted-foreground">
             {userCopy.importBatch.hubDescription}
           </p>

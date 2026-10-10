@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { AtSign, ChevronLeft, Loader2 } from "lucide-react";
+import { AtSign, ChevronLeft, LoaderCircle } from "lucide-react";
 
 import { AppleIcon, GoogleIcon } from "@/components/auth/auth-brand-icons";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -366,7 +366,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
     return (
       <AuthJourneyShell stepKey="completing" stepLabel={copy.stepLabel} contentWidth="md">
         <div className="flex flex-col items-center gap-4 py-10 text-center">
-          <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+          <LoaderCircle className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
           <p className="text-sm font-medium text-foreground">{userCopy.auth.completing}</p>
         </div>
       </AuthJourneyShell>
@@ -421,7 +421,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
 
         {inviteBootstrapping ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
+            <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
             {copy.inviteLoading}
           </div>
         ) : (
@@ -445,7 +445,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     onClick={() => runAuth(() => signInWithGoogle(), "google")}
                   >
                   {pendingAuth === "google" ? (
-                    <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
+                    <LoaderCircle className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
                   ) : (
                     <GoogleIcon className="size-4" data-icon="inline-start" />
                   )}
@@ -467,7 +467,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     }}
                   >
                   {pendingAuth === "apple" ? (
-                    <Loader2 className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
+                    <LoaderCircle className="size-4 animate-spin" data-icon="inline-start" aria-hidden />
                   ) : (
                     <AppleIcon className="size-4" data-icon="inline-start" />
                   )}
@@ -517,7 +517,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
                     <span className="flex items-center justify-center gap-2">
                       <span className="relative flex size-4 items-center justify-center">
                         <span className="absolute inset-0 animate-ping rounded-full bg-primary/25 motion-reduce:animate-none" />
-                        <Loader2 className="relative size-4 animate-spin" aria-hidden />
+                        <LoaderCircle className="relative size-4 animate-spin" aria-hidden />
                       </span>
                       {copy.checkingEmail}
                     </span>
@@ -689,7 +689,7 @@ export function LoginScreen({ onAuthenticated, bootstrapError = null }: LoginScr
               <Button type="submit" disabled={isBusy} className="h-10 w-full">
                 {pendingAuth === "email" ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                    <LoaderCircle className="size-4 animate-spin" aria-hidden />
                     {isSignUp ? userCopy.auth.creatingAccount : userCopy.auth.signingIn}
                   </>
                 ) : isSignUp ? (

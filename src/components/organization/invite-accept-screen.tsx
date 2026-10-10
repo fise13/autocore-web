@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { CompanyAvatar } from "@/components/layout/company-switcher-menu";
@@ -224,7 +224,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
             </Alert>
             <div className="flex flex-col gap-2">
               <Button variant="outline" onClick={() => void handleAccept(false)} disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.invite.continueCurrent}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : userCopy.organization.invite.continueCurrent}
               </Button>
               <Button variant="ghost" onClick={() => void logout()}>
                 {userCopy.organization.invite.switchAccount}
@@ -239,7 +239,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
             />
             <InviteCompanyCard preview={preview} />
             <div className="flex justify-center py-2">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
             </div>
           </>
         ) : preview ? (
@@ -261,7 +261,7 @@ export function InviteAcceptScreen({ token }: InviteAcceptScreenProps) {
               {preview.canAccept ? (
                 <>
                   <Button onClick={() => void handleAccept(true)} disabled={busy}>
-                    {busy ? <Loader2 className="size-4 animate-spin" /> : userCopy.organization.invite.acceptAndContinue}
+                    {busy ? <LoaderCircle className="size-4 animate-spin" /> : userCopy.organization.invite.acceptAndContinue}
                   </Button>
                   <Button variant="outline" onClick={() => void handleAccept(false)} disabled={busy}>
                     {userCopy.organization.invite.acceptWithoutSwitch}

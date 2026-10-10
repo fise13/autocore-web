@@ -430,7 +430,7 @@ export function CoreComposer({
             onClick={() => photosRef.current?.click()}
             className="core-icon-btn inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
           >
-            <Plus className="size-4" strokeWidth={1.8} />
+            <Plus className="size-4" />
           </button>
           <button
             type="button"
@@ -442,7 +442,7 @@ export function CoreComposer({
               listening && "text-foreground",
             )}
           >
-            <Mic className="size-4" strokeWidth={1.8} />
+            <Mic className="size-4" />
           </button>
           <div className="ml-auto flex items-center gap-2">
             <span className="core-composer-hint hidden text-[10px] text-muted-foreground sm:inline">

@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Car,
-  CheckCircle2,
+  CircleCheck,
   Cog,
   Package,
   Save,
@@ -905,7 +905,7 @@ export function WorkOrderComposer({
                     <div className="min-w-0 space-y-1">
                       {form.laborDraft.assigneeId ? (
                         <p className="flex items-center gap-1.5 text-xs text-success-on-subtle animate-autocore-fade-in motion-reduce:animate-none">
-                          <CheckCircle2 className="size-3.5 shrink-0" />
+                          <CircleCheck className="size-3.5 shrink-0" />
                           <span>
                             {(() => {
                               const employee = employees.find((entry) => entry.uid === form.laborDraft.assigneeId);

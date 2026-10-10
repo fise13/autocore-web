@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Loader2 } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
 
@@ -42,7 +42,7 @@ export function AnimatedUpgradeCta({
         />
       ) : null}
       <span className="relative z-10 inline-flex items-center gap-1.5">
-        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+        {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : null}
         {children}
       </span>
     </>

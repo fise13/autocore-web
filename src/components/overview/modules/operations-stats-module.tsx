@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { BarChart3 } from "lucide-react";
+import { ChartColumn } from "lucide-react";
 
 import { OperationsStats } from "@/lib/overview/compute-operations-stats";
 import { moduleLabel } from "@/lib/overview/activity-labels";
@@ -35,7 +35,7 @@ export const OperationsStatsModule = memo(function OperationsStatsModule({
   return (
     <article className="mc-module-card">
       <McModuleHeader
-        icon={BarChart3}
+        icon={ChartColumn}
         title={copy.title}
         description={copy.description}
         accent="amber"

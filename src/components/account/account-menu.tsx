@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, LogOut, Settings, UserCircle } from "lucide-react";
+import { ChevronDown, LogOut, Settings, CircleUser } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -70,7 +70,7 @@ function AccountMenuPanel({
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
         onClick={onClose}
       >
-        <UserCircle className="size-4 text-muted-foreground" />
+        <CircleUser className="size-4 text-muted-foreground" />
         {userCopy.account.menuSettings}
       </Link>
       <Link

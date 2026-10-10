@@ -33,7 +33,7 @@ function FeatureMark({ included, emphasize }: { included: boolean; emphasize?: b
         )}
         aria-label={userCopy.billing.planComparison.yes}
       >
-        <Check className="size-3.5" strokeWidth={2.5} />
+        <Check className="size-3.5" strokeWidth={2} />
       </span>
     );
   }

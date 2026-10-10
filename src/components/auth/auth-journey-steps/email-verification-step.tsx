@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Loader2, MailCheck } from "lucide-react";
+import { LoaderCircle, MailCheck } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import {
@@ -148,7 +148,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
             title={userCopy.auth.verifyEmailSuccessTitle}
             description={userCopy.auth.verifyEmailSuccess}
           />
-          <Loader2
+          <LoaderCircle
             className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
             aria-hidden
           />
@@ -158,7 +158,7 @@ export function EmailVerificationStep({ onVerified }: EmailVerificationStepProps
           <div className="mx-auto flex w-full max-w-sm flex-col gap-8">
             <AuthJourneyStepHeader
               icon={MailCheck}
-              busyIcon={Loader2}
+              busyIcon={LoaderCircle}
               iconBusy={busy}
               title={userCopy.auth.verifyEmailTitle}
               description={

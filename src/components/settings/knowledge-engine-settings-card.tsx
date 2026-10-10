@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { BrainCircuit, LoaderCircle } from "lucide-react";
 
 import { useBillingGate } from "@/components/billing/billing-gate-provider";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ export function KnowledgeEngineSettingsCard({ onStatus }: KnowledgeEngineSetting
           <div className="flex flex-wrap items-center gap-2">
             {state === "learning" || billingLoading ? (
               <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
+                <LoaderCircle className="size-4 animate-spin" />
                 {copy.statusLearning}
               </p>
             ) : null}

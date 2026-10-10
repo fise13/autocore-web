@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { motion } from "motion/react";
-import { Loader2, Settings2 } from "lucide-react";
+import { LoaderCircle, Settings } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { SetupWizard } from "@/components/onboarding/setup-wizard";
@@ -88,13 +88,13 @@ function SetupWizardLoadingState() {
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       >
         <span className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/5 text-primary">
-          <Settings2 className="size-5" aria-hidden />
+          <Settings className="size-5" aria-hidden />
         </span>
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{SETUP_WIZARD_COPY.shell.loadingTitle}</p>
           <p className="text-xs text-muted-foreground">{SETUP_WIZARD_COPY.shell.loadingSubtitle}</p>
         </div>
-        <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+        <LoaderCircle className="size-4 animate-spin text-muted-foreground" aria-hidden />
       </motion.div>
     </div>
   );

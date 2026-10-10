@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Info, RotateCcw } from "lucide-react";
+import { TriangleAlert, CircleCheck, Info, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { CommitPlanResult } from "@/lib/import/business/commit-plan";
@@ -42,9 +42,9 @@ export function ImportCompleteView({
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-16">
       <header className="flex flex-col items-center gap-2 text-center">
         {status === "completed" ? (
-          <CheckCircle2 className="size-12 text-success-on-subtle" aria-hidden />
+          <CircleCheck className="size-12 text-success-on-subtle" aria-hidden />
         ) : (
-          <AlertTriangle className="size-12 text-warning-on-subtle" aria-hidden />
+          <TriangleAlert className="size-12 text-warning-on-subtle" aria-hidden />
         )}
         <h2 className="font-heading text-2xl font-semibold tracking-tight">
           {status === "completed" ? "Импорт завершён" : "Импорт завершён частично"}
@@ -71,7 +71,7 @@ export function ImportCompleteView({
 
       {result.review > 0 ? (
         <p className="inline-flex items-center justify-center gap-2 text-sm text-warning-on-subtle">
-          <AlertTriangle className="size-4" aria-hidden />
+          <TriangleAlert className="size-4" aria-hidden />
           {result.review} записей остались на проверке и не были перенесены
         </p>
       ) : null}

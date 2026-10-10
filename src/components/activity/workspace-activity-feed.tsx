@@ -2,11 +2,11 @@
 
 import { formatDistanceToNow } from "date-fns";
 import {
-  ClipboardListIcon,
-  FolderIcon,
-  PackageIcon,
-  SettingsIcon,
-  UsersRoundIcon,
+  ClipboardList,
+  Folder,
+  Package,
+  Settings,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,12 +18,12 @@ import { userCopy } from "@/lib/user-copy";
 import { dateFnsLocale } from "@/lib/locale/date-locale";
 
 const moduleIcons: Record<string, LucideIcon> = {
-  inventory: PackageIcon,
-  accounting: FolderIcon,
-  employees: UsersRoundIcon,
-  work_orders: ClipboardListIcon,
-  settings: SettingsIcon,
-  system: SettingsIcon,
+  inventory: Package,
+  accounting: Folder,
+  employees: UsersRound,
+  work_orders: ClipboardList,
+  settings: Settings,
+  system: Settings,
 };
 
 export type WorkspaceActivityFeedProps = {
@@ -38,7 +38,7 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
   if (items.length === 0) {
     return (
       <EmptyState
-        icon={ClipboardListIcon}
+        icon={ClipboardList}
         title={userCopy.activity.emptyTitle}
         description={userCopy.activity.emptyDescription}
         className="m-4 border-none bg-transparent py-8"
@@ -51,7 +51,7 @@ export function WorkspaceActivityFeed({ entries, limit, className }: WorkspaceAc
       {items.map((entry) => {
         const resolved = resolveActivityLabel(entry.action);
         const entryModule = entry.module ?? resolved.module;
-        const Icon = moduleIcons[entryModule] ?? SettingsIcon;
+        const Icon = moduleIcons[entryModule] ?? Settings;
         const when = entry.timestamp
           ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateFnsLocale() })
           : userCopy.activity.now;

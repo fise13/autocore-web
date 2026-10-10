@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Camera, KeyRound, Loader2, Mail, RefreshCw, Shield } from "lucide-react";
+import { Camera, KeyRound, LoaderCircle, Mail, RefreshCw, Shield } from "lucide-react";
 
 import { UserAvatar } from "@/components/account/user-avatar";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -234,7 +234,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
               </button>
               {uploadingAvatar ? (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
-                  <Loader2 className="size-5 animate-spin text-primary" />
+                  <LoaderCircle className="size-5 animate-spin text-primary" />
                 </div>
               ) : null}
             </div>
@@ -276,7 +276,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
             </div>
             <div className="flex items-end gap-2">
               <Button onClick={() => void saveProfile()} disabled={busy || uploadingAvatar}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {userCopy.account.saveProfile}
               </Button>
               <Button variant="outline" onClick={() => void refreshProfile()} disabled={busy}>
@@ -384,7 +384,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
                 {userCopy.account.cancel}
               </Button>
               <Button type="submit" disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {userCopy.account.savePassword}
               </Button>
             </DialogFooter>
@@ -427,7 +427,7 @@ export function AccountSettingsPanel({ onStatus }: AccountSettingsPanelProps) {
                 {userCopy.account.cancel}
               </Button>
               <Button type="submit" disabled={busy}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                {busy ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {userCopy.account.saveEmail}
               </Button>
             </DialogFooter>

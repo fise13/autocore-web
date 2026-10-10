@@ -3,12 +3,12 @@
 import { memo, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
-  ClipboardListIcon,
-  FolderIcon,
-  PackageIcon,
-  SearchIcon,
-  SettingsIcon,
-  UsersRoundIcon,
+  ClipboardList,
+  Folder,
+  Package,
+  Search,
+  Settings,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -74,12 +74,12 @@ const severityBadgeClass: Record<ActivitySeverity, string> = {
 };
 
 const moduleIcons: Record<string, LucideIcon> = {
-  inventory: PackageIcon,
-  accounting: FolderIcon,
-  employees: UsersRoundIcon,
-  work_orders: ClipboardListIcon,
-  settings: SettingsIcon,
-  system: SettingsIcon,
+  inventory: Package,
+  accounting: Folder,
+  employees: UsersRound,
+  work_orders: ClipboardList,
+  settings: Settings,
+  system: Settings,
 };
 
 function ActivityJournalFiltersBar({
@@ -101,7 +101,7 @@ function ActivityJournalFiltersBar({
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup className="min-w-[min(100%,14rem)] flex-1">
           <InputGroupAddon align="inline-start">
-            <SearchIcon className="size-4" aria-hidden />
+            <Search className="size-4" aria-hidden />
           </InputGroupAddon>
           <InputGroupInput
             value={filters.search}
@@ -188,7 +188,7 @@ const ActivityJournalRow = memo(function ActivityJournalRow({
   const when = entry.timestamp
     ? formatDistanceToNow(entry.timestamp, { addSuffix: true, locale: dateFnsLocale() })
     : userCopy.activity.now;
-  const ModuleIcon = moduleIcons[entryModule] ?? SettingsIcon;
+  const ModuleIcon = moduleIcons[entryModule] ?? Settings;
 
   return (
     <article
@@ -314,7 +314,7 @@ export function ActivityLogJournal({
           <Empty className="m-4 min-h-[16rem] border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <SearchIcon />
+                <Search />
               </EmptyMedia>
               <EmptyTitle>
                 {entries.length === 0 ? userCopy.activity.empty : userCopy.activity.nothingFound}

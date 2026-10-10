@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { UsersIcon } from "lucide-react";
+import { Users } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { SidebarNavLink } from "@/components/layout/sidebar-nav-link";
@@ -39,7 +39,7 @@ export function SidebarTeamPanel({
           <SidebarNavLink
             href="/team"
             label={userCopy.nav.business.team}
-            icon={UsersIcon}
+            icon={Users}
             pathname={pathname}
             isActive={teamActive}
             collapsed={collapsed}

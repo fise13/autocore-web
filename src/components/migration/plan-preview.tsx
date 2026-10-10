@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, CheckCircle2, Info, Sparkles } from "lucide-react";
+import { TriangleAlert, ArrowRight, CircleCheck, Info, Sparkles } from "lucide-react";
 
 import type { PlanPresentation } from "@/lib/import/business/plan-summary";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export function PlanPreview({
         {plan.ai.degraded ? (
           <div className="flex flex-col gap-0.5">
             <p className="inline-flex items-center gap-1.5 text-sm text-warning-on-subtle">
-              <AlertTriangle className="size-3.5" aria-hidden />
+              <TriangleAlert className="size-3.5" aria-hidden />
               ИИ-анализ недоступен — использован разбор по правилам
             </p>
             {plan.ai.reason ? (
@@ -152,7 +152,7 @@ export function PlanPreview({
         </section>
       ) : (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <CheckCircle2 className="size-4 text-success-on-subtle" aria-hidden />
+          <CircleCheck className="size-4 text-success-on-subtle" aria-hidden />
           Неоднозначных записей нет — можно импортировать
         </p>
       )}

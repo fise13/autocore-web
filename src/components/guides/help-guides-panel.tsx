@@ -192,7 +192,7 @@ export function HelpGuidesPanel() {
               "disabled:opacity-40",
             )}
           >
-            <ArrowUp className="size-4" strokeWidth={2.6} />
+            <ArrowUp className="size-4" />
           </button>
         </form>
       </HelpComposerBeam>

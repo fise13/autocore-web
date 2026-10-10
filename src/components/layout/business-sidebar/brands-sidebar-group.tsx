@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Minus, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { Minus, Ellipsis, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { createBrandUseCase } from "@/application/use-cases/create-brand";
 import { deleteBrandUseCase } from "@/application/use-cases/delete-brand";
@@ -365,7 +365,7 @@ export function BrandsSidebarGroup({
               className="absolute left-0 top-1/2 z-10 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
               title={userCopy.layout.hide}
             >
-              <Minus className="size-2.5" strokeWidth={2.5} />
+              <Minus className="size-2.5" strokeWidth={2} />
             </button>
           ) : null}
           <SidebarGroupLabel className={cn(isEditing && "pl-4")}>
@@ -465,7 +465,7 @@ export function BrandsSidebarGroup({
                           />
                         }
                       >
-                        <MoreHorizontal />
+                        <Ellipsis />
                         <span className="sr-only">{userCopy.brands.actions}</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="w-44">

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, Sparkles } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import { useEffect } from "react";
 import { userCopy } from "@/lib/user-copy";
 
@@ -66,8 +66,7 @@ export function MotorSaleSuccessOverlay({ open, serialCode, amount, onClose }: M
               transition={{ delay: 0.08, type: "spring", stiffness: 420, damping: 18 }}
               className="relative mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle"
             >
-              <CheckCircle2 className="size-9" />
-              <Sparkles className="absolute -right-1 -top-1 size-5 text-warning-on-subtle" />
+              <CircleCheck className="size-9" />
             </motion.div>
 
             <motion.p

@@ -570,7 +570,7 @@ export function CategoryGridTile({
                 exit={{ scale: 0.4, opacity: 0 }}
                 transition={{ duration: 0.18, ease: authJourneyEase }}
               >
-                <Check className="size-2.5" strokeWidth={3} />
+                <Check className="size-2.5" strokeWidth={2} />
               </motion.span>
             ) : null}
           </AnimatePresence>
@@ -772,7 +772,7 @@ export function SetupWizardSuccess({ onDone, embedded = false }: SetupWizardSucc
       transition={{ duration: 0.35, ease }}
     >
       <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Check className="size-7" strokeWidth={2.5} aria-hidden />
+        <Check className="size-7" aria-hidden />
       </span>
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">{SETUP_WIZARD_COPY.success.title}</h2>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link";
 import { getAuth } from "firebase/auth";
 import { motion } from "motion/react";
-import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import type { DocumentImportJob } from "@/domain/document-import";
 import { LastSavedHint } from "@/components/persistence/last-saved-hint";
@@ -314,7 +314,7 @@ export function DocumentImportDataPanel({
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-0.5">
         {aiStatus === "processing" || busy ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 px-5 py-10 text-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
             <p className="text-sm font-medium">{userCopy.documentImport.recognizing}</p>
             <p className="text-xs text-muted-foreground">{userCopy.documentImport.recognizingHint}</p>
           </div>
@@ -453,7 +453,7 @@ export function DocumentImportDataPanel({
                 disabled={!dirty || saving || !job}
                 onClick={() => void saveEdits()}
               >
-                {saving ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {saving ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
                 {userCopy.documentImport.saveChanges}
               </Button>
               <Button

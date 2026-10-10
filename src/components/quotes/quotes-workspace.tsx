@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileText, Loader2, Plus } from "lucide-react";
+import { ArrowRight, FileText, LoaderCircle, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -61,7 +61,7 @@ export function QuotesWorkspace() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.quotes.title}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{userCopy.quotes.title}</h2>
           <p className="text-sm text-muted-foreground">{userCopy.quotes.subtitle}</p>
         </div>
         <Button type="button" variant="outline" disabled>
@@ -74,7 +74,7 @@ export function QuotesWorkspace() {
 
       {isLoading ? (
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+          <LoaderCircle className="size-4 animate-spin" />
           {userCopy.quotes.loading}
         </p>
       ) : quotes.length === 0 ? (
@@ -112,7 +112,7 @@ export function QuotesWorkspace() {
                       disabled={busyId === quote.id}
                       onClick={() => void handleConvert(quote.id)}
                     >
-                      {busyId === quote.id ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
+                      {busyId === quote.id ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
                       {userCopy.quotes.toOrder}
                     </Button>
                   ) : quote.convertedWorkOrderId ? (

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Building2, Loader2, Users } from "lucide-react";
+import { Building2, LoaderCircle, Users } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -101,7 +101,7 @@ export function CompanyOnboardingStep() {
         transition={authJourneyPanelTransition}
         className="flex flex-col items-center gap-4 py-10 text-center"
       >
-        <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+        <LoaderCircle className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
         <div className="space-y-1">
           <p className="text-sm font-medium">{submitMessage ?? userCopy.auth.completing}</p>
           <p className="text-xs text-muted-foreground">{userCopy.company.pleaseWait}</p>

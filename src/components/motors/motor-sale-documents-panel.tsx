@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import {
-  AlertCircle,
+  CircleAlert,
   CalendarDays,
   ChevronRight,
   Download,
   FileStack,
-  Loader2,
+  LoaderCircle,
   Printer,
   Receipt,
   ShieldCheck,
@@ -85,7 +85,7 @@ function DocumentActionRow({
           tone === "primary" ? "bg-primary/10 text-primary" : "bg-muted/60 text-muted-foreground",
         )}
       >
-        {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Icon className="size-4" aria-hidden />}
+        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Icon className="size-4" aria-hidden />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{title}</span>
@@ -235,7 +235,7 @@ export function MotorSaleDocumentsPanel({
           role="alert"
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{userCopy.motors.saleDocuments.motorNotFound}</p>
         </div>
       ) : null}
@@ -246,7 +246,7 @@ export function MotorSaleDocumentsPanel({
           className="flex items-start justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
           <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <p>{errorMessage}</p>
           </div>
           {onRetry ? (
@@ -262,7 +262,7 @@ export function MotorSaleDocumentsPanel({
           role="alert"
           className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
         >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>{actionError}</p>
         </div>
       ) : null}
@@ -280,7 +280,7 @@ export function MotorSaleDocumentsPanel({
             className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-muted/10 px-3.5 py-3 text-sm text-muted-foreground"
             aria-live="polite"
           >
-            <Loader2 className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
+            <LoaderCircle className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
             <span>{userCopy.motors.saleDocuments.preparing}</span>
           </div>
         ) : isReady ? (

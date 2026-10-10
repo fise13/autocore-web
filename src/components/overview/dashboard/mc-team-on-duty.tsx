@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import {
   McPanel,
@@ -58,7 +58,7 @@ export function McTeamOnDuty({ employees, workOrders = [], isLoading, className 
         <div className="flex items-center justify-center border-t py-3">
           <Button size="sm" variant="ghost" render={<Link href="/team" />} nativeButton={false}>
             {copy.viewAll}
-            <ArrowRightIcon aria-hidden data-icon="inline-end" />
+            <ArrowRight aria-hidden data-icon="inline-end" />
           </Button>
         </div>
       </McPanelBody>

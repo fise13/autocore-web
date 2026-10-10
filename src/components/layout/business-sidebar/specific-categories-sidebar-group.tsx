@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { FileText, Minus, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
+import { FileText, Minus, Ellipsis, Pencil, Plus, Columns3Cog, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -69,7 +69,7 @@ function EditRemoveButton({ onClick }: { onClick: () => void }) {
       className="absolute left-0 top-1/2 z-10 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
       title={userCopy.layout.hide}
     >
-      <Minus className="size-2.5" strokeWidth={2.5} />
+      <Minus className="size-2.5" strokeWidth={2} />
     </button>
   );
 }
@@ -170,7 +170,7 @@ export function SpecificCategoriesSidebarGroup({
                     title={userCopy.specificSheets.columnsShort}
                     onClick={onOpenColumnsSettings}
                   >
-                    <Settings2 className="size-3.5" />
+                    <Columns3Cog className="size-3.5" />
                   </Button>
                 ) : null}
                 {onAddCategory ? (
@@ -233,7 +233,7 @@ export function SpecificCategoriesSidebarGroup({
                           <SidebarMenuAction showOnHover title={userCopy.specificSheets.actionsFor(label)} />
                         }
                       >
-                        <MoreHorizontal className="size-3.5" />
+                        <Ellipsis className="size-3.5" />
                         <span className="sr-only">{userCopy.specificSheets.actions}</span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="min-w-40">

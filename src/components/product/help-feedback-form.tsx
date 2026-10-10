@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   Bug,
   Check,
-  CircleHelp,
+  CircleQuestionMark,
   Lightbulb,
-  Loader2,
+  LoaderCircle,
   MessageSquare,
   Paperclip,
   Send,
@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 const KIND_ICONS: Record<FeedbackKind, LucideIcon> = {
   bug: Bug,
   idea: Lightbulb,
-  question: CircleHelp,
+  question: CircleQuestionMark,
   other: MessageSquare,
 };
 
@@ -366,7 +366,7 @@ export function HelpFeedbackForm({ supportEmail }: { supportEmail: string }) {
 
               <Button type="submit" size="lg" disabled={sending || remaining < 0}>
                 {sending ? (
-                  <Loader2 className="animate-spin" data-icon="inline-start" />
+                  <LoaderCircle className="animate-spin" data-icon="inline-start" />
                 ) : (
                   <Send data-icon="inline-start" />
                 )}

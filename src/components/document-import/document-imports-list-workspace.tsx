@@ -20,7 +20,7 @@ export function DocumentImportsListWorkspace() {
           <Smartphone className="size-5" aria-hidden />
         </div>
         <div className="min-w-0 space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{userCopy.documentImport.listTitle}</h1>
+          <h2 className="text-2xl font-semibold tracking-tight">{userCopy.documentImport.listTitle}</h2>
           <p className="text-sm text-muted-foreground">
             {userCopy.documentImport.listDescription}
           </p>

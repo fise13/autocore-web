@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { CircleCheck, LoaderCircle, Sparkles } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import {
@@ -74,13 +74,13 @@ export function ProfileNameStep({ onSaved }: ProfileNameStepProps) {
           className="flex flex-col items-center gap-4 py-8 text-center"
         >
           <div className="flex size-14 items-center justify-center rounded-full bg-primary/10">
-            <CheckCircle2 className="size-7 text-primary" aria-hidden />
+            <CircleCheck className="size-7 text-primary" aria-hidden />
           </div>
           <div className="flex flex-col gap-1">
             <p className="text-lg font-semibold tracking-tight">{userCopy.auth.profileName.savedTitle}</p>
             <p className="text-sm text-muted-foreground">{userCopy.auth.profileName.preparingNext}</p>
           </div>
-          <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
+          <LoaderCircle className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
         </motion.div>
       ) : (
         <AuthJourneyStepCard key="form" surface="bare">
@@ -114,7 +114,7 @@ export function ProfileNameStep({ onSaved }: ProfileNameStepProps) {
                   <Button type="submit" disabled={isSubmitting} className="h-11 w-full">
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="animate-spin" data-icon="inline-start" aria-hidden />
+                        <LoaderCircle className="animate-spin" data-icon="inline-start" aria-hidden />
                         {userCopy.auth.profileName.saving}
                       </>
                     ) : (

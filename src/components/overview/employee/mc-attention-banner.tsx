@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Sparkles } from "lucide-react";
+import { TriangleAlert, Sparkles } from "lucide-react";
 
 import type { EmployeeAttentionItem } from "@/lib/overview/compute-employee-dashboard";
 import { userCopy } from "@/lib/user-copy";
@@ -23,7 +23,7 @@ export function McAttentionBanner({ items }: McAttentionBannerProps) {
   return (
     <div className="col-span-full rounded-xl border bg-card/60 p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-        <AlertTriangle className="size-4 text-warning-on-subtle" aria-hidden="true" />
+        <TriangleAlert className="size-4 text-warning-on-subtle" aria-hidden="true" />
         {userCopy.overview.employee.attentionTitle}
       </p>
       <div className="flex flex-wrap gap-2">

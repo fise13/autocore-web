@@ -2,7 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { CircleCheck, LoaderCircle, Sparkles } from "lucide-react";
 
 import { FloatingPaths } from "@/components/auth/floating-paths";
 import { ProfileNameFields, isCompleteFullName } from "@/components/auth/profile-name-fields";
@@ -118,7 +118,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                     transition={{ duration: 0.28, ease: stepEase }}
                   >
                     <div className="flex size-14 items-center justify-center rounded-full bg-primary/10">
-                      <CheckCircle2 className="size-7 text-primary" />
+                      <CircleCheck className="size-7 text-primary" />
                     </div>
                     <div className="flex flex-col gap-1">
                       <p className="text-lg font-semibold tracking-tight">{userCopy.auth.profileName.savedTitle}</p>
@@ -126,7 +126,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                         {savedName ? userCopy.auth.profileName.niceToMeet(savedName.split(" ")[0]!) : userCopy.auth.profileName.preparingWorkspace}
                       </p>
                     </div>
-                    <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
+                    <LoaderCircle className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -165,7 +165,7 @@ export function ProfileNameGate({ children }: ProfileNameGateProps) {
                       <Button type="submit" disabled={isSubmitting} className="h-10 w-full">
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="animate-spin" data-icon="inline-start" aria-hidden />
+                            <LoaderCircle className="animate-spin" data-icon="inline-start" aria-hidden />
                             {userCopy.auth.profileName.saving}
                           </>
                         ) : (

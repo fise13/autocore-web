@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { AlertTriangle, BarChart3, Clock, Package, TrendingUp } from "lucide-react";
+import { TriangleAlert, ChartColumn, Clock, Package, TrendingUp } from "lucide-react";
 
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { McModuleHeader } from "@/components/overview/mc-module-header";
@@ -30,7 +30,7 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
 
   return (
     <article className="mc-module-card">
-      <McModuleHeader icon={BarChart3} title={copy.title} href="/motors" accent="green" />
+      <McModuleHeader icon={ChartColumn} title={copy.title} href="/motors" accent="green" />
       <div className="mc-module-body space-y-3.5">
         {isLoading ? (
           <AnalyticsSkeleton />
@@ -55,7 +55,7 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
                 tone="text-primary-on-subtle"
               />
               <MetricTile
-                icon={AlertTriangle}
+                icon={TriangleAlert}
                 label={copy.staleLabel}
                 value={String(analytics.staleMotorCount)}
                 hint={copy.staleHint}

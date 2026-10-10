@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { LifeBuoy, Loader2, Paperclip } from "lucide-react";
+import { LifeBuoy, LoaderCircle, Paperclip } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -126,7 +126,7 @@ export function MigrationSupportDialog({
             {copy.cancel}
           </Button>
           <Button onClick={submit} disabled={sending}>
-            {sending && <Loader2 className="animate-spin" data-icon="inline-start" />}
+            {sending && <LoaderCircle className="animate-spin" data-icon="inline-start" />}
             {copy.submit}
           </Button>
         </div>

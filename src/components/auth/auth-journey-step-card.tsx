@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import { motion } from "motion/react";
 import type { LucideIcon } from "lucide-react";
-import { CheckCircle2 } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 
 import { AuthJourneyReveal } from "@/components/auth/auth-journey-reveal";
 import {
@@ -130,7 +130,7 @@ export function AuthJourneySuccessCard({ title, description }: AuthJourneySucces
         transition={{ delay: 0.08, duration: 0.36, ease: authJourneyPanelTransition.ease }}
         className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary"
       >
-        <CheckCircle2 className="size-7" aria-hidden />
+        <CircleCheck className="size-7" aria-hidden />
       </motion.span>
       <AuthJourneyReveal index={1}>
         <div className="space-y-1">

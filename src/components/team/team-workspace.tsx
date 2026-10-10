@@ -3,11 +3,11 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 import {
-  ActivityIcon,
-  LayoutGridIcon,
-  ShieldIcon,
-  UserPlusIcon,
-  UsersIcon,
+  Activity,
+  LayoutGrid,
+  Shield,
+  UserPlus,
+  Users,
 } from "lucide-react";
 
 import { EnterpriseAnimatedPanel } from "@/components/layout/enterprise-animated-panel";
@@ -41,10 +41,10 @@ type TeamTab = "overview" | "employees" | "roles";
 
 function teamNav() {
   return [
-    { id: "overview", label: userCopy.team.navOnDuty, icon: LayoutGridIcon },
-    { id: "employees", label: userCopy.settings.employees, icon: UsersIcon },
-    { id: "roles", label: userCopy.settings.roles, icon: ShieldIcon },
-    { id: "activity", label: userCopy.team.navActivity, icon: ActivityIcon, href: "/activity" },
+    { id: "overview", label: userCopy.team.navOnDuty, icon: LayoutGrid },
+    { id: "employees", label: userCopy.settings.employees, icon: Users },
+    { id: "roles", label: userCopy.settings.roles, icon: Shield },
+    { id: "activity", label: userCopy.team.navActivity, icon: Activity, href: "/activity" },
   ] as const;
 }
 
@@ -130,7 +130,7 @@ function TeamWorkspaceContent() {
             data-guide="team-invite"
             onClick={() => router.push(deepActionRoutes.invite())}
           >
-            <UserPlusIcon data-icon="inline-start" />
+            <UserPlus data-icon="inline-start" />
             {userCopy.team.invite}
           </Button>
         ) : null
@@ -176,19 +176,19 @@ function TeamWorkspaceContent() {
                   contentClassName="flex flex-col gap-1 p-2"
                 >
                   <EnterpriseQuickLink
-                    icon={UsersIcon}
+                    icon={Users}
                     label={userCopy.settings.employees}
                     hint={userCopy.team.employeesHint}
                     onClick={() => setTab("employees")}
                   />
                   <EnterpriseQuickLink
-                    icon={ShieldIcon}
+                    icon={Shield}
                     label={userCopy.settings.roles}
                     hint={userCopy.team.rolesHint}
                     onClick={() => setTab("roles")}
                   />
                   <EnterpriseQuickLink
-                    icon={ActivityIcon}
+                    icon={Activity}
                     label={userCopy.team.activityLog}
                     hint={userCopy.team.activityHint}
                     href="/activity"

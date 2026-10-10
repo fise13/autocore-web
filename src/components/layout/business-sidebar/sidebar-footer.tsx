@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Activity, HelpCircle, X } from "lucide-react";
+import { Activity, CircleQuestionMark, X } from "lucide-react";
 
 import {
   SidebarMenu,
@@ -152,7 +152,7 @@ export function SidebarFooter({ collapsed = false, onNavigate }: SidebarFooterPr
         <FooterLink
           href={help.href}
           label={help.label}
-          icon={<HelpCircle className="size-4 shrink-0 opacity-90" />}
+          icon={<CircleQuestionMark className="size-4 shrink-0 opacity-90" />}
           external={help.external}
           collapsed={collapsed}
           onNavigate={onNavigate}

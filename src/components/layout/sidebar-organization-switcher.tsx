@@ -79,7 +79,7 @@ export function SidebarOrganizationSwitcher({ collapsed = false }: SidebarOrgani
                   aria-hidden
                   className="pointer-events-none absolute -right-0.5 -bottom-0.5 flex size-3.5 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-sm [&_svg]:size-2!"
                 >
-                  <ChevronsUpDown strokeWidth={2.5} />
+                  <ChevronsUpDown />
                 </span>
               </>
             ) : (

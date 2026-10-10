@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleHelp, CircleX, Clock3 } from "lucide-react";
+import { Check, CircleQuestionMark, CircleX, Clock3 } from "lucide-react";
 import type {
   DocumentationChecklistGroup,
   DocumentationChecklistItem,
@@ -15,7 +15,7 @@ import { userCopy } from "@/lib/user-copy";
 
 function StateIcon({ state }: { state: DocumentationChecklistItemState }) {
   if (state === "completed") return <Check className="size-3.5 text-success" />;
-  if (state === "uncertain") return <CircleHelp className="size-3.5 text-warning" />;
+  if (state === "uncertain") return <CircleQuestionMark className="size-3.5 text-warning" />;
   if (state === "not_applicable") return <CircleX className="size-3.5 text-muted-foreground" />;
   return <Clock3 className="size-3.5 text-destructive" />;
 }

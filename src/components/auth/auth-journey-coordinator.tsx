@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { Loader2, Settings2 } from "lucide-react";
+import { LoaderCircle, Settings } from "lucide-react";
 
 import { EmailVerificationStep } from "@/components/auth/auth-journey-steps/email-verification-step";
 import { CompanyOnboardingStep } from "@/components/auth/auth-journey-steps/company-onboarding-step";
@@ -97,7 +97,7 @@ function AuthJourneyBootStep() {
   return (
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       <AuthJourneyReveal index={0}>
-        <Loader2 className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+        <LoaderCircle className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
       </AuthJourneyReveal>
       <AuthJourneyReveal index={1}>
         <div className="space-y-1">
@@ -142,7 +142,7 @@ function SetupWizardLoadingCard() {
     <div className="flex flex-col items-center gap-4 py-10 text-center">
       <AuthJourneyReveal index={0}>
         <span className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 text-primary">
-          <Settings2 className="size-5" aria-hidden />
+          <Settings className="size-5" aria-hidden />
         </span>
       </AuthJourneyReveal>
       <AuthJourneyReveal index={1}>
@@ -152,7 +152,7 @@ function SetupWizardLoadingCard() {
         </div>
       </AuthJourneyReveal>
       <AuthJourneyReveal index={2}>
-        <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
+        <LoaderCircle className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden />
       </AuthJourneyReveal>
     </div>
   );

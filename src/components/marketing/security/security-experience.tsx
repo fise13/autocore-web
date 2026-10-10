@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
-  CheckCircle2,
+  CircleCheck,
   FileText,
   KeyRound,
   Lock,
@@ -256,7 +256,7 @@ export function SecurityExperience() {
             <ul className="trust-checklist">
               {copy.checklist.map((item) => (
                 <li key={item}>
-                  <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden />
+                  <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden />
                   <span>{item}</span>
                 </li>
               ))}

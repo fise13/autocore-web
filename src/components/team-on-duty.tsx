@@ -24,7 +24,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusIndicator } from "@/components/indicator";
-import { EllipsisIcon, SendIcon, ListChecksIcon } from "lucide-react";
+import { Ellipsis, Send, ListChecks } from "lucide-react";
 
 type Teammate = {
 	id: string;
@@ -130,7 +130,7 @@ export function TeamOnDuty({
 								</p>
 							</div>
 							<DropdownMenu>
-								<DropdownMenuTrigger render={<Button aria-label={`Actions for ${t.name}`} size="icon-xs" variant="ghost" />}><EllipsisIcon
+								<DropdownMenuTrigger render={<Button aria-label={`Actions for ${t.name}`} size="icon-xs" variant="ghost" />}><Ellipsis
                                 										/></DropdownMenuTrigger>
 								<DropdownMenuContent align="end" className="min-w-52">
 									<DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
@@ -138,7 +138,7 @@ export function TeamOnDuty({
 									</DropdownMenuLabel>
 									<DropdownMenuSeparator />
 									<DropdownMenuItem className="gap-2">
-										<SendIcon className="size-4 opacity-70" />
+										<Send className="size-4 opacity-70" />
 										Message
 									</DropdownMenuItem>
 									<DropdownMenuItem
@@ -148,7 +148,7 @@ export function TeamOnDuty({
 											pullNextConversation(t.id);
 										}}
 									>
-										<ListChecksIcon className="size-4 opacity-70" />
+										<ListChecks className="size-4 opacity-70" />
 										Pull next conversation
 									</DropdownMenuItem>
 								</DropdownMenuContent>

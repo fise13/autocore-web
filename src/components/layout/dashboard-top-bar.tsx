@@ -6,10 +6,10 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Barcode,
+  Columns3Cog,
+  Download,
   PanelLeft,
-  Settings2,
-  Upload,
+  ScanBarcode,
 } from "lucide-react";
 
 import { AccountMenu } from "@/components/account/account-menu";
@@ -49,7 +49,7 @@ function TopBarPageLabel({ title }: { title: string }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       <AppLogo size={20} className="shrink-0 rounded-md" alt="AutoCore" />
-      <span className="truncate text-sm font-semibold tracking-tight">{title}</span>
+      <h1 className="truncate text-sm font-semibold tracking-tight">{title}</h1>
     </div>
   );
 }
@@ -273,6 +273,12 @@ export function DashboardTopBar() {
           : userCopy.layout.filterSold,
   }));
 
+  const exportLabel = isWarehouseRoute
+    ? userCopy.layout.exportCsv
+    : isPro
+      ? userCopy.layout.exportExcel
+      : userCopy.billing.paywall.export.title;
+
   return (
     <header
       className={cn(
@@ -396,7 +402,7 @@ export function DashboardTopBar() {
               aria-label={userCopy.layout.columns}
               onClick={() => setSpecificColumnsDialogOpen(true)}
             >
-              <Settings2 className="size-4" />
+              <Columns3Cog className="size-4" />
             </Button>
           ) : null}
 
@@ -421,13 +427,14 @@ export function DashboardTopBar() {
                   size="icon-sm"
                   disabled={!canEdit}
                   title={userCopy.layout.barcodeScanner}
+                  aria-label={userCopy.layout.barcodeScanner}
                   onClick={() => {
                     if (!triggerWarehouseBarcode()) {
                       setExcelError(userCopy.layout.warehouseScannerNotReady);
                     }
                   }}
                 >
-                  <Barcode className="size-4" />
+                  <ScanBarcode className="size-4" />
                 </Button>
               ) : null}
               <Button
@@ -439,17 +446,12 @@ export function DashboardTopBar() {
                     ? !canExportWarehouse || !canExport
                     : !canEdit || (isPro && !canExport))
                 }
-                title={
-                  isWarehouseRoute
-                    ? userCopy.layout.exportCsv
-                    : isPro
-                      ? userCopy.layout.exportExcel
-                      : userCopy.billing.paywall.export.title
-                }
+                title={exportLabel}
+                aria-label={exportLabel}
                 onClick={() => void handleExport()}
                 className={cn("relative", !isPro && !isWarehouseRoute && "text-primary/80")}
               >
-                <Upload className="size-4" />
+                <Download className="size-4" />
                 {!isPro && !isWarehouseRoute ? (
                   <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-sidebar" />
                 ) : null}

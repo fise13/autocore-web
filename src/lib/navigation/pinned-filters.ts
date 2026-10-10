@@ -4,7 +4,7 @@ import type { InventoryItem } from "@/domain/inventory";
 import type { MotorEntity } from "@/domain/motor";
 import type { LucideIcon } from "lucide-react";
 import {
-  AlertCircle,
+  CircleAlert,
   Clock,
   PackageCheck,
   PackageMinus,
@@ -37,7 +37,7 @@ const PINNED_FILTER_ICONS: Record<PinnedFilterId, LucideIcon> = {
   sold: Sparkles,
   warranty: ShieldCheck,
   recent: Clock,
-  attention: AlertCircle,
+  attention: CircleAlert,
 };
 
 export function getPinnedFilters(): PinnedFilterMeta[] {

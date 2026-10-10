@@ -7,7 +7,7 @@ import {
   Barcode,
   Download,
   LayoutGrid,
-  MinusCircle,
+  CircleMinus,
   Plus,
   Receipt,
   RotateCcw,
@@ -211,7 +211,7 @@ function SidebarContextContent({ mode }: SidebarContextPanelProps) {
           onClick={() => void triggerWarehouseExport().catch(() => undefined)}
         />
         <ActionButton
-          icon={MinusCircle}
+          icon={CircleMinus}
           label={userCopy.layout.contextPanel.adjustStock}
           hint={userCopy.layout.contextPanel.adjustStockHint}
           disabled={!canEditInventory}
