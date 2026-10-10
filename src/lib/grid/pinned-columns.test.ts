@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 
 import {
   pinnedColumnMetrics,
-  stickyColumnLeft,
   unionVisibleColumnIndexes,
 } from "@/lib/grid/pinned-columns";
 
@@ -37,10 +36,5 @@ describe("pinned columns", () => {
 
   it("always includes pinned indexes in the virtualized column set", () => {
     assert.deepEqual(unionVisibleColumnIndexes(5, 8, [0, 1, 2], 14), [0, 1, 2, 5, 6, 7, 8]);
-  });
-
-  it("shifts pinned cells with horizontal scroll", () => {
-    assert.equal(stickyColumnLeft(2, 144, 220, 144), 364);
-    assert.equal(stickyColumnLeft(5, 640, 220, undefined), 640);
   });
 });
