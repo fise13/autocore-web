@@ -287,7 +287,7 @@ function AuthActionShell({
 }: AuthActionShellProps) {
   const iconTone =
     status === "success"
-      ? "bg-emerald-500/10 text-emerald-600 ring-emerald-500/20"
+      ? "bg-success-subtle text-success-on-subtle ring-success-border"
       : status === "error"
         ? "bg-destructive/10 text-destructive ring-destructive/20"
         : "bg-primary/10 text-primary ring-primary/15";
@@ -307,7 +307,7 @@ function AuthActionShell({
           <AppLogo size={32} className="h-8 w-auto" />
         </div>
         <Card className="overflow-hidden border-border/80 shadow-xl shadow-black/5">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-sky-400" />
+          <div className="h-1 bg-primary" />
           <CardHeader className="space-y-4 text-center">
             <div
               className={cn(

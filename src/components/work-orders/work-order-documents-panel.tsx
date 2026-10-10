@@ -226,7 +226,7 @@ export function WorkOrderDocumentsPanel({
                         {labels.pending}
                       </span>
                     ) : isReady || persisted || latestJob?.completedSlugs.includes(definition.slug) ? (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-medium text-emerald-700">
+                      <span className="rounded-full bg-success-subtle px-2 py-0.5 text-[0.65rem] font-medium text-success-on-subtle">
                         {labels.ready}
                       </span>
                     ) : null}

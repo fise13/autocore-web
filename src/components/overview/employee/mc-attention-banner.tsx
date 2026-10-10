@@ -12,9 +12,9 @@ type McAttentionBannerProps = {
 };
 
 const toneClass: Record<EmployeeAttentionItem["tone"], string> = {
-  warning: "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100",
+  warning: "border-warning-border bg-warning-subtle text-warning-on-subtle",
   danger: "border-destructive/30 bg-destructive/10 text-destructive",
-  positive: "border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100",
+  positive: "border-success-border bg-success-subtle text-success-on-subtle",
 };
 
 export function McAttentionBanner({ items }: McAttentionBannerProps) {
@@ -23,7 +23,7 @@ export function McAttentionBanner({ items }: McAttentionBannerProps) {
   return (
     <div className="col-span-full rounded-xl border bg-card/60 p-4">
       <p className="mb-3 flex items-center gap-2 text-sm font-medium">
-        <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />
+        <AlertTriangle className="size-4 text-warning-on-subtle" aria-hidden="true" />
         {userCopy.overview.employee.attentionTitle}
       </p>
       <div className="flex flex-wrap gap-2">

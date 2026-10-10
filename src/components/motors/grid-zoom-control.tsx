@@ -25,7 +25,7 @@ export function GridZoomControl() {
             const value = Number(event.target.value);
             setGridZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)));
           }}
-          className="h-1 w-[110px] accent-emerald-600 transition-opacity duration-200"
+          className="h-1 w-[110px] accent-primary transition-opacity duration-200"
           aria-label={userCopy.motors.gridZoomAria}
         />
       </div>

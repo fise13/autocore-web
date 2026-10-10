@@ -440,7 +440,7 @@ export function WarehouseImportWizard({
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
                   <p>{userCopy.warehouse.import.selectedOf(selectedCount, rows.length)}</p>
                   {uncertainRows.length > 0 ? (
-                    <p className="mt-1 text-amber-700 dark:text-amber-300">
+                    <p className="mt-1 text-warning-on-subtle">
                       {userCopy.warehouse.import.uncertainHint(uncertainRows.length)}
                     </p>
                   ) : null}
@@ -553,7 +553,7 @@ function PreviewTable({
                 className={cn(
                   "border-t transition-colors",
                   row.errors.length ? "bg-destructive/5" : "",
-                  uncertain ? "bg-amber-500/5" : "",
+                  uncertain ? "bg-warning-subtle" : "",
                 )}
               >
                 <td className="px-3 py-2">

@@ -436,7 +436,7 @@ function ReviewRow({
       className={cn(
         "border-b last:border-0",
         !row.selected && "opacity-50",
-        low && "bg-amber-500/5",
+        low && "bg-warning-subtle",
       )}
     >
       <td className="px-3 py-2">

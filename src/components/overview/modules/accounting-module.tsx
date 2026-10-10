@@ -59,8 +59,8 @@ export const AccountingModule = memo(function AccountingModule({
       <McModuleHeader icon={CircleDollarSign} title={copy.title} href="/accounting" accent="blue" />
       <div className="mc-module-body space-y-3">
         <div className="grid grid-cols-2 gap-2.5">
-          <StatChip icon={TrendingUp} label={copy.income} value={todayIncome} tone="text-emerald-500" localeTag={localeTag} />
-          <StatChip icon={TrendingDown} label={copy.expense} value={todayExpense} tone="text-red-400" localeTag={localeTag} />
+          <StatChip icon={TrendingUp} label={copy.income} value={todayIncome} tone="text-success-on-subtle" localeTag={localeTag} />
+          <StatChip icon={TrendingDown} label={copy.expense} value={todayExpense} tone="text-danger-on-subtle" localeTag={localeTag} />
         </div>
 
         <div>
@@ -110,7 +110,7 @@ export const AccountingModule = memo(function AccountingModule({
                     {op.description || op.comment || "—"}
                   </p>
                 </div>
-                <span className={cn("shrink-0 tabular-nums font-medium", op.type === "expense" ? "text-red-400" : "text-emerald-400")}>
+                <span className={cn("shrink-0 tabular-nums font-medium", op.type === "expense" ? "text-danger-on-subtle" : "text-success-on-subtle")}>
                   {op.type === "expense" ? "−" : "+"}
                   {"$" + op.amount.toLocaleString(localeTag)}
                 </span>

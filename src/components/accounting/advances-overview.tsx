@@ -63,9 +63,9 @@ function Metric({
         <Icon
           className={cn(
             "size-3.5",
-            tone === "green" && "text-emerald-600",
-            tone === "orange" && "text-amber-600",
-            tone === "red" && "text-red-600",
+            tone === "green" && "text-success-on-subtle",
+            tone === "orange" && "text-warning-on-subtle",
+            tone === "red" && "text-danger-on-subtle",
           )}
         />
         {label}

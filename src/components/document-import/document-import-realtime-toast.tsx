@@ -54,7 +54,7 @@ function DocumentImportToastCard({
             onOpen();
             sonnerToast.dismiss(toastId);
           }}
-          className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-sky-600 px-3.5 text-xs font-semibold text-white transition hover:bg-sky-600/90 dark:bg-sky-500"
+          className="mt-2.5 inline-flex h-9 min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-primary px-3.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary-hover"
         >
           {userCopy.documentImport.open}
         </button>

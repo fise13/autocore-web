@@ -102,7 +102,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               </Button>
             )}
             <span className="flex items-center gap-2 font-heading text-sm font-medium">
-              <Sparkles className="size-4 text-emerald-600" />
+              <Sparkles className="size-4 text-success-on-subtle" />
               {shellTitle}
             </span>
           </div>
@@ -145,7 +145,7 @@ export function BusinessMigration(props: BusinessMigrationProps) {
               <motion.div key="idle" {...fade} className="flex flex-col">
                 {isOnboarding ? (
                   <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 pb-6 pt-8 text-center">
-                    <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-600">
+                    <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-success-border bg-success-subtle px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-success-on-subtle">
                       <Sparkles className="size-3.5" aria-hidden />
                       {mCopy.finalStep}
                     </div>
@@ -254,7 +254,7 @@ function AnalyzingState({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-success-subtle text-success-on-subtle">
         <Loader2 className="size-7 animate-spin" />
       </div>
       <div className="flex flex-col gap-1">
@@ -278,7 +278,7 @@ function CommittingState({ progress }: { progress: { done: number; total: number
   const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 px-6 py-24 text-center">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-success-subtle text-success-on-subtle">
         <Loader2 className="size-7 animate-spin" />
       </div>
       <div className="flex w-full flex-col gap-2">
@@ -289,7 +289,7 @@ function CommittingState({ progress }: { progress: { done: number; total: number
           <>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-emerald-600 transition-[width] duration-300"
+                className="h-full rounded-full bg-success transition-[width] duration-300"
                 style={{ width: `${percent}%` }}
               />
             </div>

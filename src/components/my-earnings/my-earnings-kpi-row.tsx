@@ -47,7 +47,7 @@ export function MyEarningsKpiRow({ summary }: MyEarningsKpiRowProps) {
         variant="dashboard"
         footer={
           summary.pending > 0 ? (
-            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1 text-warning-on-subtle">
               <Wallet className="size-3" aria-hidden="true" />
               <McAnimatedValue value={summary.pending} format="currency" suffix={userCopy.myEarnings.pendingSuffix} />
             </span>

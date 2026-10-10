@@ -165,7 +165,7 @@ export function WorkOrderListPanel({
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {visibleDrafts.length > 0 ? (
           <div className="mb-3 space-y-1.5">
-            <p className="px-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+            <p className="px-1.5 pt-1 text-[11px] font-semibold uppercase tracking-wide text-warning-on-subtle">
               {copy.unfinishedSection}
             </p>
             <ul className="space-y-1.5">
@@ -176,14 +176,14 @@ export function WorkOrderListPanel({
                   : copy.draftUntitled(when);
                 return (
                   <li key={draft.key}>
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
+                    <div className="rounded-xl border border-warning-border bg-warning-subtle px-3 py-2.5">
                       <button
                         type="button"
                         className="w-full text-left"
                         onClick={() => onRestoreDraft?.(draft)}
                       >
                         <div className="flex items-start gap-2">
-                          <FilePenLine className="mt-0.5 size-3.5 shrink-0 text-amber-700 dark:text-amber-400" />
+                          <FilePenLine className="mt-0.5 size-3.5 shrink-0 text-warning-on-subtle" />
                           <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium">{title}</p>
                         </div>
                       </button>

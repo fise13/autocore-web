@@ -163,7 +163,7 @@ export function PlanComparisonTable({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="relative mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                className="relative mt-2 text-xs font-medium text-success-on-subtle"
               >
                 {copy.yearlyHint}
               </motion.p>

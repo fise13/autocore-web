@@ -135,7 +135,7 @@ export function ProActivationCelebration({ open, phase, onOpenChange }: ProActiv
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ delay: 0.35 + index * 0.09, type: "spring", stiffness: 420, damping: 22 }}
-                          className="ml-auto mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          className="ml-auto mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle"
                         >
                           <Check className="size-3.5" strokeWidth={2.5} />
                         </motion.span>

@@ -128,7 +128,7 @@ export function DocumentWatermarkSettings({ value, hasLogo, onChange }: Document
       </div>
 
       {logoMissing ? (
-        <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+        <p className="rounded-lg border border-warning-border bg-warning-subtle px-3 py-2 text-xs text-warning-on-subtle">
           {copy.needsLogo}
         </p>
       ) : null}

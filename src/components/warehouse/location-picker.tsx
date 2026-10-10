@@ -93,7 +93,7 @@ export function LocationPicker({
                 <span
                   className={cn(
                     "text-xs",
-                    occupied ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+                    occupied ? "text-warning-on-subtle" : "text-muted-foreground",
                   )}
                 >
                   {label}

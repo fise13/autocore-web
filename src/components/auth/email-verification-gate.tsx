@@ -127,7 +127,7 @@ export function EmailVerificationGate({ children }: EmailVerificationGateProps) 
           <AppLogo size={40} />
         </div>
         <Card className="overflow-hidden border-border/80 shadow-xl shadow-black/5">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary/80 to-sky-400" />
+          <div className="h-1 bg-primary" />
           <CardHeader className="text-center">
             <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
               {busy ? (

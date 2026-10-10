@@ -26,8 +26,8 @@ type SidebarFooterProps = {
 };
 
 const statusDotClass: Record<SystemStatusLevel, string> = {
-  operational: "bg-emerald-500",
-  degraded: "bg-amber-500",
+  operational: "bg-success",
+  degraded: "bg-warning",
   outage: "bg-destructive",
 };
 

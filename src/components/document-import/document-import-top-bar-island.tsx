@@ -72,7 +72,7 @@ function MobileImportIslandShell({
         exit={{ opacity: 0, scale: 0.98, y: -2 }}
         transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
-          "flex max-w-[min(100%,20rem)] items-center gap-1 rounded-full border border-sky-500/25 bg-sky-500/[0.08] py-0.5 pl-2 pr-0.5",
+          "flex max-w-[min(100%,20rem)] items-center gap-1 rounded-full border border-primary-border bg-primary-subtle py-0.5 pl-2 pr-0.5",
           "shadow-sm backdrop-blur-md",
           className,
         )}
@@ -82,7 +82,7 @@ function MobileImportIslandShell({
           onClick={onOpen}
           className="flex min-h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-full px-1 py-0.5 text-left transition hover:opacity-90"
         >
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary-on-subtle">
             {icon}
           </span>
           <span className="flex min-w-0 flex-col leading-tight">

@@ -24,8 +24,8 @@ function initials(name: string): string {
 
 const severityDot: Record<string, string> = {
   info: "bg-primary",
-  warning: "bg-amber-500",
-  critical: "bg-red-500",
+  warning: "bg-warning",
+  critical: "bg-danger",
 };
 
 const moduleChip: Record<string, string> = {

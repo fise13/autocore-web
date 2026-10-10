@@ -142,10 +142,8 @@ export function OverviewInsights({
                   <div className="relative flex h-[132px] w-full items-end justify-center">
                     <div
                       className={cn(
-                        "w-full max-w-10 rounded-md shadow-sm transition-[height] duration-700 ease-out",
-                        positive
-                          ? "bg-gradient-to-t from-emerald-600/90 to-emerald-400/75"
-                          : "bg-gradient-to-t from-red-600/90 to-red-400/75",
+                        "w-full max-w-10 rounded-md transition-[height] duration-700 ease-out",
+                        positive ? "bg-success" : "bg-danger",
                         mounted && "animate-autocore-bar-grow",
                       )}
                       style={{

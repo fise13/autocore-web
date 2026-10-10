@@ -161,7 +161,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
           <Package className="size-3.5 shrink-0 opacity-70" />
           <span className="truncate">{activeWarehouse.name}</span>
           {activeWarehouse.isDefault ? (
-            <Star className="size-3 shrink-0 fill-amber-400/80 text-amber-400/80" />
+            <Star className="size-3 shrink-0 fill-warning/80 text-warning-on-subtle" />
           ) : null}
           <ChevronDown className="size-3.5 shrink-0 opacity-60" />
         </DropdownMenuTrigger>
@@ -175,7 +175,7 @@ export function WarehouseTopBarSelector({ className }: { className?: string }) {
               <Package className="size-4 opacity-70" />
               <span className="flex-1 truncate">{warehouse.name}</span>
               {warehouse.isDefault ? (
-                <Star className="size-3.5 shrink-0 fill-amber-400/80 text-amber-400/80" />
+                <Star className="size-3.5 shrink-0 fill-warning/80 text-warning-on-subtle" />
               ) : null}
             </DropdownMenuItem>
           ))}

@@ -41,7 +41,7 @@ export function MyEarningsShiftCard({ companyId, employeeId, shiftOn }: MyEarnin
             size="sm"
             variant={value ? "default" : "outline"}
             disabled={busy}
-            className={cn(value && "bg-emerald-600 hover:bg-emerald-600/90")}
+            className={cn(value && "bg-success text-success-foreground hover:bg-success/90")}
             onClick={() => {
               const next = !value;
               setBusy(true);

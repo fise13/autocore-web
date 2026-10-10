@@ -26,7 +26,7 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
 }: InventoryAnalyticsModuleProps) {
   const hasSales = analytics.motorSaleCount > 0;
   const staleTone =
-    analytics.staleMotorCount > 0 ? "text-amber-500 dark:text-amber-400" : "text-emerald-500 dark:text-emerald-400";
+    analytics.staleMotorCount > 0 ? "text-warning-on-subtle" : "text-success-on-subtle";
 
   return (
     <article className="mc-module-card">
@@ -52,7 +52,7 @@ export const InventoryAnalyticsModule = memo(function InventoryAnalyticsModule({
                     ? copy.avgDaysHintSold(analytics.soldCount)
                     : copy.avgDaysHintEmpty
                 }
-                tone="text-blue-500 dark:text-blue-400"
+                tone="text-primary-on-subtle"
               />
               <MetricTile
                 icon={AlertTriangle}
@@ -121,24 +121,17 @@ function RevenueHero({ analytics }: { analytics: InventoryAnalytics }) {
       className={cn(
         "relative overflow-hidden rounded-xl border p-3.5",
         hasRevenue
-          ? "border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background/40 to-background/20"
+          ? "border-success-border bg-success-subtle"
           : "border-border/50 bg-background/30",
       )}
     >
-      {hasRevenue ? (
-        <div
-          className="pointer-events-none absolute -top-8 -right-8 size-24 rounded-full bg-emerald-500/10 blur-2xl"
-          aria-hidden
-        />
-      ) : null}
-
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingUp className="size-3.5 text-emerald-500" aria-hidden />
+            <TrendingUp className="size-3.5 text-success-on-subtle" aria-hidden />
             <span>{copy.revenueLabel}</span>
           </div>
-          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
+          <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-success-on-subtle">
             {hasRevenue ? (
               <AnimatedNumber
                 value={analytics.motorSaleRevenue}
@@ -218,14 +211,14 @@ function InventoryHealthBar({
         <>
           <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/80">
             <div
-              className="h-full bg-emerald-500/75 transition-all duration-500"
+              className="h-full bg-success transition-all duration-500"
               style={{ width: `${freshShare}%` }}
               title={`${copy.inStock}: ${fresh}`}
             />
             <div
               className={cn(
                 "h-full transition-all duration-500",
-                stale > 0 ? "bg-amber-500/80" : "bg-transparent",
+                stale > 0 ? "bg-warning" : "bg-transparent",
               )}
               style={{ width: `${staleShare}%` }}
               title={`${copy.staleShort}: ${stale}`}
@@ -234,11 +227,11 @@ function InventoryHealthBar({
 
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-emerald-500/75" aria-hidden />
+              <span className="size-2 rounded-full bg-success" aria-hidden />
               {copy.inStock} · {fresh}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-amber-500/80" aria-hidden />
+              <span className="size-2 rounded-full bg-warning" aria-hidden />
               {copy.staleShort} · {stale}
               {` (${staleShare}%)`}
             </span>

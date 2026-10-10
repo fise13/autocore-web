@@ -289,7 +289,7 @@ export function DonorsWorkspace() {
                     {formatMoney(pnl.soldRevenue)}
                     {pnl.unvaluedSoldMotorCount > 0 ? (
                       <span
-                        className="ml-1 inline-flex align-middle text-amber-600 dark:text-amber-500"
+                        className="ml-1 inline-flex align-middle text-warning-on-subtle"
                         title={copy.unvaluedMotors(pnl.unvaluedSoldMotorCount)}
                       >
                         <TriangleAlert className="size-3.5" aria-hidden />

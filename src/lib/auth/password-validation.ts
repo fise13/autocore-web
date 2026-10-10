@@ -113,8 +113,8 @@ export const PASSWORD_STRENGTH_LABELS: Record<PasswordStrength, string> = {
 
 export const PASSWORD_BAR_SEGMENT_CLASS: Record<PasswordStrengthState["barTone"], string> = {
   empty: "bg-border",
-  weak: "bg-red-500",
-  fair: "bg-orange-500",
-  good: "bg-amber-500",
-  strong: "bg-emerald-500",
+  weak: "bg-danger",
+  fair: "bg-warning",
+  good: "bg-warning",
+  strong: "bg-success",
 };

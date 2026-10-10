@@ -68,9 +68,9 @@ export function WorkspaceStatusBar({
           <span
             className={cn(
               "transition-colors duration-300",
-              hasUnsaved && "text-amber-600",
-              isSaving && "text-sky-600",
-              isOffline && "text-sky-600",
+              hasUnsaved && "text-warning-on-subtle",
+              isSaving && "text-primary-on-subtle",
+              isOffline && "text-offline-on-subtle",
               isError && "text-destructive",
               !hasUnsaved && !isSaving && !isError && !isOffline && "text-muted-foreground",
             )}

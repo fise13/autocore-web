@@ -371,7 +371,7 @@ export function WarehouseWorkspace() {
   return (
     <div ref={lifecycleRef} className="relative flex h-full min-h-0 flex-1 flex-col">
       {readOnly ? (
-        <div className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-800 dark:text-amber-200">
+        <div className="border-b border-warning-border bg-warning-subtle px-4 py-2 text-center text-xs text-warning-on-subtle">
           {userCopy.warehouse.viewOnlyBanner}
         </div>
       ) : null}
@@ -395,7 +395,7 @@ export function WarehouseWorkspace() {
         right={
           <>
             {dirtyCount > 0 ? (
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200">
+              <span className="rounded-full border border-warning-border bg-warning-subtle px-2.5 py-1 text-[11px] font-medium text-warning-on-subtle">
                 {userCopy.warehouse.dirtyCount(dirtyCount)}
               </span>
             ) : null}

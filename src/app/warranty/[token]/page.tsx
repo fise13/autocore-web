@@ -66,7 +66,7 @@ export default function WarrantyVerifyPage() {
 
         <div
           className={`rounded-xl px-4 py-3 text-center text-sm font-medium ${
-            active ? "bg-emerald-500/10 text-emerald-700" : "bg-amber-500/10 text-amber-800"
+            active ? "bg-success-subtle text-success-on-subtle" : "bg-warning-subtle text-warning-on-subtle"
           }`}
         >
           {active ? "Гарантия действует" : "Гарантия недействительна или истекла"}

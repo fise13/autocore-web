@@ -78,10 +78,10 @@ export function MixedPaymentSplit({
 
       <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full bg-emerald-500/85 transition-[width] duration-200"
+          className="h-full bg-success transition-[width] duration-200"
           style={{ width: `${cashRatio * 100}%` }}
         />
-        <div className="h-full flex-1 bg-sky-500/70" />
+        <div className="h-full flex-1 bg-primary" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

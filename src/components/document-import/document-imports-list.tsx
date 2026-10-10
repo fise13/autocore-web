@@ -60,7 +60,7 @@ export function DocumentImportsList({
           compact ? "px-4 py-10" : "px-6 py-16",
         )}
       >
-        <div className="rounded-full bg-sky-500/10 p-3 text-sky-600 dark:text-sky-400">
+        <div className="rounded-full bg-primary-subtle p-3 text-primary-on-subtle">
           <FileText className="size-5" />
         </div>
         <p className="text-sm font-medium">{userCopy.documentImport.emptyTitle}</p>
@@ -77,7 +77,7 @@ export function DocumentImportsList({
           href={`/imports/${job.id}`}
           onClick={onItemClick}
           className={cn(
-            "group flex items-center gap-3 rounded-xl border bg-card/70 px-3 transition-colors hover:border-sky-500/30 hover:bg-sky-500/[0.04]",
+            "group flex items-center gap-3 rounded-xl border bg-card/70 px-3 transition-colors hover:border-primary-border hover:bg-primary-subtle",
             compact ? "py-2.5" : "py-3",
           )}
         >
@@ -98,7 +98,7 @@ export function DocumentImportsList({
               {formatDistanceToNow(job.createdAt, { addSuffix: true, locale: enUS })}
             </p>
           </div>
-          <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-sky-700 opacity-0 transition group-hover:opacity-100 dark:text-sky-300">
+          <span className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary-on-subtle opacity-0 transition group-hover:opacity-100">
             {userCopy.documentImport.open}
           </span>
         </Link>

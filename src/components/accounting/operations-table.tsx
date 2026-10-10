@@ -82,10 +82,10 @@ type OperationsTableProps = {
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  sale: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  income: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  expense: "bg-red-500/10 text-red-700 dark:text-red-300",
-  refund: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  sale: "bg-primary-subtle text-primary-on-subtle",
+  income: "bg-success-subtle text-success-on-subtle",
+  expense: "bg-danger-subtle text-danger-on-subtle",
+  refund: "bg-warning-subtle text-warning-on-subtle",
 };
 
 function isMotorSaleOperation(operation: FinancialOperation): boolean {
@@ -107,7 +107,7 @@ function workOrderFlowBadge(
   ) {
     return {
       label: labels.incomeFlow,
-      className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      className: "bg-success-subtle text-success-on-subtle",
     };
   }
   if (
@@ -117,7 +117,7 @@ function workOrderFlowBadge(
   ) {
     return {
       label: labels.expenseFlow,
-      className: "bg-red-500/10 text-red-700 dark:text-red-300",
+      className: "bg-danger-subtle text-danger-on-subtle",
     };
   }
   return null;
@@ -225,7 +225,7 @@ export function OperationsTable({
                     {resolveTypeLabel(operation.type, labels)}
                   </span>
                   {isAdvanceOperation(operation) ? (
-                    <span className="ml-1.5 inline-flex rounded-md bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                    <span className="ml-1.5 inline-flex rounded-md bg-primary-subtle px-1.5 py-0.5 text-[10px] font-medium text-primary-on-subtle">
                       {labels.advance}
                     </span>
                   ) : null}

@@ -208,7 +208,7 @@ export function HelpFeedbackForm({ supportEmail }: { supportEmail: string }) {
             transition={{ duration: 0.28, ease: EASE }}
             className="flex flex-col items-start gap-3 py-2"
           >
-            <span className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <span className="flex size-10 items-center justify-center rounded-full bg-success-subtle text-success-on-subtle">
               <Check className="size-5" />
             </span>
             <div>

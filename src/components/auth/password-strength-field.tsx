@@ -88,10 +88,10 @@ export function PasswordStrengthField({
             className={cn(
               "font-medium",
               strength.barTone === "empty" && "text-muted-foreground",
-              strength.barTone === "weak" && "text-red-500",
-              strength.barTone === "fair" && "text-orange-500",
-              strength.barTone === "good" && "text-amber-500",
-              strength.barTone === "strong" && "text-emerald-500",
+              strength.barTone === "weak" && "text-danger-on-subtle",
+              strength.barTone === "fair" && "text-warning-on-subtle",
+              strength.barTone === "good" && "text-warning-on-subtle",
+              strength.barTone === "strong" && "text-success-on-subtle",
             )}
           >
             {strength.strengthText}
@@ -103,7 +103,7 @@ export function PasswordStrengthField({
           {strength.requirements.map((requirement) => (
             <li key={requirement.id} className="flex items-center gap-2 text-sm">
               {requirement.met ? (
-                <Check className="size-4 shrink-0 text-emerald-500" aria-hidden />
+                <Check className="size-4 shrink-0 text-success-on-subtle" aria-hidden />
               ) : (
                 <X className="size-4 shrink-0 text-muted-foreground/80" aria-hidden />
               )}

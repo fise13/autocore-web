@@ -130,7 +130,7 @@ export function WarehouseBulkAssignLocationDialog({
             placeholder={userCopy.warehouse.pickExistingLocation}
           />
           {pickedId && (occupancyByLocationId[pickedId]?.lineCount ?? 0) > 0 ? (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-warning-on-subtle">
               {userCopy.warehouse.locationOccupied(occupancyByLocationId[pickedId].lineCount)}
             </p>
           ) : null}

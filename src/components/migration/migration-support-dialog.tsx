@@ -76,7 +76,7 @@ export function MigrationSupportDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LifeBuoy className="size-4 text-emerald-600" />
+            <LifeBuoy className="size-4 text-success-on-subtle" />
             {copy.title}
           </DialogTitle>
           <DialogDescription>{copy.description}</DialogDescription>

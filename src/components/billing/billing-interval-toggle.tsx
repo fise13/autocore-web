@@ -58,7 +58,7 @@ export function BillingIntervalToggle({
                     "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                     active
                       ? "bg-primary-foreground/20 text-primary-foreground"
-                      : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+                      : "bg-success-subtle text-success-on-subtle",
                   )}
                 >
                   {userCopy.billing.planComparison.yearlySave}

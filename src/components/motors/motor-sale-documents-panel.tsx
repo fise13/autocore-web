@@ -284,7 +284,7 @@ export function MotorSaleDocumentsPanel({
             <span>{userCopy.motors.saleDocuments.preparing}</span>
           </div>
         ) : isReady ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3.5 py-2.5 text-sm text-emerald-700 dark:text-emerald-300">
+          <div className="flex items-center gap-2 rounded-xl border border-success-border bg-success-subtle px-3.5 py-2.5 text-sm text-success-on-subtle">
             <ShieldCheck className="size-4 shrink-0" aria-hidden />
             <span>{userCopy.motors.saleDocuments.ready}</span>
           </div>

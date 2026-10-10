@@ -10,12 +10,12 @@ function statusCopy(): Record<PersistenceUiStatus, string> {
 }
 
 const STATUS_DOT: Record<PersistenceUiStatus, string> = {
-  clean: "bg-emerald-500",
-  dirty: "bg-amber-500",
-  saving: "bg-yellow-400",
-  offline: "bg-sky-500",
-  error: "bg-red-500",
-  conflict: "bg-orange-500",
+  clean: "bg-success",
+  dirty: "bg-warning",
+  saving: "bg-primary",
+  offline: "bg-offline",
+  error: "bg-danger",
+  conflict: "bg-warning",
 };
 
 export function PersistenceStatusBadge({ className }: { className?: string }) {

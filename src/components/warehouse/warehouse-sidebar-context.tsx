@@ -196,7 +196,7 @@ export function WarehouseSidebarContext() {
                   <Package className="relative z-10 size-4 shrink-0 opacity-80" />
                   <span className="relative z-10 min-w-0 flex-1 truncate">{warehouse.name}</span>
                   {warehouse.isDefault ? (
-                    <Star className="relative z-10 size-3.5 shrink-0 fill-amber-400/80 text-amber-400/80" />
+                    <Star className="relative z-10 size-3.5 shrink-0 fill-warning/80 text-warning-on-subtle" />
                   ) : null}
                 </button>
               );

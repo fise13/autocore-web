@@ -28,8 +28,8 @@ type StatusApiResponse = {
 };
 
 const statusTone: Record<SystemStatusLevel, string> = {
-  operational: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-  degraded: "bg-amber-500/15 text-amber-800 dark:text-amber-400",
+  operational: "bg-success-subtle text-success-on-subtle",
+  degraded: "bg-warning-subtle text-warning-on-subtle",
   outage: "bg-destructive/15 text-destructive",
 };
 
@@ -140,7 +140,7 @@ export function StatusWorkspace() {
                     <p className="text-sm font-medium">{userCopy.systemStatus.componentsMeta[definition.id].name}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{userCopy.systemStatus.componentsMeta[definition.id].description}</p>
                     {live?.message ? (
-                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">{live.message}</p>
+                      <p className="mt-1 text-xs text-warning-on-subtle">{live.message}</p>
                     ) : null}
                   </div>
                   <Badge className={cn("w-fit shrink-0 border-0", statusTone[level])}>
